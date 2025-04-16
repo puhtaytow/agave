@@ -353,6 +353,13 @@ fn app<'a>(num_threads: &'a str, crate_version: &'a str) -> Command<'a> {
                     // but having no way to get the private key
                     .requires("use_mnemonic")
                 )
+                .arg(
+                    Arg::new("outfile")
+                        .long("outfile")
+                        .value_name("FILEPATH")
+                        .takes_value(true)
+                        .help("Path to generated file"),
+                )
         )
         .subcommand(
             Command::new("pubkey")
@@ -628,6 +635,11 @@ fn do_main(matches: &ArgMatches) -> Result<(), Box<dyn error::Error>> {
                 no_passphrase_and_message()
             };
             let no_outfile = matches.try_contains_id(NO_OUTFILE_ARG.name)?;
+            let outfile = if matches.try_contains_id("outfile")? {
+                matches.get_one::<String>("outfile").map(|s| s.to_string())
+            } else {
+                None
+            };
 
             // The vast majority of base58 encoded public keys have length 44, but
             // these only encapsulate prefixes 1-9 and A-H.  If the user is searching
@@ -663,6 +675,7 @@ fn do_main(matches: &ArgMatches) -> Result<(), Box<dyn error::Error>> {
                     let passphrase = passphrase.clone();
                     let passphrase_message = passphrase_message.clone();
                     let derivation_path = derivation_path.clone();
+                    let outfile_cloned = outfile.clone();
 
                     thread::spawn(move || loop {
                         if done.load(Ordering::Relaxed) {
@@ -718,12 +731,17 @@ fn do_main(matches: &ArgMatches) -> Result<(), Box<dyn error::Error>> {
                                     .count
                                     .fetch_sub(1, Ordering::Relaxed);
                                 if !no_outfile {
-                                    write_keypair_file(&keypair, format!("{}.json", keypair.pubkey()))
-                                    .unwrap();
-                                    println!(
-                                        "Wrote keypair to {}",
-                                        &format!("{}.json", keypair.pubkey())
-                                    );
+                                    if let Some(outfile_path) = &outfile_cloned {
+                                        write_keypair_file(&keypair, outfile_path).unwrap();
+                                        println!("Wrote keypair to {}", outfile_path);
+                                    } else {
+                                        write_keypair_file(&keypair, format!("{}.json", keypair.pubkey()))
+                                        .unwrap();
+                                        println!(
+                                            "Wrote keypair to {}",
+                                            &format!("{}.json", keypair.pubkey())
+                                        );
+                                    }
                                 }
                                 if use_mnemonic {
                                     let divider = String::from_utf8(vec![b'='; phrase.len()]).unwrap();
