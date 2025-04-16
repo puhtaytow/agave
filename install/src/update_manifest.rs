@@ -5,8 +5,40 @@ use {
     solana_keypair::signable::Signable,
     solana_pubkey::Pubkey,
     solana_signature::Signature,
-    std::{borrow::Cow, error, io},
+    std::{borrow::Cow, error, fmt},
 };
+
+#[derive(Debug)]
+pub enum UpdateManifestError {
+    Deserialization(bincode::Error),
+    VerificationFailed,
+}
+
+impl fmt::Display for UpdateManifestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UpdateManifestError::Deserialization(e) => {
+                write!(f, "Failed to deserialize manifest: {}", e)
+            }
+            UpdateManifestError::VerificationFailed => write!(f, "Manifest verification failed"),
+        }
+    }
+}
+
+impl error::Error for UpdateManifestError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            UpdateManifestError::Deserialization(e) => Some(e),
+            UpdateManifestError::VerificationFailed => None,
+        }
+    }
+}
+
+impl From<bincode::Error> for UpdateManifestError {
+    fn from(e: bincode::Error) -> Self {
+        UpdateManifestError::Deserialization(e)
+    }
+}
 
 /// Information required to download and apply a given update
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
@@ -42,14 +74,11 @@ impl Signable for SignedUpdateManifest {
 }
 
 impl SignedUpdateManifest {
-    pub fn deserialize(
-        account_pubkey: &Pubkey,
-        input: &[u8],
-    ) -> Result<Self, Box<dyn error::Error>> {
+    pub fn deserialize(account_pubkey: &Pubkey, input: &[u8]) -> Result<Self, UpdateManifestError> {
         let mut manifest: SignedUpdateManifest = bincode::deserialize(input)?;
         manifest.account_pubkey = *account_pubkey;
         if !manifest.verify() {
-            Err(io::Error::new(io::ErrorKind::Other, "Manifest failed to verify").into())
+            Err(UpdateManifestError::VerificationFailed)
         } else {
             Ok(manifest)
         }
