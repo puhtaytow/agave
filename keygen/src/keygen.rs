@@ -447,17 +447,13 @@ fn main() -> Result<(), Box<dyn error::Error>> {
 }
 
 fn do_main(matches: &ArgMatches) -> Result<(), Box<dyn error::Error>> {
-    let config = if let Some(config_file) = matches.try_get_one::<String>("config_file")? {
-        Config::load(config_file).unwrap_or_default()
-    } else {
-        Config::default()
+    let config = match matches.try_get_one::<String>("config_file")? {
+        Some(config_file) => Config::load(config_file).unwrap_or_default(),
+        None => Config::default(),
     };
-
     let mut wallet_manager = None;
 
-    let subcommand = matches.subcommand().unwrap();
-
-    match subcommand {
+    match matches.subcommand().expect("Expected subcommand") {
         ("pubkey", matches) => {
             let pubkey =
                 get_keypair_from_matches(matches, config, &mut wallet_manager)?.try_pubkey()?;
