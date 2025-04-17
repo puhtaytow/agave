@@ -1,54 +1,53 @@
 #![allow(clippy::arithmetic_side_effects)]
 
-use {
-    bip39::{Mnemonic, MnemonicType, Seed},
-    clap::{
-        builder::ValueParser, crate_description, crate_name, value_parser, Arg, ArgAction,
-        ArgMatches, Command,
+use std::{
+    collections::HashSet,
+    error,
+    io::Write,
+    rc::Rc,
+    sync::{
+        atomic::{AtomicBool, AtomicU64, Ordering},
+        Arc,
     },
-    solana_clap_v3_utils::{
-        input_parsers::{
-            signer::{SignerSource, SignerSourceParserBuilder},
-            STDOUT_OUTFILE_TOKEN,
-        },
-        keygen::{
-            check_for_overwrite,
-            derivation_path::{acquire_derivation_path, derivation_path_arg},
-            mnemonic::{
-                acquire_passphrase_and_message, no_passphrase_and_message, try_get_language,
-                try_get_word_count,
-            },
-            no_outfile_arg, KeyGenerationCommonArgs, NO_OUTFILE_ARG,
-        },
-        keypair::{
-            keypair_from_seed_phrase, keypair_from_source, signer_from_source,
-            SKIP_SEED_PHRASE_VALIDATION_ARG,
-        },
-        DisplayError,
-    },
-    solana_cli_config::{Config, CONFIG_FILE},
-    solana_instruction::{AccountMeta, Instruction},
-    solana_keypair::{
-        keypair_from_seed, seed_derivable::keypair_from_seed_and_derivation_path, write_keypair,
-        write_keypair_file, Keypair,
-    },
-    solana_message::Message,
-    solana_pubkey::Pubkey,
-    solana_remote_wallet::remote_wallet::RemoteWalletManager,
-    solana_signer::Signer,
-    std::{
-        collections::HashSet,
-        error,
-        io::Write,
-        rc::Rc,
-        sync::{
-            atomic::{AtomicBool, AtomicU64, Ordering},
-            Arc,
-        },
-        thread,
-        time::Instant,
-    },
+    thread,
+    time::Instant,
 };
+
+use bip39::{Mnemonic, MnemonicType, Seed};
+use clap::{
+    builder::ValueParser, crate_description, crate_name, value_parser, Arg, ArgAction, ArgMatches,
+    Command,
+};
+use solana_clap_v3_utils::{
+    input_parsers::{
+        signer::{SignerSource, SignerSourceParserBuilder},
+        STDOUT_OUTFILE_TOKEN,
+    },
+    keygen::{
+        check_for_overwrite,
+        derivation_path::{acquire_derivation_path, derivation_path_arg},
+        mnemonic::{
+            acquire_passphrase_and_message, no_passphrase_and_message, try_get_language,
+            try_get_word_count,
+        },
+        no_outfile_arg, KeyGenerationCommonArgs, NO_OUTFILE_ARG,
+    },
+    keypair::{
+        keypair_from_seed_phrase, keypair_from_source, signer_from_source,
+        SKIP_SEED_PHRASE_VALIDATION_ARG,
+    },
+    DisplayError,
+};
+use solana_cli_config::{Config, CONFIG_FILE};
+use solana_instruction::{AccountMeta, Instruction};
+use solana_keypair::{
+    keypair_from_seed, seed_derivable::keypair_from_seed_and_derivation_path, write_keypair,
+    write_keypair_file, Keypair,
+};
+use solana_message::Message;
+use solana_pubkey::Pubkey;
+use solana_remote_wallet::remote_wallet::RemoteWalletManager;
+use solana_signer::Signer;
 
 mod smallest_length_44_public_key {
     use solana_pubkey::Pubkey;
