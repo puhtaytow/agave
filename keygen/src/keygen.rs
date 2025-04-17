@@ -1,4 +1,5 @@
 #![allow(clippy::arithmetic_side_effects)]
+
 use {
     bip39::{Mnemonic, MnemonicType, Seed},
     clap::{
@@ -38,6 +39,7 @@ use {
     std::{
         collections::HashSet,
         error,
+        io::Write,
         rc::Rc,
         sync::{
             atomic::{AtomicBool, AtomicU64, Ordering},
@@ -424,8 +426,6 @@ fn app<'a>(num_threads: &'a str, crate_version: &'a str) -> Command<'a> {
 }
 
 fn write_pubkey_file(outfile: &str, pubkey: Pubkey) -> Result<(), Box<dyn std::error::Error>> {
-    use std::io::Write;
-
     let printable = format!("{pubkey}");
     let serialized = serde_json::to_string(&printable)?;
 
