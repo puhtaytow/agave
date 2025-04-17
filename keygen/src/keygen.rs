@@ -231,10 +231,9 @@ fn app<'a>(num_threads: &'a str, crate_version: &'a str) -> Command<'a> {
                 .takes_value(true)
                 .global(true)
                 .help("Configuration file to use");
-            if let Some(ref config_file) = *CONFIG_FILE {
-                arg.default_value(config_file)
-            } else {
-                arg
+            match *CONFIG_FILE {
+                Some(ref config_file) => arg.default_value(config_file),
+                None => arg,
             }
         })
         .subcommand(
