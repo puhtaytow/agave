@@ -107,16 +107,20 @@ fn get_keypair_from_matches(
     wallet_manager: &mut Option<Rc<RemoteWalletManager>>,
 ) -> Result<Box<dyn Signer>, Box<dyn error::Error>> {
     let config_source;
-    let keypair_source = if matches.try_contains_id("keypair")? {
-        matches.get_one::<SignerSource>("keypair").unwrap()
-    } else if !config.keypair_path.is_empty() {
-        config_source = SignerSource::parse(&config.keypair_path)?;
-        &config_source
-    } else {
-        let mut path = dirs_next::home_dir().expect("home directory");
-        path.extend([".config", "solana", "id.json"]);
-        config_source = SignerSource::parse(path.to_str().unwrap())?;
-        &config_source
+    let keypair_source = match matches.try_contains_id("keypair")? {
+        true => matches.get_one::<SignerSource>("keypair").unwrap(),
+        false => match config.keypair_path.is_empty() {
+            false => {
+                config_source = SignerSource::parse(&config.keypair_path)?;
+                &config_source
+            }
+            true => {
+                let mut path = dirs_next::home_dir().expect("home directory");
+                path.extend([".config", "solana", "id.json"]);
+                config_source = SignerSource::parse(path.to_str().unwrap())?;
+                &config_source
+            }
+        },
     };
     signer_from_source(matches, keypair_source, "pubkey recovery", wallet_manager)
 }
