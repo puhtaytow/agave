@@ -206,6 +206,22 @@ impl<T: BloomHashIndex> ConcurrentBloom<T> {
         })
     }
 
+    #[cfg(target_arch = "x86_64")]
+    pub fn contains_popcnt64(&self, key: &T) -> bool {
+        use std::arch::x86_64::_popcnt64;
+        unsafe {
+            let mut count = 0;
+            for k in &self.keys {
+                let (index, mask) = self.pos(key, *k);
+                if let Some(bits) = self.bits.get(index) {
+                    let bit = bits.load(Ordering::Relaxed) & mask;
+                    count += _popcnt64(bit.try_into().unwrap());
+                }
+            }
+            count > 0
+        }
+    }
+
     pub fn clear(&self) {
         self.bits.iter().for_each(|bit| {
             bit.store(0u64, Ordering::Relaxed);
@@ -269,6 +285,40 @@ impl<T: BloomHashIndex> ConcurrentBloomInterval<T> {
 #[cfg(test)]
 mod test {
     use {super::*, rayon::prelude::*, solana_hash::Hash, solana_sha256_hasher::hash};
+
+    #[test]
+    fn test_add_contains_popcnt64() {
+        let mut bloom: ConcurrentBloom<Hash> = Bloom::<Hash>::random(100, 0.1, 100).into();
+        //known keys to avoid false positives in the test
+        bloom.keys = vec![0, 1, 2, 3];
+
+        let key = hash(b"hello");
+        assert!(!bloom.contains_popcnt64(&key));
+        bloom.add(&key);
+        assert!(bloom.contains_popcnt64(&key));
+
+        let key = hash(b"world");
+        assert!(!bloom.contains_popcnt64(&key));
+        bloom.add(&key);
+        assert!(bloom.contains_popcnt64(&key));
+    }
+
+    #[test]
+    fn test_contains_popcnt64_consistency() {
+        let mut bloom: ConcurrentBloom<Hash> = Bloom::<Hash>::random(100, 0.1, 100).into();
+        //known keys to avoid false positives in the test
+        bloom.keys = vec![0, 1, 2, 3];
+
+        let key = hash(b"hello");
+        assert_eq!(bloom.contains(&key), bloom.contains_popcnt64(&key));
+        bloom.add(&key);
+        assert_eq!(bloom.contains(&key), bloom.contains_popcnt64(&key));
+
+        let key = hash(b"world");
+        assert_eq!(bloom.contains(&key), bloom.contains_popcnt64(&key));
+        bloom.add(&key);
+        assert_eq!(bloom.contains(&key), bloom.contains_popcnt64(&key));
+    }
 
     #[test]
     fn test_bloom_filter() {
