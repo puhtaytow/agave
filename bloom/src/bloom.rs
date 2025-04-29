@@ -123,7 +123,11 @@ impl<T: BloomHashIndex> Bloom<T> {
         }
     }
     pub fn contains(&self, key: &T) -> bool {
-        for k in &self.keys {
+        let pos = self.pos(key, self.keys[0]);
+        if !self.bits.get(pos) {
+            return false;
+        }
+        for k in &self.keys[1..] {
             let pos = self.pos(key, *k);
             if !self.bits.get(pos) {
                 return false;

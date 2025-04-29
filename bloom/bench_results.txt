@@ -1,0 +1,234 @@
+for i in {1..10}; do
+  cargo bench -- --include-ignored | tee -a bench_results.txt
+done
+---
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      71,827.71 ns/iter (+/- 1,055.94)
+test bench_add_hash_atomic ... bench:      66,069.03 ns/iter (+/- 136.13)
+test bench_bits_set        ... bench:           9.78 ns/iter (+/- 0.16)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.01)
+test bench_sigs_bloom      ... bench:       2,322.88 ns/iter (+/- 55.26)
+test bench_sigs_hashmap    ... bench:         301.52 ns/iter (+/- 513.29)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 2.47s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      71,829.34 ns/iter (+/- 1,558.70)
+test bench_add_hash_atomic ... bench:      65,932.31 ns/iter (+/- 402.80)
+test bench_bits_set        ... bench:           9.78 ns/iter (+/- 0.10)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.02)
+test bench_sigs_bloom      ... bench:       2,320.45 ns/iter (+/- 49.12)
+test bench_sigs_hashmap    ... bench:         334.55 ns/iter (+/- 25.20)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 3.79s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      75,152.15 ns/iter (+/- 2,054.81)
+test bench_add_hash_atomic ... bench:      74,148.17 ns/iter (+/- 257.62)
+test bench_bits_set        ... bench:           9.77 ns/iter (+/- 0.04)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.05)
+test bench_sigs_bloom      ... bench:       2,331.16 ns/iter (+/- 81.12)
+test bench_sigs_hashmap    ... bench:         325.78 ns/iter (+/- 19.36)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 2.94s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      71,889.08 ns/iter (+/- 679.76)
+test bench_add_hash_atomic ... bench:      66,104.24 ns/iter (+/- 357.11)
+test bench_bits_set        ... bench:           9.78 ns/iter (+/- 0.10)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.02)
+test bench_sigs_bloom      ... bench:       2,320.46 ns/iter (+/- 48.31)
+test bench_sigs_hashmap    ... bench:         331.19 ns/iter (+/- 18.40)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 3.32s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      72,023.56 ns/iter (+/- 2,340.42)
+test bench_add_hash_atomic ... bench:      66,095.99 ns/iter (+/- 155.86)
+test bench_bits_set        ... bench:           9.78 ns/iter (+/- 0.05)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.01)
+test bench_sigs_bloom      ... bench:       2,316.29 ns/iter (+/- 45.83)
+test bench_sigs_hashmap    ... bench:         344.06 ns/iter (+/- 19.14)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 5.62s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      72,151.36 ns/iter (+/- 761.24)
+test bench_add_hash_atomic ... bench:      66,004.92 ns/iter (+/- 402.35)
+test bench_bits_set        ... bench:           9.77 ns/iter (+/- 0.04)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.04)
+test bench_sigs_bloom      ... bench:       2,322.90 ns/iter (+/- 51.11)
+test bench_sigs_hashmap    ... bench:         335.04 ns/iter (+/- 25.67)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 2.76s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      71,807.07 ns/iter (+/- 1,119.66)
+test bench_add_hash_atomic ... bench:      65,934.31 ns/iter (+/- 196.81)
+test bench_bits_set        ... bench:           9.77 ns/iter (+/- 0.06)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.01)
+test bench_sigs_bloom      ... bench:       2,318.30 ns/iter (+/- 44.15)
+test bench_sigs_hashmap    ... bench:         294.56 ns/iter (+/- 671.72)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 2.63s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      71,907.04 ns/iter (+/- 1,175.49)
+test bench_add_hash_atomic ... bench:      66,075.63 ns/iter (+/- 1,677.39)
+test bench_bits_set        ... bench:           9.78 ns/iter (+/- 0.04)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.04)
+test bench_sigs_bloom      ... bench:       2,324.17 ns/iter (+/- 55.46)
+test bench_sigs_hashmap    ... bench:         325.98 ns/iter (+/- 18.08)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 2.54s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      72,016.95 ns/iter (+/- 730.93)
+test bench_add_hash_atomic ... bench:      66,273.82 ns/iter (+/- 1,246.90)
+test bench_bits_set        ... bench:           9.78 ns/iter (+/- 0.05)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.01)
+test bench_sigs_bloom      ... bench:       2,327.46 ns/iter (+/- 53.90)
+test bench_sigs_hashmap    ... bench:         326.79 ns/iter (+/- 19.01)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 4.05s
+
+
+running 7 tests
+test bloom::test::test_add_contains ... ignored
+test bloom::test::test_atomic_bloom ... ignored
+test bloom::test::test_atomic_bloom_round_trip ... ignored
+test bloom::test::test_bloom_filter ... ignored
+test bloom::test::test_debug ... ignored
+test bloom::test::test_filter_math ... ignored
+test bloom::test::test_random ... ignored
+
+test result: ok. 0 passed; 0 failed; 7 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test bench_add_hash        ... bench:      71,757.48 ns/iter (+/- 873.92)
+test bench_add_hash_atomic ... bench:      65,785.81 ns/iter (+/- 214.47)
+test bench_bits_set        ... bench:           9.82 ns/iter (+/- 0.43)
+test bench_bits_set_hasher ... bench:           9.32 ns/iter (+/- 0.01)
+test bench_sigs_bloom      ... bench:       2,313.59 ns/iter (+/- 45.50)
+test bench_sigs_hashmap    ... bench:         327.14 ns/iter (+/- 26.38)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 6 measured; 0 filtered out; finished in 4.04s
+
