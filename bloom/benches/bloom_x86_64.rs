@@ -9,6 +9,7 @@ use {
     test::Bencher,
 };
 
+#[cfg(target_arch = "x86_64")]
 #[bench]
 fn bench_add_hash_atomic(bencher: &mut Bencher) {
     let mut rng = rand::thread_rng();
