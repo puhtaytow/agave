@@ -10,7 +10,7 @@ impl<T: BloomHashIndex> ConcurrentBloom<T> {
                 let (index, mask) = self.pos(key, *k);
                 if let Some(bits) = self.bits.get(index) {
                     let bit = bits.load(Ordering::Relaxed) & mask;
-                    count += std::arch::x86_64::_popcnt64(bit.try_into().unwrap());
+                    count += std::arch::x86_64::_popcnt64(bit as i64);
                 }
             }
             count > 0
