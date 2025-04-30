@@ -1,6 +1,7 @@
 #[cfg(target_arch = "x86_64")]
 use super::{BloomHashIndex, ConcurrentBloom, Ordering};
 
+#[cfg(target_arch = "x86_64")]
 impl<T: BloomHashIndex> ConcurrentBloom<T> {
     pub fn contains_popcnt64(&self, key: &T) -> bool {
         unsafe {
