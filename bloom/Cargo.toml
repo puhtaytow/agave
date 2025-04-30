@@ -9,6 +9,8 @@ homepage = { workspace = true }
 license = { workspace = true }
 edition = { workspace = true }
 
+
+
 [dependencies]
 bv = { workspace = true, features = ["serde"] }
 fnv = { workspace = true }
@@ -30,6 +32,10 @@ rayon = { workspace = true }
 solana-hash = { workspace = true }
 solana-sha256-hasher = { workspace = true }
 solana-signature = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "bloom"
+harness = false
 
 [lib]
 crate-type = ["lib"]
