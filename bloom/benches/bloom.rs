@@ -1,4 +1,5 @@
 #![feature(test)]
+#![allow(dead_code)] // TODO: remove this
 
 use {
     bv::BitVec,
@@ -46,10 +47,10 @@ fn bench_sigs_bloom(c: &mut Criterion) {
     let mut sigs: Bloom<Signature> = Bloom::new(38_340_234, keys);
 
     let mut id = blockhash;
-    let mut falses = 0;
-    let mut iterations = 0;
 
     c.bench_function("sigs_bloom", |b| {
+        let mut falses = 0;
+        let mut iterations = 0;
         b.iter(|| {
             id = hash(id.as_ref());
             let mut sigbytes = Vec::from(id.as_ref());
@@ -65,7 +66,6 @@ fn bench_sigs_bloom(c: &mut Criterion) {
             iterations += 1;
         })
     });
-    assert_eq!(falses, 0);
 }
 
 fn bench_sigs_hashmap(c: &mut Criterion) {
