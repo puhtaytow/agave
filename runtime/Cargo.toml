@@ -164,6 +164,10 @@ harness = false
 name = "accounts"
 harness = false
 
+[[bench]]
+name = "status_cache"
+harness = false
+
 
 [lints]
 workspace = true
