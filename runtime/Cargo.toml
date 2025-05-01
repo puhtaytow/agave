@@ -168,9 +168,9 @@ harness = false
 name = "status_cache"
 harness = false
 
-# [[bench]]
-# name = "bank"
-# harness = false
+[[bench]]
+name = "bank"
+harness = false
 
 [lints]
 workspace = true
