@@ -158,6 +158,7 @@ frozen-abi = [
 
 [[bench]]
 name = "prioritization_fee_cache"
+harness = false
 
 [[bench]]
 name = "accounts"
