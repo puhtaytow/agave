@@ -37,7 +37,7 @@ fn build_sanitized_transaction(
     RuntimeTransaction::from_transaction_for_tests(transaction)
 }
 
-fn bench_process_transactions_single_slot(bencher: &mut Criterion) {
+fn bench_process_transactions_single_slot(c: &mut Criterion) {
     let prioritization_fee_cache = PrioritizationFeeCache::default();
 
     let bank = Arc::new(Bank::default_for_tests());
@@ -54,7 +54,7 @@ fn bench_process_transactions_single_slot(bencher: &mut Criterion) {
         })
         .collect();
 
-    bencher.bench_function("process_transactions_single_slot", |b| {
+    c.bench_function("process_transactions_single_slot", |b| {
         b.iter(|| {
             prioritization_fee_cache.update(&bank, transactions.iter());
         });
@@ -90,7 +90,7 @@ fn process_transactions_multiple_slots(banks: &[Arc<Bank>], num_slots: usize, nu
     }
 }
 
-fn bench_process_transactions_multiple_slots(bencher: &mut Criterion) {
+fn bench_process_transactions_multiple_slots(c: &mut Criterion) {
     const NUM_SLOTS: usize = 5;
     const NUM_THREADS: usize = 3;
 
@@ -103,7 +103,7 @@ fn bench_process_transactions_multiple_slots(bencher: &mut Criterion) {
         .map(|n| Arc::new(Bank::new_from_parent(bank.clone(), &collector, n as u64)))
         .collect::<Vec<_>>();
 
-    bencher.bench_function("process_transactions_multiple_slots", |b| {
+    c.bench_function("process_transactions_multiple_slots", |b| {
         b.iter(|| {
             process_transactions_multiple_slots(&banks, NUM_SLOTS, NUM_THREADS);
         });

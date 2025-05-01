@@ -10,7 +10,7 @@ use {
     },
 };
 
-fn bench_status_cache_serialize(bencher: &mut Criterion) {
+fn bench_status_cache_serialize(c: &mut Criterion) {
     let mut status_cache = BankStatusCache::default();
     status_cache.add_root(0);
     status_cache.clear();
@@ -27,14 +27,14 @@ fn bench_status_cache_serialize(bencher: &mut Criterion) {
         }
     }
     assert!(status_cache.roots().contains(&0));
-    bencher.bench_function("serialize root slot deltas", |b| {
+    c.bench_function("serialize root slot deltas", |b| {
         b.iter(|| {
             let _ = serialize(&status_cache.root_slot_deltas()).unwrap();
         });
     });
 }
 
-fn bench_status_cache_root_slot_deltas(bencher: &mut Criterion) {
+fn bench_status_cache_root_slot_deltas(c: &mut Criterion) {
     let mut status_cache = BankStatusCache::default();
 
     // fill the status cache
@@ -46,7 +46,7 @@ fn bench_status_cache_root_slot_deltas(bencher: &mut Criterion) {
         status_cache.add_root(*slot);
     }
 
-    bencher.bench_function("root slot deltas", |b| {
+    c.bench_function("root slot deltas", |b| {
         b.iter(|| black_box(status_cache.root_slot_deltas()));
     });
 }
@@ -70,7 +70,7 @@ fn fill_status_cache_slot(
     }
 }
 
-fn bench_status_cache_check_and_insert(bencher: &mut Criterion) {
+fn bench_status_cache_check_and_insert(c: &mut Criterion) {
     // Fill up the status cache to better match what intense runtime usage would
     // look like.
     let max_cache_entries = MAX_CACHE_ENTRIES as u64;
@@ -96,7 +96,7 @@ fn bench_status_cache_check_and_insert(bencher: &mut Criterion) {
         tx_hashes.push(Signature::from(sigbytes));
     }
 
-    bencher.bench_function("check and insert", |b| {
+    c.bench_function("check and insert", |b| {
         b.iter(|| {
             for tx_hash in &tx_hashes {
                 if status_cache
@@ -110,14 +110,14 @@ fn bench_status_cache_check_and_insert(bencher: &mut Criterion) {
     });
 }
 
-fn bench_status_cache_add_roots(bencher: &mut Criterion) {
+fn bench_status_cache_add_roots(c: &mut Criterion) {
     // Fill up the status cache to better match what intense runtime usage would
     // look like.
     let max_cache_entries = MAX_CACHE_ENTRIES as u64;
     let mut status_cache = BankStatusCache::default();
     fill_status_cache(&mut status_cache, max_cache_entries, 100_000);
     let start_slot = max_cache_entries + 1;
-    bencher.bench_function("add roots", |b| {
+    c.bench_function("add roots", |b| {
         b.iter(|| {
             for root in start_slot..start_slot + max_cache_entries {
                 status_cache.add_root(root);
