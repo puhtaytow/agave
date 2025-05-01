@@ -1,6 +1,3 @@
-#![feature(test)]
-#![allow(dead_code)] // TODO: remove this
-
 use {
     bv::BitVec,
     criterion::{criterion_group, criterion_main, Criterion},
