@@ -80,6 +80,9 @@ pub fn tx_loop<T: AsRef<[u8]>>(
         panic!("failed to create AF_XDP socket on queue {queue_id:?}");
     };
 
+    // Drop CAP_NET_ADMIN ASAP
+    caps::drop(None, CapSet::Effective, CAP_NET_ADMIN).unwrap();
+
     let umem = socket.umem();
     let Tx {
         // this is where we'll queue frames
@@ -92,10 +95,8 @@ pub fn tx_loop<T: AsRef<[u8]>>(
     // get the routing table from netlink
     let router = Router::new().expect("failed to create router");
 
-    // we don't need higher caps anymore
-    for cap in [CAP_NET_ADMIN, CAP_NET_RAW] {
-        caps::drop(None, CapSet::Effective, cap).unwrap();
-    }
+    // Drop CAP_NET_RAW ASAP
+    caps::drop(None, CapSet::Effective, CAP_NET_RAW).unwrap();
 
     // How long we sleep waiting to receive shreds from the channel.
     const RECV_TIMEOUT: Duration = Duration::from_nanos(1000);
