@@ -154,17 +154,17 @@ fn bench_process_and_record_transactions(c: &mut Criterion, batch_size: usize) {
     } = setup();
     let consumer = create_consumer(transaction_recorder);
     let transactions = create_transactions(&bank, 2_usize.pow(20));
-    let mut transaction_iter = transactions.chunks(batch_size);
 
     c.bench_function("process_and_record_transactions", |b| {
         b.iter(|| {
+            let mut transaction_iter = transactions.chunks(batch_size);
             for _ in 0..batches_per_iteration {
                 let summary =
                     consumer.process_and_record_transactions(&bank, transaction_iter.next().unwrap());
-            assert!(summary
-                .execute_and_commit_transactions_output
-                .commit_transactions_result
-                .is_ok());
+                assert!(summary
+                    .execute_and_commit_transactions_output
+                    .commit_transactions_result
+                    .is_ok());
             }
         })
     });

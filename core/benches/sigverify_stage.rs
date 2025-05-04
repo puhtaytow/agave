@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::arithmetic_side_effects)]
+#![allow(clippy::arithmetic_side_effects)]
 
 extern crate solana_core;
 
@@ -28,6 +28,7 @@ use {
     std::time::{Duration, Instant},
 };
 
+#[allow(dead_code)]
 fn run_bench_packet_discard(num_ips: usize, c: &mut Criterion) {
     solana_logger::setup();
     let len = 30 * 1000;
@@ -71,15 +72,17 @@ fn run_bench_packet_discard(num_ips: usize, c: &mut Criterion) {
     });
 }
 
+#[allow(dead_code)]
 fn bench_packet_discard_many_senders(c: &mut Criterion) {
     run_bench_packet_discard(1000, c);
 }
 
-
+#[allow(dead_code)]
 fn bench_packet_discard_single_sender(c: &mut Criterion) {
     run_bench_packet_discard(1, c);
 }
 
+#[allow(dead_code)]
 fn bench_packet_discard_mixed_senders(c: &mut Criterion) {
     const SIZE: usize = 30 * 1000;
     const CHUNK_SIZE: usize = 1024;
@@ -118,6 +121,7 @@ fn bench_packet_discard_mixed_senders(c: &mut Criterion) {
     });
 }
 
+#[allow(dead_code)]
 fn gen_batches(use_same_tx: bool) -> Vec<PacketBatch> {
     let len = 4096;
     let chunk_size = 1024;
@@ -142,14 +146,17 @@ fn gen_batches(use_same_tx: bool) -> Vec<PacketBatch> {
     }
 }
 
+#[allow(dead_code)]
 fn bench_sigverify_stage_with_same_tx(c: &mut Criterion) {
     bench_sigverify_stage(c, true)
 }
 
+#[allow(dead_code)]
 fn bench_sigverify_stage_without_same_tx(c: &mut Criterion) {
     bench_sigverify_stage(c, false)
 }
 
+#[allow(dead_code)]
 fn bench_sigverify_stage(c: &mut Criterion, use_same_tx: bool) {
     solana_logger::setup();
     trace!("start");
@@ -233,9 +240,9 @@ fn bench_shrink_sigverify_stage_core(c: &mut Criterion, discard_factor: i32) {
     let (verified_s, _verified_r) = BankingTracer::channel_for_test();
     let verifier = TransactionSigVerifier::new(verified_s, None);
 
-    let mut count = 0;
     let mut total_shrink_time = 0;
     let mut total_verify_time = 0;
+    let mut count = 0;
 
     c.bench_function("shrink_sigverify_stage", |b| {
         b.iter(|| {
@@ -282,6 +289,14 @@ gen_shrink_sigverify_bench!(bsv_90, 90);
 criterion_group!(
     name = benches;
     config = Criterion::default();
-    targets = bsv_0, bsv_10, bsv_20, bsv_30, bsv_40, bsv_50, bsv_60, bsv_70, bsv_80, bsv_90
+    targets = 
+        
+        bench_packet_discard_many_senders,
+        bench_packet_discard_single_sender,
+        bench_packet_discard_mixed_senders,
+        bench_sigverify_stage_with_same_tx,
+        bench_sigverify_stage_without_same_tx,
+        bsv_0, bsv_10, bsv_20, bsv_30, bsv_40, bsv_50, bsv_60, bsv_70, bsv_80, bsv_90,
 );
+
 criterion_main!(benches);
