@@ -1,11 +1,9 @@
-#![feature(test)]
 #![allow(dead_code, clippy::arithmetic_side_effects)]
 
 extern crate solana_core;
-extern crate test;
 
 use {
-    criterion::{criterion_group, criterion_main, Criterion},
+    criterion::{criterion_group, criterion_main, black_box, Criterion},
     crossbeam_channel::unbounded,
     log::*,
     rand::{
@@ -181,7 +179,7 @@ fn bench_sigverify_stage(c: &mut Criterion, use_same_tx: bool) {
         loop {
             if let Ok(verifieds) = verified_r.recv_timeout(Duration::from_millis(10)) {
                 received += verifieds.iter().map(|batch| batch.len()).sum::<usize>();
-                test::black_box(verifieds);
+                black_box(verifieds);
                 if received >= expected {
                     break;
                 }
