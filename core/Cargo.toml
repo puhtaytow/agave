@@ -179,7 +179,7 @@ harness = false
 
 [[bench]]
 name = "sigverify_stage"
-
+harness = false
 [[bench]]
 name = "receive_and_buffer"
 harness = false
