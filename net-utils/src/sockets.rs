@@ -22,20 +22,22 @@ const SLICE_PER_PROCESS: u16 = (u16::MAX - BASE_PORT) / 64;
 pub fn localhost_port_range_for_tests() -> (u16, u16) {
     static SLICE: AtomicU16 = AtomicU16::new(0);
     let offset = SLICE.fetch_add(20, Ordering::Relaxed);
-    let start = offset
-        + match std::env::var("NEXTEST_TEST_GLOBAL_SLOT") {
-            Ok(slot) => {
-                let slot: u16 = slot.parse().unwrap();
-                assert!(
-                    offset < SLICE_PER_PROCESS,
-                    "Overrunning into the port range of another test! Consider using fewer ports per test."
-                );
-                BASE_PORT + slot * SLICE_PER_PROCESS
-            }
-            Err(_) => BASE_PORT,
-        };
-    assert!(start < u16::MAX - 20, "ran out of port numbers!");
-    (start, start + 20)
+    
+    let start = match std::env::var("NEXTEST_TEST_GLOBAL_SLOT") {
+        Ok(slot) => {
+            let slot: u16 = slot.parse().unwrap();
+            assert!(
+                offset < SLICE_PER_PROCESS,
+                "Overrunning into the port range of another test! Consider using fewer ports per test."
+            );
+            let slot_offset = slot.saturating_mul(SLICE_PER_PROCESS);
+            BASE_PORT.saturating_add(slot_offset).saturating_add(offset)
+        }
+        Err(_) => BASE_PORT.saturating_add(offset),
+    };
+    
+    assert!(start <= u16::MAX - 20, "ran out of port numbers!");
+    (start, start.saturating_add(20))
 }
 
 pub fn bind_gossip_port_in_range(
