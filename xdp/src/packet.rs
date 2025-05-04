@@ -112,3 +112,125 @@ fn calculate_ip_checksum(header: &[u8]) -> u16 {
 
     !(sum as u16)
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn test_write_eth_header() {
+        let test_cases = vec![
+            // (src_mac, dst_mac)
+            (
+                [0x00, 0x1B, 0x21, 0xAB, 0xCD, 0x01],
+                [0x00, 0x1B, 0x21, 0xAB, 0xCD, 0x02]
+            ),
+            (
+                [0x52, 0x54, 0x00, 0x12, 0x34, 0x56],
+                [0x52, 0x54, 0x00, 0x12, 0x34, 0x78]
+            ),
+            (
+                [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF],
+                [0x11, 0x22, 0x33, 0x44, 0x55, 0x66]
+            ),
+        ];
+
+        for (src_mac, dst_mac) in test_cases {
+            let mut packet = [0u8; ETH_HEADER_SIZE];
+            write_eth_header(&mut packet, &src_mac, &dst_mac);
+
+            assert_eq!(&packet[0..6], &dst_mac);
+            assert_eq!(&packet[6..12], &src_mac);
+        }
+    }
+
+    #[test]
+    fn test_write_ip_header() {
+        let test_cases = vec![
+            // (src_ip, dst_ip, payload_size)
+            (
+                Ipv4Addr::new(192, 168, 1, 1),
+                Ipv4Addr::new(192, 168, 1, 2),
+                10
+            ),
+            (
+                Ipv4Addr::new(10, 0, 0, 1), 
+                Ipv4Addr::new(10, 0, 0, 2),
+                32
+            ),
+            (
+                Ipv4Addr::new(172, 16, 0, 1),
+                Ipv4Addr::new(172, 16, 0, 2), 
+                1024
+            ),
+        ];
+
+        for (src_ip, dst_ip, payload_size) in test_cases {
+            let mut packet = [0u8; IP_HEADER_SIZE + 1024]; // Use max payload size
+            write_ip_header(&mut packet, &src_ip, &dst_ip, payload_size);
+
+            // Check version and IHL
+            assert_eq!(packet[0], 0x45);
+
+            // Check total length field (IP header + payload)
+            assert_eq!(&packet[2..4], &(IP_HEADER_SIZE as u16 + payload_size).to_be_bytes());
+
+            // Check source and destination IPs
+            assert_eq!(&packet[12..16], &src_ip.octets());
+            assert_eq!(&packet[16..20], &dst_ip.octets());
+        }
+    }
+
+    #[test]
+    fn test_write_udp_header() {
+        let test_cases = vec![
+            // (src_ip, src_port, dst_ip, dst_port, payload_size, checksum_enabled)
+            (
+                Ipv4Addr::new(192, 168, 1, 1),
+                1234,
+                Ipv4Addr::new(192, 168, 1, 2), 
+                5678,
+                10,
+                false
+            ),
+            (
+                Ipv4Addr::new(10, 0, 0, 1),
+                53,
+                Ipv4Addr::new(10, 0, 0, 2),
+                53,
+                32,
+                true
+            ),
+            (
+                Ipv4Addr::new(172, 16, 0, 1),
+                80,
+                Ipv4Addr::new(172, 16, 0, 2),
+                8080,
+                1024,
+                true
+            ),
+        ];
+
+        for (src_ip, src_port, dst_ip, dst_port, payload_size, checksum_enabled) in test_cases {
+            let mut packet = [0u8; UDP_HEADER_SIZE + 1024]; // Use max payload size
+            write_udp_header(&mut packet, &src_ip, src_port, &dst_ip, dst_port, payload_size, checksum_enabled);
+            
+            // Check source and destination ports
+            assert_eq!(&packet[0..2], &src_port.to_be_bytes());
+            assert_eq!(&packet[2..4], &dst_port.to_be_bytes());
+            
+            // Check length field (UDP header + payload)
+            assert_eq!(&packet[4..6], &(UDP_HEADER_SIZE as u16 + payload_size).to_be_bytes());
+            
+            if checksum_enabled {
+                // Verify checksum is non-zero when enabled
+                assert_ne!(&packet[6..8], &0u16.to_be_bytes());
+            } else {
+                // Verify checksum is zero when disabled
+                assert_eq!(&packet[6..8], &0u16.to_be_bytes());
+            }
+        }
+    }
+}
