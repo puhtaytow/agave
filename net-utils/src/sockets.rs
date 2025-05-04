@@ -55,3 +55,53 @@ pub fn bind_gossip_port_in_range(
         bind_common_in_range_with_config(bind_ip_addr, port_range, config).expect("Failed to bind")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_localhost_port_range() {
+        // Test without nextest
+        env::remove_var("NEXTEST_TEST_GLOBAL_SLOT");
+        
+        let test_cases = vec![
+            localhost_port_range_for_tests(),
+            localhost_port_range_for_tests(),
+        ];
+
+        for window in test_cases.windows(2) {
+            let (start, end) = window[0];
+            assert_eq!(end - start, 20);
+            assert!(start >= BASE_PORT);
+
+            let (next_start, next_end) = window[1];
+            assert_eq!(next_end - next_start, 20);
+            assert!(next_start > start);
+            assert_eq!(next_start, start + 20);
+        }
+
+        // Test with nextest
+        env::set_var("NEXTEST_TEST_GLOBAL_SLOT", "2");
+        
+        let test_cases = vec![
+            localhost_port_range_for_tests(),
+            localhost_port_range_for_tests(),
+        ];
+
+        for window in test_cases.windows(2) {
+            let (start, end) = window[0];
+            assert_eq!(end - start, 20);
+            // Don't check the exact value, as the SLICE counter has already been incremented
+            assert!(start >= BASE_PORT + 2 * SLICE_PER_PROCESS);
+
+            let (next_start, next_end) = window[1];
+            assert_eq!(next_end - next_start, 20);
+            assert!(next_start > start);
+            assert_eq!(next_start, start + 20);
+        }
+
+        env::remove_var("NEXTEST_TEST_GLOBAL_SLOT");
+    }
+}
