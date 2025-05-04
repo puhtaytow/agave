@@ -185,6 +185,10 @@ harness = false
 name = "receive_and_buffer"
 harness = false
 
+[[bench]]
+name = "shredder"
+harness = false
+
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
