@@ -175,6 +175,7 @@ name = "banking_stage"
 
 [[bench]]
 name = "gen_keys"
+harness = false
 
 [[bench]]
 name = "sigverify_stage"
