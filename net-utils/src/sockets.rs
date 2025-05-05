@@ -22,7 +22,7 @@ const SLICE_PER_PROCESS: u16 = (u16::MAX - BASE_PORT) / 64;
 pub fn localhost_port_range_for_tests() -> (u16, u16) {
     static SLICE: AtomicU16 = AtomicU16::new(0);
     let offset = SLICE.fetch_add(20, Ordering::Relaxed);
-    
+
     let start = match std::env::var("NEXTEST_TEST_GLOBAL_SLOT") {
         Ok(slot) => {
             let slot: u16 = slot.parse().unwrap();
@@ -35,7 +35,7 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
         }
         Err(_) => BASE_PORT.saturating_add(offset),
     };
-    
+
     assert!(start <= u16::MAX - 20, "ran out of port numbers!");
     (start, start.saturating_add(20))
 }
@@ -60,33 +60,18 @@ pub fn bind_gossip_port_in_range(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::env;
+    use {super::*, std::env};
 
     #[test]
     fn test_localhost_port_range() {
-        // Test without nextest
-        env::remove_var("NEXTEST_TEST_GLOBAL_SLOT");
-        
-        let test_cases = vec![
-            localhost_port_range_for_tests(),
-            localhost_port_range_for_tests(),
-        ];
+        // This overlay function is needed for tests that relay on NEXTEST_TEST_GLOBAL_SLOT environment variable.
+        test_localhost_port_range_without_nextest();
+        test_localhost_port_range_with_nextest();
+    }
 
-        for window in test_cases.windows(2) {
-            let (start, end) = window[0];
-            assert_eq!(end - start, 20);
-            assert!(start >= BASE_PORT);
-
-            let (next_start, next_end) = window[1];
-            assert_eq!(next_end - next_start, 20);
-            assert!(next_start > start);
-            assert_eq!(next_start, start + 20);
-        }
-
-        // Test with nextest
+    fn test_localhost_port_range_with_nextest() {
         env::set_var("NEXTEST_TEST_GLOBAL_SLOT", "2");
-        
+
         let test_cases = vec![
             localhost_port_range_for_tests(),
             localhost_port_range_for_tests(),
@@ -103,7 +88,25 @@ mod tests {
             assert!(next_start > start);
             assert_eq!(next_start, start + 20);
         }
+    }
 
+    fn test_localhost_port_range_without_nextest() {
         env::remove_var("NEXTEST_TEST_GLOBAL_SLOT");
+
+        let test_cases = vec![
+            localhost_port_range_for_tests(),
+            localhost_port_range_for_tests(),
+        ];
+
+        for window in test_cases.windows(2) {
+            let (start, end) = window[0];
+            assert_eq!(end - start, 20);
+            assert!(start >= BASE_PORT);
+
+            let (next_start, next_end) = window[1];
+            assert_eq!(next_end - next_start, 20);
+            assert!(next_start > start);
+            assert_eq!(next_start, start + 20);
+        }
     }
 }
