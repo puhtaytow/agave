@@ -72,15 +72,20 @@ mod tests {
     fn test_localhost_port_range_without_nextest() {
         env::remove_var("NEXTEST_TEST_GLOBAL_SLOT");
         let (start, end) = localhost_port_range_for_tests();
-        assert_eq!(end - start, 20);
+        assert_eq!(end.checked_sub(start).unwrap(), 20);
         assert!(start >= BASE_PORT);
     }
 
     fn test_localhost_port_range_with_nextest() {
         env::set_var("NEXTEST_TEST_GLOBAL_SLOT", "2");
         let (start, end) = localhost_port_range_for_tests();
-        assert_eq!(end - start, 20);
-        assert!(start >= BASE_PORT + 2 * SLICE_PER_PROCESS);
+        assert_eq!(end.checked_sub(start).unwrap(), 20);
+        assert!(
+            start
+                >= BASE_PORT
+                    .checked_add(2u16.checked_mul(SLICE_PER_PROCESS).unwrap())
+                    .unwrap()
+        );
         env::remove_var("NEXTEST_TEST_GLOBAL_SLOT");
     }
 }
