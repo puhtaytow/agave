@@ -237,7 +237,7 @@ fn setup_different_sized_fec_blocks(
             None, // chained_merkle_root
             next_shred_index,
             next_code_index,
-            false, // merkle_variant
+            false,
             &reed_solomon_cache,
             &mut ProcessShredsStats::default(),
         );
