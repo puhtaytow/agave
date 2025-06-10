@@ -20,12 +20,13 @@ use {
     },
     solana_clock::{Slot, MAX_PROCESSING_AGE},
     solana_cost_model::{cost_model::CostModel, transaction_cost::TransactionCost},
+    // TODO: create_ticks was here
     solana_entry::entry::{
-        self, create_ticks, Entry, EntrySlice, EntryType, EntryVerificationStatus, VerifyRecyclers,
+        self, Entry, EntrySlice, EntryType, EntryVerificationStatus, VerifyRecyclers,
     },
     solana_genesis_config::GenesisConfig,
     solana_hash::Hash,
-    solana_keypair::Keypair,
+    // solana_keypair::Keypair,
     solana_measure::{measure::Measure, measure_us},
     solana_metrics::datapoint_error,
     solana_pubkey::Pubkey,
@@ -2287,36 +2288,36 @@ impl TransactionStatusSender {
     }
 }
 
-// used for tests only
-pub fn fill_blockstore_slot_with_ticks(
-    blockstore: &Blockstore,
-    ticks_per_slot: u64,
-    slot: u64,
-    parent_slot: u64,
-    last_entry_hash: Hash,
-) -> Hash {
-    // Only slot 0 can be equal to the parent_slot
-    assert!(slot.saturating_sub(1) >= parent_slot);
-    let num_slots = (slot - parent_slot).max(1);
-    let entries = create_ticks(num_slots * ticks_per_slot, 0, last_entry_hash);
-    let last_entry_hash = entries.last().unwrap().hash;
+// // used for tests only
+// pub fn fill_blockstore_slot_with_ticks(
+//     blockstore: &Blockstore,
+//     ticks_per_slot: u64,
+//     slot: u64,
+//     parent_slot: u64,
+//     last_entry_hash: Hash,
+// ) -> Hash {
+//     // Only slot 0 can be equal to the parent_slot
+//     assert!(slot.saturating_sub(1) >= parent_slot);
+//     let num_slots = (slot - parent_slot).max(1);
+//     let entries = create_ticks(num_slots * ticks_per_slot, 0, last_entry_hash);
+//     let last_entry_hash = entries.last().unwrap().hash;
 
-    blockstore
-        .write_entries(
-            slot,
-            0,
-            0,
-            ticks_per_slot,
-            Some(parent_slot),
-            true,
-            &Arc::new(Keypair::new()),
-            entries,
-            0,
-        )
-        .unwrap();
+//     blockstore
+//         .write_entries(
+//             slot,
+//             0,
+//             0,
+//             ticks_per_slot,
+//             Some(parent_slot),
+//             true,
+//             &Arc::new(Keypair::new()),
+//             entries,
+//             0,
+//         )
+//         .unwrap();
 
-    last_entry_hash
-}
+//     last_entry_hash
+// }
 
 #[cfg(test)]
 pub mod tests {

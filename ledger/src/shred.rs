@@ -435,28 +435,28 @@ impl Shred {
         BytesPacket::new(buffer, Meta::default())
     }
 
-    // TODO: Should this sanitize output?
-    pub fn new_from_data(
-        slot: Slot,
-        index: u32,
-        parent_offset: u16,
-        data: &[u8],
-        flags: ShredFlags,
-        reference_tick: u8,
-        version: u16,
-        fec_set_index: u32,
-    ) -> Self {
-        Self::from(ShredData::new_from_data(
-            slot,
-            index,
-            parent_offset,
-            data,
-            flags,
-            reference_tick,
-            version,
-            fec_set_index,
-        ))
-    }
+    // // TODO: Should this sanitize output?
+    // pub fn new_from_data(
+    //     slot: Slot,
+    //     index: u32,
+    //     parent_offset: u16,
+    //     data: &[u8],
+    //     flags: ShredFlags,
+    //     reference_tick: u8,
+    //     version: u16,
+    //     fec_set_index: u32,
+    // ) -> Self {
+    //     Self::from(ShredData::new_from_data(
+    //         slot,
+    //         index,
+    //         parent_offset,
+    //         data,
+    //         flags,
+    //         reference_tick,
+    //         version,
+    //         fec_set_index,
+    //     ))
+    // }
 
     pub fn new_from_serialized_shred<T>(shred: T) -> Result<Self, Error>
     where
@@ -483,28 +483,28 @@ impl Shred {
         })
     }
 
-    #[deprecated(since = "2.3.0", note = "Legacy shreds are deprecated")]
-    pub fn new_from_parity_shard(
-        slot: Slot,
-        index: u32,
-        parity_shard: &[u8],
-        fec_set_index: u32,
-        num_data_shreds: u16,
-        num_coding_shreds: u16,
-        position: u16,
-        version: u16,
-    ) -> Self {
-        Self::from(ShredCode::new_from_parity_shard(
-            slot,
-            index,
-            parity_shard,
-            fec_set_index,
-            num_data_shreds,
-            num_coding_shreds,
-            position,
-            version,
-        ))
-    }
+    // #[deprecated(since = "2.3.0", note = "Legacy shreds are deprecated")]
+    // pub fn new_from_parity_shard(
+    //     slot: Slot,
+    //     index: u32,
+    //     parity_shard: &[u8],
+    //     fec_set_index: u32,
+    //     num_data_shreds: u16,
+    //     num_coding_shreds: u16,
+    //     position: u16,
+    //     version: u16,
+    // ) -> Self {
+    //     Self::from(ShredCode::new_from_parity_shard(
+    //         slot,
+    //         index,
+    //         parity_shard,
+    //         fec_set_index,
+    //         num_data_shreds,
+    //         num_coding_shreds,
+    //         position,
+    //         version,
+    //     ))
+    // }
 
     /// Unique identifier for each shred.
     pub fn id(&self) -> ShredId {

@@ -9,15 +9,13 @@ use {
         blockstore_db::{IteratorDirection, IteratorMode, LedgerColumn, Rocks, WriteBatch},
         blockstore_meta::*,
         blockstore_metrics::BlockstoreRpcApiMetrics,
-        blockstore_options::{
-            BlockstoreOptions, LedgerColumnOptions, BLOCKSTORE_DIRECTORY_ROCKS_LEVEL,
-        },
+        blockstore_options::{BlockstoreOptions, BLOCKSTORE_DIRECTORY_ROCKS_LEVEL},
         blockstore_processor::BlockstoreProcessorError,
         leader_schedule_cache::LeaderScheduleCache,
         next_slots_iterator::NextSlotsIterator,
         shred::{
-            self, max_ticks_per_n_shreds, ErasureSetId, ProcessShredsStats, ReedSolomonCache,
-            Shred, ShredData, ShredId, ShredType, Shredder, DATA_SHREDS_PER_FEC_BLOCK,
+            self, ErasureSetId, ProcessShredsStats, ReedSolomonCache, Shred, ShredData, ShredId,
+            ShredType, Shredder, DATA_SHREDS_PER_FEC_BLOCK,
         },
         slot_stats::{ShredSource, SlotsStats},
         transaction_address_lookup_table_scanner::scan_transaction,
@@ -29,15 +27,13 @@ use {
     dashmap::DashSet,
     itertools::Itertools,
     log::*,
-    rand::Rng,
     rayon::iter::{IntoParallelIterator, ParallelIterator},
     rocksdb::{DBRawIterator, LiveFile},
     solana_account::ReadableAccount,
-    solana_accounts_db::hardened_unpack::unpack_genesis_archive,
     solana_address_lookup_table_interface::state::AddressLookupTable,
     solana_clock::{Slot, UnixTimestamp, DEFAULT_TICKS_PER_SECOND},
     solana_entry::entry::{create_ticks, Entry},
-    solana_genesis_config::{GenesisConfig, DEFAULT_GENESIS_ARCHIVE, DEFAULT_GENESIS_FILE},
+    // solana_genesis_config::{GenesisConfig, DEFAULT_GENESIS_ARCHIVE, DEFAULT_GENESIS_FILE},
     solana_hash::Hash,
     solana_keypair::Keypair,
     solana_measure::measure::Measure,
@@ -67,8 +63,8 @@ use {
             HashSet, VecDeque,
         },
         convert::TryInto,
-        fmt::Write,
-        fs::{self, File},
+        // fmt::Write,
+        fs::{self},
         io::{Error as IoError, ErrorKind},
         ops::{Bound, Range},
         path::{Path, PathBuf},
@@ -78,7 +74,7 @@ use {
             Arc, Mutex, RwLock,
         },
     },
-    tar,
+    // tar,
     tempfile::{Builder, TempDir},
     thiserror::Error,
     trees::{Tree, TreeWalk},
@@ -518,14 +514,32 @@ impl Blockstore {
                 if !is_slot_complete {
                     entries.pop().unwrap();
                 }
-                let shreds = entries_to_test_shreds(
+
+                // let shreds = entries_to_test_shreds(
+                //     &entries,
+                //     slot,
+                //     parent.unwrap_or(slot),
+                //     is_slot_complete,
+                //     0,
+                //     true, // merkle_variant
+                // );
+
+                let shredder = Shredder::new(slot, 0, 0, 0).unwrap();
+                let leader_keypair = Arc::new(Keypair::new());
+                let reedsolomon_cache = ReedSolomonCache::default();
+
+                let (shreds, _code) = shredder.entries_to_shreds(
+                    &leader_keypair,
                     &entries,
-                    slot,
-                    parent.unwrap_or(slot),
-                    is_slot_complete,
-                    0,
+                    true, // is_last_in_slot
+                    Some(Hash::new_unique()),
+                    0,    // next_shred_index
+                    0,    // next_code_index,
                     true, // merkle_variant
+                    &reedsolomon_cache,
+                    &mut ProcessShredsStats::default(),
                 );
+
                 self.insert_shreds(shreds, None, false).unwrap();
             }
             walk.forward();
@@ -2359,97 +2373,97 @@ impl Blockstore {
             .collect()
     }
 
-    // Only used by tests
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn write_entries(
-        &self,
-        start_slot: Slot,
-        num_ticks_in_start_slot: u64,
-        start_index: u32,
-        ticks_per_slot: u64,
-        parent: Option<u64>,
-        is_full_slot: bool,
-        keypair: &Keypair,
-        entries: Vec<Entry>,
-        version: u16,
-    ) -> Result<usize /*num of data shreds*/> {
-        let mut parent_slot = parent.map_or(start_slot.saturating_sub(1), |v| v);
-        let num_slots = (start_slot - parent_slot).max(1); // Note: slot 0 has parent slot 0
-        assert!(num_ticks_in_start_slot < num_slots * ticks_per_slot);
-        let mut remaining_ticks_in_slot = num_slots * ticks_per_slot - num_ticks_in_start_slot;
+    // // Only used by tests
+    // #[allow(clippy::too_many_arguments)]
+    // pub(crate) fn write_entries(
+    //     &self,
+    //     start_slot: Slot,
+    //     num_ticks_in_start_slot: u64,
+    //     start_index: u32,
+    //     ticks_per_slot: u64,
+    //     parent: Option<u64>,
+    //     is_full_slot: bool,
+    //     keypair: &Keypair,
+    //     entries: Vec<Entry>,
+    //     version: u16,
+    // ) -> Result<usize /*num of data shreds*/> {
+    //     let mut parent_slot = parent.map_or(start_slot.saturating_sub(1), |v| v);
+    //     let num_slots = (start_slot - parent_slot).max(1); // Note: slot 0 has parent slot 0
+    //     assert!(num_ticks_in_start_slot < num_slots * ticks_per_slot);
+    //     let mut remaining_ticks_in_slot = num_slots * ticks_per_slot - num_ticks_in_start_slot;
 
-        let mut current_slot = start_slot;
-        let mut shredder = Shredder::new(current_slot, parent_slot, 0, version).unwrap();
-        let mut all_shreds = vec![];
-        let mut slot_entries = vec![];
-        let reed_solomon_cache = ReedSolomonCache::default();
-        let mut chained_merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
-        // Find all the entries for start_slot
-        for entry in entries.into_iter() {
-            if remaining_ticks_in_slot == 0 {
-                current_slot += 1;
-                parent_slot = current_slot - 1;
-                remaining_ticks_in_slot = ticks_per_slot;
-                let current_entries = std::mem::take(&mut slot_entries);
-                let start_index = {
-                    if all_shreds.is_empty() {
-                        start_index
-                    } else {
-                        0
-                    }
-                };
-                let (mut data_shreds, mut coding_shreds) = shredder.entries_to_shreds(
-                    keypair,
-                    &current_entries,
-                    true, // is_last_in_slot
-                    chained_merkle_root,
-                    start_index, // next_shred_index
-                    start_index, // next_code_index
-                    true,        // merkle_variant
-                    &reed_solomon_cache,
-                    &mut ProcessShredsStats::default(),
-                );
-                all_shreds.append(&mut data_shreds);
-                all_shreds.append(&mut coding_shreds);
-                chained_merkle_root = Some(coding_shreds.last().unwrap().merkle_root().unwrap());
-                shredder = Shredder::new(
-                    current_slot,
-                    parent_slot,
-                    (ticks_per_slot - remaining_ticks_in_slot) as u8,
-                    version,
-                )
-                .unwrap();
-            }
+    //     let mut current_slot = start_slot;
+    //     let mut shredder = Shredder::new(current_slot, parent_slot, 0, version).unwrap();
+    //     let mut all_shreds = vec![];
+    //     let mut slot_entries = vec![];
+    //     let reed_solomon_cache = ReedSolomonCache::default();
+    //     let mut chained_merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
+    //     // Find all the entries for start_slot
+    //     for entry in entries.into_iter() {
+    //         if remaining_ticks_in_slot == 0 {
+    //             current_slot += 1;
+    //             parent_slot = current_slot - 1;
+    //             remaining_ticks_in_slot = ticks_per_slot;
+    //             let current_entries = std::mem::take(&mut slot_entries);
+    //             let start_index = {
+    //                 if all_shreds.is_empty() {
+    //                     start_index
+    //                 } else {
+    //                     0
+    //                 }
+    //             };
+    //             let (mut data_shreds, mut coding_shreds) = shredder.entries_to_shreds(
+    //                 keypair,
+    //                 &current_entries,
+    //                 true, // is_last_in_slot
+    //                 chained_merkle_root,
+    //                 start_index, // next_shred_index
+    //                 start_index, // next_code_index
+    //                 true,        // merkle_variant
+    //                 &reed_solomon_cache,
+    //                 &mut ProcessShredsStats::default(),
+    //             );
+    //             all_shreds.append(&mut data_shreds);
+    //             all_shreds.append(&mut coding_shreds);
+    //             chained_merkle_root = Some(coding_shreds.last().unwrap().merkle_root().unwrap());
+    //             shredder = Shredder::new(
+    //                 current_slot,
+    //                 parent_slot,
+    //                 (ticks_per_slot - remaining_ticks_in_slot) as u8,
+    //                 version,
+    //             )
+    //             .unwrap();
+    //         }
 
-            if entry.is_tick() {
-                remaining_ticks_in_slot -= 1;
-            }
-            slot_entries.push(entry);
-        }
+    //         if entry.is_tick() {
+    //             remaining_ticks_in_slot -= 1;
+    //         }
+    //         slot_entries.push(entry);
+    //     }
 
-        if !slot_entries.is_empty() {
-            let (mut data_shreds, mut coding_shreds) = shredder.entries_to_shreds(
-                keypair,
-                &slot_entries,
-                is_full_slot,
-                chained_merkle_root,
-                0,    // next_shred_index
-                0,    // next_code_index
-                true, // merkle_variant
-                &reed_solomon_cache,
-                &mut ProcessShredsStats::default(),
-            );
-            all_shreds.append(&mut data_shreds);
-            all_shreds.append(&mut coding_shreds);
-        }
-        let num_data = all_shreds.iter().filter(|shred| shred.is_data()).count();
-        self.insert_shreds(all_shreds, None, false)?;
-        Ok(num_data)
-    }
+    //     if !slot_entries.is_empty() {
+    //         let (mut data_shreds, mut coding_shreds) = shredder.entries_to_shreds(
+    //             keypair,
+    //             &slot_entries,
+    //             is_full_slot,
+    //             chained_merkle_root,
+    //             0,    // next_shred_index
+    //             0,    // next_code_index
+    //             true, // merkle_variant
+    //             &reed_solomon_cache,
+    //             &mut ProcessShredsStats::default(),
+    //         );
+    //         all_shreds.append(&mut data_shreds);
+    //         all_shreds.append(&mut coding_shreds);
+    //     }
+    //     let num_data = all_shreds.iter().filter(|shred| shred.is_data()).count();
+    //     self.insert_shreds(all_shreds, None, false)?;
+    //     Ok(num_data)
+    // }
 
-    pub fn get_index(&self, slot: Slot) -> Result<Option<Index>> {
-        self.index_cf.get(slot)
-    }
+    // pub fn get_index(&self, slot: Slot) -> Result<Option<Index>> {
+    //     self.index_cf.get(slot)
+    // }
 
     /// Manually update the meta for a slot.
     /// Can interfere with automatic meta update and potentially break chaining.
@@ -4850,117 +4864,117 @@ fn slot_has_updates(slot_meta: &SlotMeta, slot_meta_backup: &Option<SlotMeta>) -
         (slot_meta_backup.is_some() && slot_meta_backup.as_ref().unwrap().consumed != slot_meta.consumed))
 }
 
-// Creates a new ledger with slot 0 full of ticks (and only ticks).
-//
-// Returns the blockhash that can be used to append entries with.
-pub fn create_new_ledger(
-    ledger_path: &Path,
-    genesis_config: &GenesisConfig,
-    max_genesis_archive_unpacked_size: u64,
-    column_options: LedgerColumnOptions,
-) -> Result<Hash> {
-    Blockstore::destroy(ledger_path)?;
-    genesis_config.write(ledger_path)?;
+// // Creates a new ledger with slot 0 full of ticks (and only ticks).
+// //
+// // Returns the blockhash that can be used to append entries with.
+// pub fn create_new_ledger(
+//     ledger_path: &Path,
+//     genesis_config: &GenesisConfig,
+//     max_genesis_archive_unpacked_size: u64,
+//     column_options: LedgerColumnOptions,
+// ) -> Result<Hash> {
+//     Blockstore::destroy(ledger_path)?;
+//     genesis_config.write(ledger_path)?;
 
-    // Fill slot 0 with ticks that link back to the genesis_config to bootstrap the ledger.
-    let blockstore_dir = BLOCKSTORE_DIRECTORY_ROCKS_LEVEL;
-    let blockstore = Blockstore::open_with_options(
-        ledger_path,
-        BlockstoreOptions {
-            enforce_ulimit_nofile: false,
-            column_options: column_options.clone(),
-            ..BlockstoreOptions::default()
-        },
-    )?;
-    let ticks_per_slot = genesis_config.ticks_per_slot;
-    let hashes_per_tick = genesis_config.poh_config.hashes_per_tick.unwrap_or(0);
-    let entries = create_ticks(ticks_per_slot, hashes_per_tick, genesis_config.hash());
-    let last_hash = entries.last().unwrap().hash;
-    let version = solana_shred_version::version_from_hash(&last_hash);
+//     // Fill slot 0 with ticks that link back to the genesis_config to bootstrap the ledger.
+//     let blockstore_dir = BLOCKSTORE_DIRECTORY_ROCKS_LEVEL;
+//     let blockstore = Blockstore::open_with_options(
+//         ledger_path,
+//         BlockstoreOptions {
+//             enforce_ulimit_nofile: false,
+//             column_options: column_options.clone(),
+//             ..BlockstoreOptions::default()
+//         },
+//     )?;
+//     let ticks_per_slot = genesis_config.ticks_per_slot;
+//     let hashes_per_tick = genesis_config.poh_config.hashes_per_tick.unwrap_or(0);
+//     let entries = create_ticks(ticks_per_slot, hashes_per_tick, genesis_config.hash());
+//     let last_hash = entries.last().unwrap().hash;
+//     let version = solana_shred_version::version_from_hash(&last_hash);
 
-    let shredder = Shredder::new(0, 0, 0, version).unwrap();
-    let (shreds, _) = shredder.entries_to_shreds(
-        &Keypair::new(),
-        &entries,
-        true, // is_last_in_slot
-        // chained_merkle_root
-        Some(Hash::new_from_array(rand::thread_rng().gen())),
-        0,    // next_shred_index
-        0,    // next_code_index
-        true, // merkle_variant
-        &ReedSolomonCache::default(),
-        &mut ProcessShredsStats::default(),
-    );
-    assert!(shreds.last().unwrap().last_in_slot());
+//     let shredder = Shredder::new(0, 0, 0, version).unwrap();
+//     let (shreds, _) = shredder.entries_to_shreds(
+//         &Keypair::new(),
+//         &entries,
+//         true, // is_last_in_slot
+//         // chained_merkle_root
+//         Some(Hash::new_from_array(rand::thread_rng().gen())),
+//         0,    // next_shred_index
+//         0,    // next_code_index
+//         true, // merkle_variant
+//         &ReedSolomonCache::default(),
+//         &mut ProcessShredsStats::default(),
+//     );
+//     assert!(shreds.last().unwrap().last_in_slot());
 
-    blockstore.insert_shreds(shreds, None, false)?;
-    blockstore.set_roots(std::iter::once(&0))?;
-    // Explicitly close the blockstore before we create the archived genesis file
-    drop(blockstore);
+//     blockstore.insert_shreds(shreds, None, false)?;
+//     blockstore.set_roots(std::iter::once(&0))?;
+//     // Explicitly close the blockstore before we create the archived genesis file
+//     drop(blockstore);
 
-    let archive_path = ledger_path.join(DEFAULT_GENESIS_ARCHIVE);
-    let archive_file = File::create(&archive_path)?;
-    let encoder = bzip2::write::BzEncoder::new(archive_file, bzip2::Compression::best());
-    let mut archive = tar::Builder::new(encoder);
-    archive.append_path_with_name(ledger_path.join(DEFAULT_GENESIS_FILE), DEFAULT_GENESIS_FILE)?;
-    archive.append_dir_all(blockstore_dir, ledger_path.join(blockstore_dir))?;
-    archive.into_inner()?;
+//     let archive_path = ledger_path.join(DEFAULT_GENESIS_ARCHIVE);
+//     let archive_file = File::create(&archive_path)?;
+//     let encoder = bzip2::write::BzEncoder::new(archive_file, bzip2::Compression::best());
+//     let mut archive = tar::Builder::new(encoder);
+//     archive.append_path_with_name(ledger_path.join(DEFAULT_GENESIS_FILE), DEFAULT_GENESIS_FILE)?;
+//     archive.append_dir_all(blockstore_dir, ledger_path.join(blockstore_dir))?;
+//     archive.into_inner()?;
 
-    // ensure the genesis archive can be unpacked and it is under
-    // max_genesis_archive_unpacked_size, immediately after creating it above.
-    {
-        let temp_dir = tempfile::tempdir_in(ledger_path).unwrap();
-        // unpack into a temp dir, while completely discarding the unpacked files
-        let unpack_check = unpack_genesis_archive(
-            &archive_path,
-            temp_dir.path(),
-            max_genesis_archive_unpacked_size,
-        );
-        if let Err(unpack_err) = unpack_check {
-            // stash problematic original archived genesis related files to
-            // examine them later and to prevent validator and ledger-tool from
-            // naively consuming them
-            let mut error_messages = String::new();
+//     // ensure the genesis archive can be unpacked and it is under
+//     // max_genesis_archive_unpacked_size, immediately after creating it above.
+//     {
+//         let temp_dir = tempfile::tempdir_in(ledger_path).unwrap();
+//         // unpack into a temp dir, while completely discarding the unpacked files
+//         let unpack_check = unpack_genesis_archive(
+//             &archive_path,
+//             temp_dir.path(),
+//             max_genesis_archive_unpacked_size,
+//         );
+//         if let Err(unpack_err) = unpack_check {
+//             // stash problematic original archived genesis related files to
+//             // examine them later and to prevent validator and ledger-tool from
+//             // naively consuming them
+//             let mut error_messages = String::new();
 
-            fs::rename(
-                ledger_path.join(DEFAULT_GENESIS_ARCHIVE),
-                ledger_path.join(format!("{DEFAULT_GENESIS_ARCHIVE}.failed")),
-            )
-            .unwrap_or_else(|e| {
-                let _ = write!(
-                    &mut error_messages,
-                    "/failed to stash problematic {DEFAULT_GENESIS_ARCHIVE}: {e}"
-                );
-            });
-            fs::rename(
-                ledger_path.join(DEFAULT_GENESIS_FILE),
-                ledger_path.join(format!("{DEFAULT_GENESIS_FILE}.failed")),
-            )
-            .unwrap_or_else(|e| {
-                let _ = write!(
-                    &mut error_messages,
-                    "/failed to stash problematic {DEFAULT_GENESIS_FILE}: {e}"
-                );
-            });
-            fs::rename(
-                ledger_path.join(blockstore_dir),
-                ledger_path.join(format!("{blockstore_dir}.failed")),
-            )
-            .unwrap_or_else(|e| {
-                let _ = write!(
-                    &mut error_messages,
-                    "/failed to stash problematic {blockstore_dir}: {e}"
-                );
-            });
+//             fs::rename(
+//                 ledger_path.join(DEFAULT_GENESIS_ARCHIVE),
+//                 ledger_path.join(format!("{DEFAULT_GENESIS_ARCHIVE}.failed")),
+//             )
+//             .unwrap_or_else(|e| {
+//                 let _ = write!(
+//                     &mut error_messages,
+//                     "/failed to stash problematic {DEFAULT_GENESIS_ARCHIVE}: {e}"
+//                 );
+//             });
+//             fs::rename(
+//                 ledger_path.join(DEFAULT_GENESIS_FILE),
+//                 ledger_path.join(format!("{DEFAULT_GENESIS_FILE}.failed")),
+//             )
+//             .unwrap_or_else(|e| {
+//                 let _ = write!(
+//                     &mut error_messages,
+//                     "/failed to stash problematic {DEFAULT_GENESIS_FILE}: {e}"
+//                 );
+//             });
+//             fs::rename(
+//                 ledger_path.join(blockstore_dir),
+//                 ledger_path.join(format!("{blockstore_dir}.failed")),
+//             )
+//             .unwrap_or_else(|e| {
+//                 let _ = write!(
+//                     &mut error_messages,
+//                     "/failed to stash problematic {blockstore_dir}: {e}"
+//                 );
+//             });
 
-            return Err(BlockstoreError::Io(IoError::other(format!(
-                "Error checking to unpack genesis archive: {unpack_err}{error_messages}"
-            ))));
-        }
-    }
+//             return Err(BlockstoreError::Io(IoError::other(format!(
+//                 "Error checking to unpack genesis archive: {unpack_err}{error_messages}"
+//             ))));
+//         }
+//     }
 
-    Ok(last_hash)
-}
+//     Ok(last_hash)
+// }
 
 #[macro_export]
 macro_rules! tmp_ledger_name {
@@ -5063,106 +5077,106 @@ pub(crate) fn verify_shred_slots(slot: Slot, parent: Slot, root: Slot) -> bool {
     root <= parent && parent < slot
 }
 
-// Same as `create_new_ledger()` but use a temporary ledger name based on the provided `name`
-//
-// Note: like `create_new_ledger` the returned ledger will have slot 0 full of ticks (and only
-// ticks)
-pub fn create_new_ledger_from_name(
-    name: &str,
-    genesis_config: &GenesisConfig,
-    max_genesis_archive_unpacked_size: u64,
-    column_options: LedgerColumnOptions,
-) -> (PathBuf, Hash) {
-    let (ledger_path, blockhash) = create_new_ledger_from_name_auto_delete(
-        name,
-        genesis_config,
-        max_genesis_archive_unpacked_size,
-        column_options,
-    );
-    (ledger_path.keep(), blockhash)
-}
+// // Same as `create_new_ledger()` but use a temporary ledger name based on the provided `name`
+// //
+// // Note: like `create_new_ledger` the returned ledger will have slot 0 full of ticks (and only
+// // ticks)
+// pub fn create_new_ledger_from_name(
+//     name: &str,
+//     genesis_config: &GenesisConfig,
+//     max_genesis_archive_unpacked_size: u64,
+//     column_options: LedgerColumnOptions,
+// ) -> (PathBuf, Hash) {
+//     let (ledger_path, blockhash) = create_new_ledger_from_name_auto_delete(
+//         name,
+//         genesis_config,
+//         max_genesis_archive_unpacked_size,
+//         column_options,
+//     );
+//     (ledger_path.keep(), blockhash)
+// }
 
-// Same as `create_new_ledger()` but use a temporary ledger name based on the provided `name`
-//
-// Note: like `create_new_ledger` the returned ledger will have slot 0 full of ticks (and only
-// ticks)
-pub fn create_new_ledger_from_name_auto_delete(
-    name: &str,
-    genesis_config: &GenesisConfig,
-    max_genesis_archive_unpacked_size: u64,
-    column_options: LedgerColumnOptions,
-) -> (TempDir, Hash) {
-    let ledger_path = get_ledger_path_from_name_auto_delete(name);
-    let blockhash = create_new_ledger(
-        ledger_path.path(),
-        genesis_config,
-        max_genesis_archive_unpacked_size,
-        column_options,
-    )
-    .unwrap();
-    (ledger_path, blockhash)
-}
+// // Same as `create_new_ledger()` but use a temporary ledger name based on the provided `name`
+// //
+// // Note: like `create_new_ledger` the returned ledger will have slot 0 full of ticks (and only
+// // ticks)
+// pub fn create_new_ledger_from_name_auto_delete(
+//     name: &str,
+//     genesis_config: &GenesisConfig,
+//     max_genesis_archive_unpacked_size: u64,
+//     column_options: LedgerColumnOptions,
+// ) -> (TempDir, Hash) {
+//     let ledger_path = get_ledger_path_from_name_auto_delete(name);
+//     let blockhash = create_new_ledger(
+//         ledger_path.path(),
+//         genesis_config,
+//         max_genesis_archive_unpacked_size,
+//         column_options,
+//     )
+//     .unwrap();
+//     (ledger_path, blockhash)
+// }
 
-pub fn entries_to_test_shreds(
-    entries: &[Entry],
-    slot: Slot,
-    parent_slot: Slot,
-    is_full_slot: bool,
-    version: u16,
-    merkle_variant: bool,
-) -> Vec<Shred> {
-    Shredder::new(slot, parent_slot, 0, version)
-        .unwrap()
-        .entries_to_shreds(
-            &Keypair::new(),
-            entries,
-            is_full_slot,
-            // chained_merkle_root
-            Some(Hash::new_from_array(rand::thread_rng().gen())),
-            0, // next_shred_index,
-            0, // next_code_index
-            merkle_variant,
-            &ReedSolomonCache::default(),
-            &mut ProcessShredsStats::default(),
-        )
-        .0
-}
+// pub fn entries_to_test_shreds(
+//     entries: &[Entry],
+//     slot: Slot,
+//     parent_slot: Slot,
+//     is_full_slot: bool,
+//     version: u16,
+//     merkle_variant: bool,
+// ) -> Vec<Shred> {
+//     Shredder::new(slot, parent_slot, 0, version)
+//         .unwrap()
+//         .entries_to_shreds(
+//             &Keypair::new(),
+//             entries,
+//             is_full_slot,
+//             // chained_merkle_root
+//             Some(Hash::new_from_array(rand::thread_rng().gen())),
+//             0, // next_shred_index,
+//             0, // next_code_index
+//             merkle_variant,
+//             &ReedSolomonCache::default(),
+//             &mut ProcessShredsStats::default(),
+//         )
+//         .0
+// }
 
-// used for tests only
-pub fn make_slot_entries(
-    slot: Slot,
-    parent_slot: Slot,
-    num_entries: u64,
-    merkle_variant: bool,
-) -> (Vec<Shred>, Vec<Entry>) {
-    let entries = create_ticks(num_entries, 1, Hash::new_unique());
-    let shreds = entries_to_test_shreds(&entries, slot, parent_slot, true, 0, merkle_variant);
-    (shreds, entries)
-}
+// // used for tests only
+// pub fn make_slot_entries(
+//     slot: Slot,
+//     parent_slot: Slot,
+//     num_entries: u64,
+//     merkle_variant: bool,
+// ) -> (Vec<Shred>, Vec<Entry>) {
+//     let entries = create_ticks(num_entries, 1, Hash::new_unique());
+//     let shreds = entries_to_test_shreds(&entries, slot, parent_slot, true, 0, merkle_variant);
+//     (shreds, entries)
+// }
 
-// used for tests only
-pub fn make_many_slot_entries(
-    start_slot: Slot,
-    num_slots: u64,
-    entries_per_slot: u64,
-) -> (Vec<Shred>, Vec<Entry>) {
-    let mut shreds = vec![];
-    let mut entries = vec![];
-    for slot in start_slot..start_slot + num_slots {
-        let parent_slot = if slot == 0 { 0 } else { slot - 1 };
+// // used for tests only
+// pub fn make_many_slot_entries(
+//     start_slot: Slot,
+//     num_slots: u64,
+//     entries_per_slot: u64,
+// ) -> (Vec<Shred>, Vec<Entry>) {
+//     let mut shreds = vec![];
+//     let mut entries = vec![];
+//     for slot in start_slot..start_slot + num_slots {
+//         let parent_slot = if slot == 0 { 0 } else { slot - 1 };
 
-        let (slot_shreds, slot_entries) = make_slot_entries(
-            slot,
-            parent_slot,
-            entries_per_slot,
-            true, // merkle_variant
-        );
-        shreds.extend(slot_shreds);
-        entries.extend(slot_entries);
-    }
+//         let (slot_shreds, slot_entries) = make_slot_entries(
+//             slot,
+//             parent_slot,
+//             entries_per_slot,
+//             true, // merkle_variant
+//         );
+//         shreds.extend(slot_shreds);
+//         entries.extend(slot_entries);
+//     }
 
-    (shreds, entries)
-}
+//     (shreds, entries)
+// }
 
 // test-only: check that all columns are either empty or start at `min_slot`
 pub fn test_all_empty_or_min(blockstore: &Blockstore, min_slot: Slot) {
@@ -5253,46 +5267,46 @@ pub fn test_all_empty_or_min(blockstore: &Blockstore, min_slot: Slot) {
     assert!(condition_met);
 }
 
-// used for tests only
-// Create `num_shreds` shreds for [start_slot, start_slot + num_slot) slots
-pub fn make_many_slot_shreds(
-    start_slot: u64,
-    num_slots: u64,
-    num_shreds_per_slot: u64,
-) -> (Vec<Shred>, Vec<Entry>) {
-    // Use `None` as shred_size so the default (full) value is used
-    let num_entries = max_ticks_per_n_shreds(num_shreds_per_slot, None);
-    make_many_slot_entries(start_slot, num_slots, num_entries)
-}
+// // used for tests only
+// // Create `num_shreds` shreds for [start_slot, start_slot + num_slot) slots
+// pub fn make_many_slot_shreds(
+//     start_slot: u64,
+//     num_slots: u64,
+//     num_shreds_per_slot: u64,
+// ) -> (Vec<Shred>, Vec<Entry>) {
+//     // Use `None` as shred_size so the default (full) value is used
+//     let num_entries = max_ticks_per_n_shreds(num_shreds_per_slot, None);
+//     make_many_slot_entries(start_slot, num_slots, num_entries)
+// }
 
-// Create shreds for slots that have a parent-child relationship defined by the input `chain`
-// used for tests only
-pub fn make_chaining_slot_entries(
-    chain: &[u64],
-    entries_per_slot: u64,
-    first_parent: u64,
-) -> Vec<(Vec<Shred>, Vec<Entry>)> {
-    let mut slots_shreds_and_entries = vec![];
-    for (i, slot) in chain.iter().enumerate() {
-        let parent_slot = {
-            if *slot == 0 || i == 0 {
-                first_parent
-            } else {
-                chain[i - 1]
-            }
-        };
+// // Create shreds for slots that have a parent-child relationship defined by the input `chain`
+// // used for tests only
+// pub fn make_chaining_slot_entries(
+//     chain: &[u64],
+//     entries_per_slot: u64,
+//     first_parent: u64,
+// ) -> Vec<(Vec<Shred>, Vec<Entry>)> {
+//     let mut slots_shreds_and_entries = vec![];
+//     for (i, slot) in chain.iter().enumerate() {
+//         let parent_slot = {
+//             if *slot == 0 || i == 0 {
+//                 first_parent
+//             } else {
+//                 chain[i - 1]
+//             }
+//         };
 
-        let result = make_slot_entries(
-            *slot,
-            parent_slot,
-            entries_per_slot,
-            true, // merkle_variant
-        );
-        slots_shreds_and_entries.push(result);
-    }
+//         let result = make_slot_entries(
+//             *slot,
+//             parent_slot,
+//             entries_per_slot,
+//             true, // merkle_variant
+//         );
+//         slots_shreds_and_entries.push(result);
+//     }
 
-    slots_shreds_and_entries
-}
+//     slots_shreds_and_entries
+// }
 
 #[cfg(not(unix))]
 fn adjust_ulimit_nofile(_enforce_ulimit_nofile: bool) -> Result<()> {
@@ -10281,37 +10295,37 @@ pub mod tests {
         (data_shreds, coding_shreds, Arc::new(leader_schedule_cache))
     }
 
-    fn verify_index_integrity(blockstore: &Blockstore, slot: u64) {
-        let shred_index = blockstore.get_index(slot).unwrap().unwrap();
+    // fn verify_index_integrity(blockstore: &Blockstore, slot: u64) {
+    //     let shred_index = blockstore.get_index(slot).unwrap().unwrap();
 
-        let data_iter = blockstore.slot_data_iterator(slot, 0).unwrap();
-        let mut num_data = 0;
-        for ((slot, index), _) in data_iter {
-            num_data += 1;
-            // Test that iterator and individual shred lookup yield same set
-            assert!(blockstore.get_data_shred(slot, index).unwrap().is_some());
-            // Test that the data index has current shred accounted for
-            assert!(shred_index.data().contains(index));
-        }
+    //     let data_iter = blockstore.slot_data_iterator(slot, 0).unwrap();
+    //     let mut num_data = 0;
+    //     for ((slot, index), _) in data_iter {
+    //         num_data += 1;
+    //         // Test that iterator and individual shred lookup yield same set
+    //         assert!(blockstore.get_data_shred(slot, index).unwrap().is_some());
+    //         // Test that the data index has current shred accounted for
+    //         assert!(shred_index.data().contains(index));
+    //     }
 
-        // Test the data index doesn't have anything extra
-        let num_data_in_index = shred_index.data().num_shreds();
-        assert_eq!(num_data_in_index, num_data);
+    //     // Test the data index doesn't have anything extra
+    //     let num_data_in_index = shred_index.data().num_shreds();
+    //     assert_eq!(num_data_in_index, num_data);
 
-        let coding_iter = blockstore.slot_coding_iterator(slot, 0).unwrap();
-        let mut num_coding = 0;
-        for ((slot, index), _) in coding_iter {
-            num_coding += 1;
-            // Test that the iterator and individual shred lookup yield same set
-            assert!(blockstore.get_coding_shred(slot, index).unwrap().is_some());
-            // Test that the coding index has current shred accounted for
-            assert!(shred_index.coding().contains(index));
-        }
+    //     let coding_iter = blockstore.slot_coding_iterator(slot, 0).unwrap();
+    //     let mut num_coding = 0;
+    //     for ((slot, index), _) in coding_iter {
+    //         num_coding += 1;
+    //         // Test that the iterator and individual shred lookup yield same set
+    //         assert!(blockstore.get_coding_shred(slot, index).unwrap().is_some());
+    //         // Test that the coding index has current shred accounted for
+    //         assert!(shred_index.coding().contains(index));
+    //     }
 
-        // Test the data index doesn't have anything extra
-        let num_coding_in_index = shred_index.coding().num_shreds();
-        assert_eq!(num_coding_in_index, num_coding);
-    }
+    //     // Test the data index doesn't have anything extra
+    //     let num_coding_in_index = shred_index.coding().num_shreds();
+    //     assert_eq!(num_coding_in_index, num_coding);
+    // }
 
     #[test_case(false)]
     #[test_case(true)]

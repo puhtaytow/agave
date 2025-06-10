@@ -2,9 +2,9 @@ use {
     crate::shred::{
         self, Error, ProcessShredsStats, Shred, ShredData, ShredFlags, DATA_SHREDS_PER_FEC_BLOCK,
     },
-    itertools::Itertools,
+    // itertools::Itertools,
     lazy_lru::LruCache,
-    rayon::{prelude::*, ThreadPool},
+    rayon::ThreadPool,
     reed_solomon_erasure::{
         galois_8::ReedSolomon,
         Error::{InvalidIndex, TooFewDataShards, TooFewShardsPresent},
@@ -13,10 +13,10 @@ use {
     solana_entry::entry::Entry,
     solana_hash::Hash,
     solana_keypair::Keypair,
-    solana_measure::measure::Measure,
+    // solana_measure::measure::Measure,
     solana_rayon_threadlimit::get_thread_count,
     std::{
-        borrow::Borrow,
+        // borrow::Borrow,
         fmt::Debug,
         sync::{Arc, OnceLock, RwLock},
     },
@@ -151,216 +151,216 @@ impl Shredder {
         (data_shreds, coding_shreds)
     }
 
-    fn entries_to_data_shreds(
-        &self,
-        keypair: &Keypair,
-        entries: &[Entry],
-        is_last_in_slot: bool,
-        next_shred_index: u32,
-        process_stats: &mut ProcessShredsStats,
-    ) -> Vec<Shred> {
-        let mut serialize_time = Measure::start("shred_serialize");
-        let serialized_shreds =
-            bincode::serialize(entries).expect("Expect to serialize all entries");
-        serialize_time.stop();
+    // fn entries_to_data_shreds(
+    //     &self,
+    //     keypair: &Keypair,
+    //     entries: &[Entry],
+    //     is_last_in_slot: bool,
+    //     next_shred_index: u32,
+    //     process_stats: &mut ProcessShredsStats,
+    // ) -> Vec<Shred> {
+    //     let mut serialize_time = Measure::start("shred_serialize");
+    //     let serialized_shreds =
+    //         bincode::serialize(entries).expect("Expect to serialize all entries");
+    //     serialize_time.stop();
 
-        let mut gen_data_time = Measure::start("shred_gen_data_time");
-        let data_buffer_size = ShredData::capacity(/*merkle_proof_size:*/ None).unwrap();
-        // Integer division to ensure we have enough shreds to fit all the data
-        let num_shreds = serialized_shreds.len().div_ceil(data_buffer_size);
-        let last_shred_index = next_shred_index + num_shreds as u32 - 1;
-        // 1) Generate data shreds
-        let make_data_shred = |data, shred_index: u32, fec_set_index: u32| {
-            let flags = if shred_index != last_shred_index {
-                ShredFlags::empty()
-            } else if is_last_in_slot {
-                // LAST_SHRED_IN_SLOT also implies DATA_COMPLETE_SHRED.
-                ShredFlags::LAST_SHRED_IN_SLOT
-            } else {
-                ShredFlags::DATA_COMPLETE_SHRED
-            };
-            let parent_offset = self.slot - self.parent_slot;
-            let mut shred = Shred::new_from_data(
-                self.slot,
-                shred_index,
-                parent_offset as u16,
-                data,
-                flags,
-                self.reference_tick,
-                self.version,
-                fec_set_index,
-            );
-            shred.sign(keypair);
-            shred
-        };
-        let shreds: Vec<&[u8]> = serialized_shreds.chunks(data_buffer_size).collect();
-        let fec_set_offsets: Vec<usize> =
-            get_fec_set_offsets(shreds.len(), DATA_SHREDS_PER_FEC_BLOCK).collect();
-        assert_eq!(shreds.len(), fec_set_offsets.len());
-        let shreds: Vec<Shred> = PAR_THREAD_POOL.install(|| {
-            shreds
-                .into_par_iter()
-                .zip(fec_set_offsets)
-                .enumerate()
-                .map(|(i, (shred, offset))| {
-                    let shred_index = next_shred_index + i as u32;
-                    let fec_set_index = next_shred_index + offset as u32;
-                    make_data_shred(shred, shred_index, fec_set_index)
-                })
-                .collect()
-        });
-        gen_data_time.stop();
+    //     let mut gen_data_time = Measure::start("shred_gen_data_time");
+    //     let data_buffer_size = ShredData::capacity(/*merkle_proof_size:*/ None).unwrap();
+    //     // Integer division to ensure we have enough shreds to fit all the data
+    //     let num_shreds = serialized_shreds.len().div_ceil(data_buffer_size);
+    //     let last_shred_index = next_shred_index + num_shreds as u32 - 1;
+    //     // 1) Generate data shreds
+    //     let make_data_shred = |data, shred_index: u32, fec_set_index: u32| {
+    //         let flags = if shred_index != last_shred_index {
+    //             ShredFlags::empty()
+    //         } else if is_last_in_slot {
+    //             // LAST_SHRED_IN_SLOT also implies DATA_COMPLETE_SHRED.
+    //             ShredFlags::LAST_SHRED_IN_SLOT
+    //         } else {
+    //             ShredFlags::DATA_COMPLETE_SHRED
+    //         };
+    //         let parent_offset = self.slot - self.parent_slot;
+    //         let mut shred = Shred::new_from_data(
+    //             self.slot,
+    //             shred_index,
+    //             parent_offset as u16,
+    //             data,
+    //             flags,
+    //             self.reference_tick,
+    //             self.version,
+    //             fec_set_index,
+    //         );
+    //         shred.sign(keypair);
+    //         shred
+    //     };
+    //     let shreds: Vec<&[u8]> = serialized_shreds.chunks(data_buffer_size).collect();
+    //     let fec_set_offsets: Vec<usize> =
+    //         get_fec_set_offsets(shreds.len(), DATA_SHREDS_PER_FEC_BLOCK).collect();
+    //     assert_eq!(shreds.len(), fec_set_offsets.len());
+    //     let shreds: Vec<Shred> = PAR_THREAD_POOL.install(|| {
+    //         shreds
+    //             .into_par_iter()
+    //             .zip(fec_set_offsets)
+    //             .enumerate()
+    //             .map(|(i, (shred, offset))| {
+    //                 let shred_index = next_shred_index + i as u32;
+    //                 let fec_set_index = next_shred_index + offset as u32;
+    //                 make_data_shred(shred, shred_index, fec_set_index)
+    //             })
+    //             .collect()
+    //     });
+    //     gen_data_time.stop();
 
-        process_stats.serialize_elapsed += serialize_time.as_us();
-        process_stats.gen_data_elapsed += gen_data_time.as_us();
-        process_stats.record_num_data_shreds(shreds.len());
+    //     process_stats.serialize_elapsed += serialize_time.as_us();
+    //     process_stats.gen_data_elapsed += gen_data_time.as_us();
+    //     process_stats.record_num_data_shreds(shreds.len());
 
-        shreds
-    }
+    //     shreds
+    // }
 
-    fn data_shreds_to_coding_shreds(
-        keypair: &Keypair,
-        data_shreds: &[Shred],
-        next_code_index: u32,
-        reed_solomon_cache: &ReedSolomonCache,
-        process_stats: &mut ProcessShredsStats,
-    ) -> Result<Vec<Shred>, Error> {
-        if data_shreds.is_empty() {
-            return Ok(Vec::default());
-        }
-        let mut gen_coding_time = Measure::start("gen_coding_shreds");
-        let chunks: Vec<Vec<&Shred>> = data_shreds
-            .iter()
-            .group_by(|shred| shred.fec_set_index())
-            .into_iter()
-            .map(|(_, shreds)| shreds.collect())
-            .collect();
-        let next_code_index: Vec<_> = std::iter::once(next_code_index)
-            .chain(
-                chunks
-                    .iter()
-                    .scan(next_code_index, |next_code_index, chunk| {
-                        let num_data_shreds = chunk.len();
-                        let is_last_in_slot = chunk
-                            .last()
-                            .copied()
-                            .map(Shred::last_in_slot)
-                            .unwrap_or(true);
-                        let erasure_batch_size =
-                            get_erasure_batch_size(num_data_shreds, is_last_in_slot);
-                        *next_code_index += (erasure_batch_size - num_data_shreds) as u32;
-                        Some(*next_code_index)
-                    }),
-            )
-            .collect();
-        // 1) Generate coding shreds
-        let mut coding_shreds: Vec<_> = if chunks.len() <= 1 {
-            chunks
-                .into_iter()
-                .zip(next_code_index)
-                .flat_map(|(shreds, next_code_index)| {
-                    #[allow(deprecated)]
-                    Shredder::generate_coding_shreds(&shreds, next_code_index, reed_solomon_cache)
-                })
-                .collect()
-        } else {
-            PAR_THREAD_POOL.install(|| {
-                chunks
-                    .into_par_iter()
-                    .zip(next_code_index)
-                    .flat_map(|(shreds, next_code_index)| {
-                        #[allow(deprecated)]
-                        Shredder::generate_coding_shreds(
-                            &shreds,
-                            next_code_index,
-                            reed_solomon_cache,
-                        )
-                    })
-                    .collect()
-            })
-        };
-        gen_coding_time.stop();
+    // fn data_shreds_to_coding_shreds(
+    //     keypair: &Keypair,
+    //     data_shreds: &[Shred],
+    //     next_code_index: u32,
+    //     reed_solomon_cache: &ReedSolomonCache,
+    //     process_stats: &mut ProcessShredsStats,
+    // ) -> Result<Vec<Shred>, Error> {
+    //     if data_shreds.is_empty() {
+    //         return Ok(Vec::default());
+    //     }
+    //     let mut gen_coding_time = Measure::start("gen_coding_shreds");
+    //     let chunks: Vec<Vec<&Shred>> = data_shreds
+    //         .iter()
+    //         .group_by(|shred| shred.fec_set_index())
+    //         .into_iter()
+    //         .map(|(_, shreds)| shreds.collect())
+    //         .collect();
+    //     let next_code_index: Vec<_> = std::iter::once(next_code_index)
+    //         .chain(
+    //             chunks
+    //                 .iter()
+    //                 .scan(next_code_index, |next_code_index, chunk| {
+    //                     let num_data_shreds = chunk.len();
+    //                     let is_last_in_slot = chunk
+    //                         .last()
+    //                         .copied()
+    //                         .map(Shred::last_in_slot)
+    //                         .unwrap_or(true);
+    //                     let erasure_batch_size =
+    //                         get_erasure_batch_size(num_data_shreds, is_last_in_slot);
+    //                     *next_code_index += (erasure_batch_size - num_data_shreds) as u32;
+    //                     Some(*next_code_index)
+    //                 }),
+    //         )
+    //         .collect();
+    //     // 1) Generate coding shreds
+    //     let mut coding_shreds: Vec<_> = if chunks.len() <= 1 {
+    //         chunks
+    //             .into_iter()
+    //             .zip(next_code_index)
+    //             .flat_map(|(shreds, next_code_index)| {
+    //                 #[allow(deprecated)]
+    //                 Shredder::generate_coding_shreds(&shreds, next_code_index, reed_solomon_cache)
+    //             })
+    //             .collect()
+    //     } else {
+    //         PAR_THREAD_POOL.install(|| {
+    //             chunks
+    //                 .into_par_iter()
+    //                 .zip(next_code_index)
+    //                 .flat_map(|(shreds, next_code_index)| {
+    //                     #[allow(deprecated)]
+    //                     Shredder::generate_coding_shreds(
+    //                         &shreds,
+    //                         next_code_index,
+    //                         reed_solomon_cache,
+    //                     )
+    //                 })
+    //                 .collect()
+    //         })
+    //     };
+    //     gen_coding_time.stop();
 
-        let mut sign_coding_time = Measure::start("sign_coding_shreds");
-        // 2) Sign coding shreds
-        PAR_THREAD_POOL.install(|| {
-            coding_shreds.par_iter_mut().for_each(|coding_shred| {
-                coding_shred.sign(keypair);
-            })
-        });
-        sign_coding_time.stop();
+    //     let mut sign_coding_time = Measure::start("sign_coding_shreds");
+    //     // 2) Sign coding shreds
+    //     PAR_THREAD_POOL.install(|| {
+    //         coding_shreds.par_iter_mut().for_each(|coding_shred| {
+    //             coding_shred.sign(keypair);
+    //         })
+    //     });
+    //     sign_coding_time.stop();
 
-        process_stats.gen_coding_elapsed += gen_coding_time.as_us();
-        process_stats.sign_coding_elapsed += sign_coding_time.as_us();
-        Ok(coding_shreds)
-    }
+    //     process_stats.gen_coding_elapsed += gen_coding_time.as_us();
+    //     process_stats.sign_coding_elapsed += sign_coding_time.as_us();
+    //     Ok(coding_shreds)
+    // }
 
-    /// Generates coding shreds for the data shreds in the current FEC set
-    #[deprecated(since = "2.3.0", note = "Legacy shreds are deprecated")]
-    pub fn generate_coding_shreds<T: Borrow<Shred>>(
-        data: &[T],
-        next_code_index: u32,
-        reed_solomon_cache: &ReedSolomonCache,
-    ) -> Vec<Shred> {
-        let (slot, index, version, fec_set_index) = {
-            let shred = data.first().unwrap().borrow();
-            (
-                shred.slot(),
-                shred.index(),
-                shred.version(),
-                shred.fec_set_index(),
-            )
-        };
-        assert_eq!(fec_set_index, index);
-        assert!(data
-            .iter()
-            .map(Borrow::borrow)
-            .all(|shred| shred.slot() == slot
-                && shred.version() == version
-                && shred.fec_set_index() == fec_set_index));
-        let num_data = data.len();
-        let is_last_in_slot = data
-            .last()
-            .map(Borrow::borrow)
-            .map(Shred::last_in_slot)
-            .unwrap_or(true);
-        let num_coding = get_erasure_batch_size(num_data, is_last_in_slot)
-            .checked_sub(num_data)
-            .unwrap();
-        assert!(num_coding > 0);
-        let data: Vec<_> = data
-            .iter()
-            .map(Borrow::borrow)
-            .map(Shred::erasure_shard)
-            .collect::<Result<_, _>>()
-            .unwrap();
-        let mut parity = vec![vec![0u8; data[0].len()]; num_coding];
-        reed_solomon_cache
-            .get(num_data, num_coding)
-            .unwrap()
-            .encode_sep(&data, &mut parity[..])
-            .unwrap();
-        let num_data = u16::try_from(num_data).unwrap();
-        let num_coding = u16::try_from(num_coding).unwrap();
-        parity
-            .iter()
-            .enumerate()
-            .map(|(i, parity)| {
-                let index = next_code_index + u32::try_from(i).unwrap();
-                #[allow(deprecated)]
-                Shred::new_from_parity_shard(
-                    slot,
-                    index,
-                    parity,
-                    fec_set_index,
-                    num_data,
-                    num_coding,
-                    u16::try_from(i).unwrap(), // position
-                    version,
-                )
-            })
-            .collect()
-    }
+    // /// Generates coding shreds for the data shreds in the current FEC set
+    // #[deprecated(since = "2.3.0", note = "Legacy shreds are deprecated")]
+    // pub fn generate_coding_shreds<T: Borrow<Shred>>(
+    //     data: &[T],
+    //     next_code_index: u32,
+    //     reed_solomon_cache: &ReedSolomonCache,
+    // ) -> Vec<Shred> {
+    //     let (slot, index, version, fec_set_index) = {
+    //         let shred = data.first().unwrap().borrow();
+    //         (
+    //             shred.slot(),
+    //             shred.index(),
+    //             shred.version(),
+    //             shred.fec_set_index(),
+    //         )
+    //     };
+    //     assert_eq!(fec_set_index, index);
+    //     assert!(data
+    //         .iter()
+    //         .map(Borrow::borrow)
+    //         .all(|shred| shred.slot() == slot
+    //             && shred.version() == version
+    //             && shred.fec_set_index() == fec_set_index));
+    //     let num_data = data.len();
+    //     let is_last_in_slot = data
+    //         .last()
+    //         .map(Borrow::borrow)
+    //         .map(Shred::last_in_slot)
+    //         .unwrap_or(true);
+    //     let num_coding = get_erasure_batch_size(num_data, is_last_in_slot)
+    //         .checked_sub(num_data)
+    //         .unwrap();
+    //     assert!(num_coding > 0);
+    //     let data: Vec<_> = data
+    //         .iter()
+    //         .map(Borrow::borrow)
+    //         .map(Shred::erasure_shard)
+    //         .collect::<Result<_, _>>()
+    //         .unwrap();
+    //     let mut parity = vec![vec![0u8; data[0].len()]; num_coding];
+    //     reed_solomon_cache
+    //         .get(num_data, num_coding)
+    //         .unwrap()
+    //         .encode_sep(&data, &mut parity[..])
+    //         .unwrap();
+    //     let num_data = u16::try_from(num_data).unwrap();
+    //     let num_coding = u16::try_from(num_coding).unwrap();
+    //     parity
+    //         .iter()
+    //         .enumerate()
+    //         .map(|(i, parity)| {
+    //             let index = next_code_index + u32::try_from(i).unwrap();
+    //             #[allow(deprecated)]
+    //             Shred::new_from_parity_shard(
+    //                 slot,
+    //                 index,
+    //                 parity,
+    //                 fec_set_index,
+    //                 num_data,
+    //                 num_coding,
+    //                 u16::try_from(i).unwrap(), // position
+    //                 version,
+    //             )
+    //         })
+    //         .collect()
+    // }
 
     pub fn try_recovery(
         shreds: Vec<Shred>,
