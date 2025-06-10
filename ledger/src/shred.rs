@@ -88,7 +88,7 @@ use {
 };
 
 mod common;
-mod legacy;
+// mod legacy;
 mod merkle;
 mod merkle_tree;
 mod payload;
@@ -139,8 +139,8 @@ pub const fn get_data_shred_bytes_per_batch_typical() -> u64 {
 }
 
 // For legacy tests and benchmarks.
-const_assert_eq!(LEGACY_SHRED_DATA_CAPACITY, 1051);
-pub const LEGACY_SHRED_DATA_CAPACITY: usize = legacy::ShredData::CAPACITY;
+// const_assert_eq!(LEGACY_SHRED_DATA_CAPACITY, 1051);
+// pub const LEGACY_SHRED_DATA_CAPACITY: usize = legacy::ShredData::CAPACITY;
 
 // LAST_SHRED_IN_SLOT also implies DATA_COMPLETE_SHRED.
 // So it cannot be LAST_SHRED_IN_SLOT if not also DATA_COMPLETE_SHRED.
@@ -222,8 +222,8 @@ pub enum ShredType {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Deserialize, Serialize)]
 #[serde(into = "u8", try_from = "u8")]
 enum ShredVariant {
-    LegacyCode, // 0b0101_1010
-    LegacyData, // 0b1010_0101
+    // LegacyCode, // 0b0101_1010
+    // LegacyData, // 0b1010_0101
     // proof_size is the number of Merkle proof entries, and is encoded in the
     // lowest 4 bits of the binary representation. The first 4 bits identify
     // the shred variant:
@@ -464,14 +464,14 @@ impl Shred {
         Payload: From<T>,
     {
         Ok(match layout::get_shred_variant(shred.as_ref())? {
-            ShredVariant::LegacyCode => {
-                let shred = legacy::ShredCode::from_payload(shred)?;
-                Self::from(ShredCode::from(shred))
-            }
-            ShredVariant::LegacyData => {
-                let shred = legacy::ShredData::from_payload(shred)?;
-                Self::from(ShredData::from(shred))
-            }
+            // ShredVariant::LegacyCode => {
+            //     let shred = legacy::ShredCode::from_payload(shred)?;
+            //     Self::from(ShredCode::from(shred))
+            // }
+            // ShredVariant::LegacyData => {
+            //     let shred = legacy::ShredData::from_payload(shred)?;
+            //     Self::from(ShredData::from(shred))
+            // }
             ShredVariant::MerkleCode { .. } => {
                 let shred = merkle::ShredCode::from_payload(shred)?;
                 Self::from(ShredCode::from(shred))
@@ -666,8 +666,8 @@ impl Shred {
         match self {
             Self::ShredCode(ShredCode::Merkle(shred)) => shred.retransmitter_signature_offset(),
             Self::ShredData(ShredData::Merkle(shred)) => shred.retransmitter_signature_offset(),
-            Self::ShredCode(ShredCode::Legacy(_)) => Err(Error::InvalidShredVariant),
-            Self::ShredData(ShredData::Legacy(_)) => Err(Error::InvalidShredVariant),
+            // Self::ShredCode(ShredCode::Legacy(_)) => Err(Error::InvalidShredVariant),
+            // Self::ShredData(ShredData::Legacy(_)) => Err(Error::InvalidShredVariant),
         }
     }
 }
@@ -698,9 +698,9 @@ impl TryFrom<Shred> for merkle::Shred {
 
     fn try_from(shred: Shred) -> Result<Self, Self::Error> {
         match shred {
-            Shred::ShredCode(ShredCode::Legacy(_)) => Err(Error::InvalidShredVariant),
+            // Shred::ShredCode(ShredCode::Legacy(_)) => Err(Error::InvalidShredVariant),
             Shred::ShredCode(ShredCode::Merkle(shred)) => Ok(Self::ShredCode(shred)),
-            Shred::ShredData(ShredData::Legacy(_)) => Err(Error::InvalidShredVariant),
+            // Shred::ShredData(ShredData::Legacy(_)) => Err(Error::InvalidShredVariant),
             Shred::ShredData(ShredData::Merkle(shred)) => Ok(Self::ShredData(shred)),
         }
     }
@@ -710,8 +710,8 @@ impl From<ShredVariant> for ShredType {
     #[inline]
     fn from(shred_variant: ShredVariant) -> Self {
         match shred_variant {
-            ShredVariant::LegacyCode => ShredType::Code,
-            ShredVariant::LegacyData => ShredType::Data,
+            // ShredVariant::LegacyCode => ShredType::Code,
+            // ShredVariant::LegacyData => ShredType::Data,
             ShredVariant::MerkleCode { .. } => ShredType::Code,
             ShredVariant::MerkleData { .. } => ShredType::Data,
         }
@@ -722,8 +722,8 @@ impl From<ShredVariant> for u8 {
     #[inline]
     fn from(shred_variant: ShredVariant) -> u8 {
         match shred_variant {
-            ShredVariant::LegacyCode => u8::from(ShredType::Code),
-            ShredVariant::LegacyData => u8::from(ShredType::Data),
+            // ShredVariant::LegacyCode => u8::from(ShredType::Code),
+            // ShredVariant::LegacyData => u8::from(ShredType::Data),
             ShredVariant::MerkleCode {
                 proof_size,
                 chained: false,
@@ -772,48 +772,48 @@ impl TryFrom<u8> for ShredVariant {
     type Error = Error;
     #[inline]
     fn try_from(shred_variant: u8) -> Result<Self, Self::Error> {
-        if shred_variant == u8::from(ShredType::Code) {
-            Ok(ShredVariant::LegacyCode)
-        } else if shred_variant == u8::from(ShredType::Data) {
-            Ok(ShredVariant::LegacyData)
-        } else {
-            let proof_size = shred_variant & 0x0F;
-            match shred_variant & 0xF0 {
-                0x40 => Ok(ShredVariant::MerkleCode {
-                    proof_size,
-                    chained: false,
-                    resigned: false,
-                }),
-                0x60 => Ok(ShredVariant::MerkleCode {
-                    proof_size,
-                    chained: true,
-                    resigned: false,
-                }),
-                0x70 => Ok(ShredVariant::MerkleCode {
-                    proof_size,
-                    chained: true,
-                    resigned: true,
-                }),
-                0x80 => Ok(ShredVariant::MerkleData {
-                    proof_size,
-                    chained: false,
-                    resigned: false,
-                }),
-                0x90 => Ok(ShredVariant::MerkleData {
-                    proof_size,
-                    chained: true,
-                    resigned: false,
-                }),
-                0xb0 => Ok(ShredVariant::MerkleData {
-                    proof_size,
-                    chained: true,
-                    resigned: true,
-                }),
-                _ => Err(Error::InvalidShredVariant),
-            }
+        // if shred_variant == u8::from(ShredType::Code) {
+        //     Ok(ShredVariant::LegacyCode)
+        // } else if shred_variant == u8::from(ShredType::Data) {
+        //     Ok(ShredVariant::LegacyData)
+        // } else {
+        let proof_size = shred_variant & 0x0F;
+        match shred_variant & 0xF0 {
+            0x40 => Ok(ShredVariant::MerkleCode {
+                proof_size,
+                chained: false,
+                resigned: false,
+            }),
+            0x60 => Ok(ShredVariant::MerkleCode {
+                proof_size,
+                chained: true,
+                resigned: false,
+            }),
+            0x70 => Ok(ShredVariant::MerkleCode {
+                proof_size,
+                chained: true,
+                resigned: true,
+            }),
+            0x80 => Ok(ShredVariant::MerkleData {
+                proof_size,
+                chained: false,
+                resigned: false,
+            }),
+            0x90 => Ok(ShredVariant::MerkleData {
+                proof_size,
+                chained: true,
+                resigned: false,
+            }),
+            0xb0 => Ok(ShredVariant::MerkleData {
+                proof_size,
+                chained: true,
+                resigned: true,
+            }),
+            _ => Err(Error::InvalidShredVariant),
         }
     }
 }
+// }
 
 pub fn recover(
     shreds: impl IntoIterator<Item = Shred>,
@@ -962,9 +962,9 @@ where
         }
     }
     match shred_variant {
-        ShredVariant::LegacyCode | ShredVariant::LegacyData => {
-            return true;
-        }
+        // ShredVariant::LegacyCode | ShredVariant::LegacyData => {
+        //     return true;
+        // }
         ShredVariant::MerkleCode { chained: false, .. } => {
             if drop_unchained_merkle_shreds(slot) {
                 return true;

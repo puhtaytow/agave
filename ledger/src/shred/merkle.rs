@@ -76,6 +76,10 @@ pub(super) enum Shred {
 }
 
 impl Shred {
+    // Maximum size of ledger data that can be embedded in a data-shred. // TODO: repasted / might be obsolete
+    pub const CAPACITY: usize =
+        ShredData::SIZE_OF_PAYLOAD - ShredCode::SIZE_OF_HEADERS - ShredCode::SIZE_OF_HEADERS;
+
     dispatch!(fn erasure_shard_index(&self) -> Result<usize, Error>);
     dispatch!(fn erasure_shard_mut(&mut self) -> Result<&mut [u8], Error>);
     dispatch!(fn merkle_node(&self) -> Result<Hash, Error>);
@@ -129,7 +133,7 @@ impl Shred {
         Payload: From<T>,
     {
         match shred::layout::get_shred_variant(shred.as_ref())? {
-            ShredVariant::LegacyCode | ShredVariant::LegacyData => Err(Error::InvalidShredVariant),
+            // ShredVariant::LegacyCode | ShredVariant::LegacyData => Err(Error::InvalidShredVariant),
             ShredVariant::MerkleCode { .. } => Ok(Self::ShredCode(ShredCode::from_payload(shred)?)),
             ShredVariant::MerkleData { .. } => Ok(Self::ShredData(ShredData::from_payload(shred)?)),
         }
@@ -711,7 +715,8 @@ pub(super) fn recover(
             chained,
             resigned,
         } => (proof_size, chained, resigned),
-        ShredVariant::MerkleData { .. } | ShredVariant::LegacyCode | ShredVariant::LegacyData => {
+        ShredVariant::MerkleData { .. } => {
+            // TODO: old code to remove "| ShredVariant::LegacyCode | ShredVariant::LegacyData"
             return Err(Error::InvalidShredVariant);
         }
     };
