@@ -8,7 +8,7 @@ use {
         CodingShredHeader, Error, ShredCommonHeader, ShredType, SignedData,
         DATA_SHREDS_PER_FEC_BLOCK, MAX_DATA_SHREDS_PER_SLOT, SIZE_OF_NONCE,
     },
-    // solana_clock::Slot,
+    solana_clock::Slot,
     solana_hash::Hash,
     solana_packet::PACKET_DATA_SIZE,
     solana_signature::Signature,
