@@ -7,8 +7,7 @@ authors = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }
 license = { workspace = true }
-# edition = { workspace = true }
-edition ="2024"
+edition = { workspace = true }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -27,8 +26,7 @@ frozen-abi = [
 [dependencies]
 bv = { workspace = true, features = ["serde"] }
 fnv = { workspace = true }
-# rand = { workspace = true }
-rand = "0.9.1"
+rand0_9 = { workspace = true }
 serde = { workspace = true, features = ["rc"] }
 serde_derive = { workspace = true }
 solana-frozen-abi = { workspace = true, optional = true, features = [

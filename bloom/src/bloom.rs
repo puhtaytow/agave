@@ -3,7 +3,8 @@
 use {
     bv::BitVec,
     fnv::FnvHasher,
-    rand::{self, Rng},
+    rand::Rng,
+    rand0_9 as rand,
     serde::{Deserialize, Serialize},
     solana_sanitize::{Sanitize, SanitizeError},
     solana_time_utils::AtomicInterval,
