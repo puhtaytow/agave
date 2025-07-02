@@ -2220,22 +2220,26 @@ fn close(
         config.send_transaction_config,
     );
     if let Err(err) = result {
-        if let ClientErrorKind::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::InvalidInstructionData,
-        )) = err.kind()
-        {
-            return Err("Closing a buffer account is not supported by the cluster".into());
-        } else if let ClientErrorKind::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::InvalidArgument,
-        )) = err.kind()
-        {
-            return Err("Closing a program account is not supported by the cluster".into());
-        } else {
-            return Err(format!("Close failed: {err}").into());
+        let kind = err.kind();
+        match kind {
+            ClientErrorKind::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::InvalidInstructionData,
+            )) => {
+                return Err("Closing a buffer account is not supported by the cluster".into());
+            }
+            ClientErrorKind::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::InvalidArgument,
+            )) => {
+                return Err("Closing a program account is not supported by the cluster".into());
+            }
+            _ => {
+                return Err(format!("Close failed: {err}").into());
+            }
         }
     }
+
     Ok(())
 }
 
@@ -2558,10 +2562,11 @@ fn process_migrate_program(
         config.send_transaction_config,
     );
     if let Err(err) = result {
+        let kind = err.kind();
         if let ClientErrorKind::TransactionError(TransactionError::InstructionError(
             _,
             InstructionError::InvalidInstructionData,
-        )) = err.kind()
+        )) = kind
         {
             return Err("Migrating a program is not supported by the cluster".into());
         } else {
