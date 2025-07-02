@@ -269,9 +269,8 @@ pub fn parse_address_lookup_table_subcommand(
                     .pubkey()
             };
 
-            let payer_pubkey = if let Ok((payer_signer, Some(payer_pubkey))) =
-                signer_of(matches, "payer", wallet_manager)
-            {
+            let signer = signer_of(matches, "payer", wallet_manager);
+            let payer_pubkey = if let Ok((payer_signer, Some(payer_pubkey))) = signer {
                 bulk_signers.push(payer_signer);
                 Some(payer_pubkey)
             } else {
@@ -302,9 +301,8 @@ pub fn parse_address_lookup_table_subcommand(
                 default_signer.signer_from_path(matches, wallet_manager)?,
             )];
 
-            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) =
-                signer_of(matches, "authority", wallet_manager)
-            {
+            let signer = signer_of(matches, "authority", wallet_manager);
+            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) = signer {
                 bulk_signers.push(authority_signer);
                 Some(authority_pubkey)
             } else {
@@ -336,9 +334,8 @@ pub fn parse_address_lookup_table_subcommand(
                 default_signer.signer_from_path(matches, wallet_manager)?,
             )];
 
-            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) =
-                signer_of(matches, "authority", wallet_manager)
-            {
+            let signer = signer_of(matches, "authority", wallet_manager);
+            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) = signer {
                 bulk_signers.push(authority_signer);
                 Some(authority_pubkey)
             } else {
@@ -349,9 +346,8 @@ pub fn parse_address_lookup_table_subcommand(
                 )
             };
 
-            let payer_pubkey = if let Ok((payer_signer, Some(payer_pubkey))) =
-                signer_of(matches, "payer", wallet_manager)
-            {
+            let signer = signer_of(matches, "payer", wallet_manager);
+            let payer_pubkey = if let Ok((payer_signer, Some(payer_pubkey))) = signer {
                 bulk_signers.push(payer_signer);
                 Some(payer_pubkey)
             } else {
@@ -386,9 +382,8 @@ pub fn parse_address_lookup_table_subcommand(
                 default_signer.signer_from_path(matches, wallet_manager)?,
             )];
 
-            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) =
-                signer_of(matches, "authority", wallet_manager)
-            {
+            let signer = signer_of(matches, "authority", wallet_manager);
+            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) = signer {
                 bulk_signers.push(authority_signer);
                 Some(authority_pubkey)
             } else {
@@ -420,9 +415,8 @@ pub fn parse_address_lookup_table_subcommand(
                 default_signer.signer_from_path(matches, wallet_manager)?,
             )];
 
-            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) =
-                signer_of(matches, "authority", wallet_manager)
-            {
+            let signer = signer_of(matches, "authority", wallet_manager);
+            let authority_pubkey = if let Ok((authority_signer, Some(authority_pubkey))) = signer {
                 bulk_signers.push(authority_signer);
                 Some(authority_pubkey)
             } else {

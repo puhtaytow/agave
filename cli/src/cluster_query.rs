@@ -800,7 +800,8 @@ pub fn process_catchup(
     };
 
     let reported_node_pubkey = loop {
-        match node_client.get_identity() {
+        let identity = node_client.get_identity();
+        match identity {
             Ok(reported_node_pubkey) => break reported_node_pubkey,
             Err(err) => {
                 if let ClientErrorKind::Reqwest(err) = err.kind() {
@@ -1685,7 +1686,8 @@ pub fn process_logs(config: &CliConfig, filter: &RpcTransactionLogsFilter) -> Pr
     )?;
 
     loop {
-        match receiver.recv() {
+        let response = receiver.recv();
+        match response {
             Ok(logs) => {
                 println!("Transaction executed in slot {}:", logs.context.slot);
                 println!("  Signature: {}", logs.value.signature);
