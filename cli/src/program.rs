@@ -707,19 +707,21 @@ pub fn parse_program_subcommand(
                 .map(|location| location.to_string());
 
             let signer = signer_of(matches, "buffer", wallet_manager);
-            let buffer_pubkey = if let Ok((buffer_signer, Some(buffer_pubkey))) = signer {
-                bulk_signers.push(buffer_signer);
-                Some(buffer_pubkey)
-            } else {
-                pubkey_of_signer(matches, "buffer", wallet_manager)?
+            let buffer_pubkey = match signer {
+                Ok((buffer_signer, Some(buffer_pubkey))) => {
+                    bulk_signers.push(buffer_signer);
+                    Some(buffer_pubkey)
+                }
+                _ => pubkey_of_signer(matches, "buffer", wallet_manager)?,
             };
 
             let signer = signer_of(matches, "program_id", wallet_manager);
-            let program_pubkey = if let Ok((program_signer, Some(program_pubkey))) = signer {
-                bulk_signers.push(program_signer);
-                Some(program_pubkey)
-            } else {
-                pubkey_of_signer(matches, "program_id", wallet_manager)?
+            let program_pubkey = match signer {
+                Ok((program_signer, Some(program_pubkey))) => {
+                    bulk_signers.push(program_signer);
+                    Some(program_pubkey)
+                }
+                _ => pubkey_of_signer(matches, "program_id", wallet_manager)?,
             };
 
             let (upgrade_authority, upgrade_authority_pubkey) =
@@ -814,11 +816,12 @@ pub fn parse_program_subcommand(
             ];
 
             let signer = signer_of(matches, "buffer", wallet_manager);
-            let buffer_pubkey = if let Ok((buffer_signer, Some(buffer_pubkey))) = signer {
-                bulk_signers.push(buffer_signer);
-                Some(buffer_pubkey)
-            } else {
-                pubkey_of_signer(matches, "buffer", wallet_manager)?
+            let buffer_pubkey = match signer {
+                Ok((buffer_signer, Some(buffer_pubkey))) => {
+                    bulk_signers.push(buffer_signer);
+                    Some(buffer_pubkey)
+                }
+                _ => pubkey_of_signer(matches, "buffer", wallet_manager)?,
             };
 
             let (buffer_authority, buffer_authority_pubkey) =
@@ -938,15 +941,13 @@ pub fn parse_program_subcommand(
             }
         }
         ("show", Some(matches)) => {
-            let authority_pubkey = if let Some(authority_pubkey) =
-                pubkey_of_signer(matches, "buffer_authority", wallet_manager)?
-            {
-                authority_pubkey
-            } else {
-                default_signer
-                    .signer_from_path(matches, wallet_manager)?
-                    .pubkey()
-            };
+            let authority_pubkey =
+                match pubkey_of_signer(matches, "buffer_authority", wallet_manager)? {
+                    Some(authority_pubkey) => authority_pubkey,
+                    _ => default_signer
+                        .signer_from_path(matches, wallet_manager)?
+                        .pubkey(),
+                };
 
             CliCommandInfo::without_signers(CliCommand::Program(ProgramCliCommand::Show {
                 account_pubkey: pubkey_of(matches, "account"),
@@ -970,15 +971,13 @@ pub fn parse_program_subcommand(
                 pubkey_of(matches, "account")
             };
 
-            let recipient_pubkey = if let Some(recipient_pubkey) =
-                pubkey_of_signer(matches, "recipient_account", wallet_manager)?
-            {
-                recipient_pubkey
-            } else {
-                default_signer
-                    .signer_from_path(matches, wallet_manager)?
-                    .pubkey()
-            };
+            let recipient_pubkey =
+                match pubkey_of_signer(matches, "recipient_account", wallet_manager)? {
+                    Some(recipient_pubkey) => recipient_pubkey,
+                    _ => default_signer
+                        .signer_from_path(matches, wallet_manager)?
+                        .pubkey(),
+                };
 
             let (authority_signer, authority_pubkey) =
                 signer_of(matches, "authority", wallet_manager)?;
@@ -1269,10 +1268,9 @@ fn get_default_program_keypair(program_location: &Option<String>) -> Keypair {
             keypair_file.set_file_name(filename);
             keypair_file.set_extension("json");
             let keypair = read_keypair_file(keypair_file.to_str().unwrap());
-            if let Ok(keypair) = keypair {
-                keypair
-            } else {
-                Keypair::new()
+            match keypair {
+                Ok(keypair) => keypair,
+                _ => Keypair::new(),
             }
         } else {
             Keypair::new()
@@ -2463,14 +2461,16 @@ fn process_extend_program(
         config.send_transaction_config,
     );
     if let Err(err) = result {
-        if let ClientErrorKind::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::InvalidInstructionData,
-        )) = err.kind()
-        {
-            return Err("Extending a program is not supported by the cluster".into());
-        } else {
-            return Err(format!("Extend program failed: {err}").into());
+        match err.kind() {
+            ClientErrorKind::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::InvalidInstructionData,
+            )) => {
+                return Err("Extending a program is not supported by the cluster".into());
+            }
+            _ => {
+                return Err(format!("Extend program failed: {err}").into());
+            }
         }
     }
 

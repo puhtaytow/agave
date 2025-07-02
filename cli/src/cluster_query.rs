@@ -944,17 +944,18 @@ pub fn process_catchup(
 
 pub fn process_cluster_date(rpc_client: &RpcClient, config: &CliConfig) -> ProcessResult {
     let result = rpc_client.get_account_with_commitment(&sysvar::clock::id(), config.commitment)?;
-    if let Some(clock_account) = result.value {
-        let clock: Clock = from_account(&clock_account).ok_or_else(|| {
-            CliError::RpcRequestError("Failed to deserialize clock sysvar".to_string())
-        })?;
-        let block_time = CliBlockTime {
-            slot: result.context.slot,
-            timestamp: clock.unix_timestamp,
-        };
-        Ok(config.output_format.formatted_string(&block_time))
-    } else {
-        Err(format!("AccountNotFound: pubkey={}", sysvar::clock::id()).into())
+    match result.value {
+        Some(clock_account) => {
+            let clock: Clock = from_account(&clock_account).ok_or_else(|| {
+                CliError::RpcRequestError("Failed to deserialize clock sysvar".to_string())
+            })?;
+            let block_time = CliBlockTime {
+                slot: result.context.slot,
+                timestamp: clock.unix_timestamp,
+            };
+            Ok(config.output_format.formatted_string(&block_time))
+        }
+        _ => Err(format!("AccountNotFound: pubkey={}", sysvar::clock::id()).into()),
     }
 }
 
