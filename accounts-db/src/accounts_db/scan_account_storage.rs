@@ -224,14 +224,12 @@ impl AccountsDb {
                 config.epoch_schedule,
                 snapshot_storages.max_slot_inclusive(),
             );
-        let slots_per_epoch = config
-            .rent_collector
-            .epoch_schedule
-            .get_slots_in_epoch(config.rent_collector.epoch);
+        let slots_per_epoch = config.epoch_schedule.get_slots_in_epoch(config.epoch);
         let one_epoch_old = snapshot_storages
             .range()
             .end
             .saturating_sub(slots_per_epoch);
+        let max_slot = snapshot_storages.max_slot_inclusive();
 
         stats.scan_chunks = splitter.chunk_count;
 
@@ -254,7 +252,7 @@ impl AccountsDb {
                         self.update_old_slot_stats(stats, storage);
                     }
                     if let Some(storage) = storage {
-                        let ok = Self::hash_storage_info(&mut hasher, storage, slot);
+                        let ok = Self::hash_storage_info(&mut hasher, storage, slot, max_slot);
                         if !ok {
                             load_from_cache = false;
                             break;
@@ -379,7 +377,7 @@ impl AccountsDb {
     where
         S: AppendVecScan,
     {
-        storage.accounts.scan_accounts(|account| {
+        storage.accounts.scan_accounts(|_offset, account| {
             if scanner.filter(account.pubkey()) {
                 scanner.found_account(&LoadedAccount::Stored(account))
             }
@@ -706,7 +704,7 @@ mod tests {
                     let slot = storage.slot();
                     let copied_storage = accounts_db.create_and_insert_store(slot, 10000, "test");
                     let mut all_accounts = Vec::default();
-                    storage.accounts.scan_accounts(|acct| {
+                    storage.accounts.scan_accounts(|_offset, acct| {
                         all_accounts.push((*acct.pubkey(), acct.to_account_shared_data()));
                     });
                     let accounts = all_accounts
@@ -740,7 +738,7 @@ mod tests {
                 let slot = storage.slot() + max_slot;
                 let copied_storage = accounts_db.create_and_insert_store(slot, 10000, "test");
                 let mut all_accounts = Vec::default();
-                storage.accounts.scan_accounts(|acct| {
+                storage.accounts.scan_accounts(|_offset, acct| {
                     all_accounts.push((*acct.pubkey(), acct.to_account_shared_data()));
                 });
                 let accounts = all_accounts

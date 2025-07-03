@@ -32,7 +32,7 @@ use {
         snapshot_bank_utils,
         snapshot_config::SnapshotConfig,
         snapshot_controller::SnapshotController,
-        snapshot_utils,
+        snapshot_utils::{self, SnapshotInterval},
     },
     solana_signer::Signer,
     solana_streamer::socket::SocketAddrSpace,
@@ -40,6 +40,7 @@ use {
     solana_time_utils::timestamp,
     std::{
         mem::ManuallyDrop,
+        num::NonZeroU64,
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc, Mutex, RwLock,
@@ -79,8 +80,12 @@ impl TestEnvironment {
         incremental_snapshot_archive_interval_slots: Slot,
     ) -> TestEnvironment {
         let snapshot_config = SnapshotConfig {
-            full_snapshot_archive_interval_slots,
-            incremental_snapshot_archive_interval_slots,
+            full_snapshot_archive_interval: SnapshotInterval::Slots(
+                NonZeroU64::new(full_snapshot_archive_interval_slots).unwrap(),
+            ),
+            incremental_snapshot_archive_interval: SnapshotInterval::Slots(
+                NonZeroU64::new(incremental_snapshot_archive_interval_slots).unwrap(),
+            ),
             ..SnapshotConfig::default()
         };
         Self::_new(snapshot_config)
@@ -316,7 +321,7 @@ fn test_epoch_accounts_hash_basic(test_environment: TestEnvironment) {
                         use_bg_thread_pool: false,
                         ancestors: Some(&bank.ancestors),
                         epoch_schedule: bank.epoch_schedule(),
-                        rent_collector: bank.rent_collector(),
+                        epoch: bank.epoch(),
                         store_detailed_debug_info_on_failure: false,
                     },
                 );

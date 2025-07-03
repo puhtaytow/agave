@@ -16,6 +16,7 @@ pub use meta::{AccountMeta, StoredMeta};
 use meta::{AccountMeta, StoredMeta};
 use {
     crate::{
+        account_info::Offset,
         account_storage::stored_account_info::{StoredAccountInfo, StoredAccountInfoWithoutData},
         accounts_file::{
             AccountsFileError, InternalsForArchive, MatchAccountOwnerError, Result, StorageAccess,
@@ -32,7 +33,6 @@ use {
     memmap2::MmapMut,
     meta::StoredAccountNoData,
     solana_account::{AccountSharedData, ReadableAccount, WritableAccount},
-    solana_clock::Epoch,
     solana_hash::Hash,
     solana_pubkey::Pubkey,
     solana_system_interface::MAX_PERMITTED_DATA_LENGTH,
@@ -85,8 +85,8 @@ fn stored_size_checked(data_len: usize) -> Option<usize> {
 
 pub const MAXIMUM_APPEND_VEC_FILE_SIZE: u64 = 16 * 1024 * 1024 * 1024; // 16 GiB
 
-#[derive(Error, Debug)]
 /// An enum for AppendVec related errors.
+#[derive(Error, Debug)]
 pub enum AppendVecError {
     #[error("too small file size {0} for AppendVec")]
     FileSizeTooSmall(usize),
@@ -99,9 +99,6 @@ pub enum AppendVecError {
 
     #[error("offset ({0}) is larger than file size ({1})")]
     OffsetOutOfBounds(usize, usize),
-
-    #[error("file size ({1}) and current length ({0}) do not match for '{0}'")]
-    SizeMismatch(PathBuf, usize, u64),
 }
 
 /// A slice whose contents are known to be valid.
@@ -142,8 +139,6 @@ pub(crate) struct IndexInfoInner {
     pub offset: usize,
     pub pubkey: Pubkey,
     pub lamports: u64,
-    pub rent_epoch: Epoch,
-    pub executable: bool,
     pub data_len: u64,
 }
 
@@ -469,9 +464,26 @@ impl AppendVec {
         {
             Ok(new)
         } else {
-            Err(AccountsFileError::AppendVecError(
-                AppendVecError::SizeMismatch(new.path.clone(), current_len, new.file_size),
-            ))
+            // However, if opening a minimized snapshot, the file sizes can be
+            // larger than current length [^1].  So when the `if` condition fails,
+            // fallback to the old/slow impl that does the full sanitization.
+            // [^1]: https://github.com/anza-xyz/agave/issues/6797
+            info!(
+                "Could not optimistically create new AppendVec, \
+                 falling back to pessimistic impl: \
+                 file size ({}) and current length ({}) do not match for '{}'",
+                new.file_size,
+                current_len,
+                new.path.display(),
+            );
+            let (sanitized, _num_accounts) = new.sanitize_layout_and_length();
+            if sanitized {
+                Ok(new)
+            } else {
+                Err(AccountsFileError::AppendVecError(
+                    AppendVecError::IncorrectLayout(new.path.clone()),
+                ))
+            }
         }
     }
 
@@ -974,32 +986,19 @@ impl AppendVec {
         }
     }
 
-    /// Iterate over all accounts and call `callback` with `IndexInfo` for each.
-    /// This fn can help generate an index of the data in this storage.
-    pub(crate) fn scan_index(&self, mut callback: impl FnMut(IndexInfo)) {
-        self.scan_stored_accounts_no_data(|account| {
-            callback(IndexInfo {
-                stored_size_aligned: account.stored_size,
-                index_info: IndexInfoInner {
-                    pubkey: *account.pubkey(),
-                    lamports: account.lamports(),
-                    offset: account.offset(),
-                    data_len: account.data_len(),
-                    executable: account.executable(),
-                    rent_epoch: account.rent_epoch(),
-                },
-            });
-        });
-    }
-
     /// Iterate over all accounts and call `callback` with each account.
+    ///
+    /// `callback` parameters:
+    /// * Offset: the offset within the file of this account
+    /// * StoredAccountInfoWithoutData: the account itself, without account data
     ///
     /// Note that account data is not read/passed to the callback.
     pub fn scan_accounts_without_data(
         &self,
-        mut callback: impl for<'local> FnMut(StoredAccountInfoWithoutData<'local>),
+        mut callback: impl for<'local> FnMut(Offset, StoredAccountInfoWithoutData<'local>),
     ) {
         self.scan_stored_accounts_no_data(|stored_account| {
+            let offset = stored_account.offset();
             let account = StoredAccountInfoWithoutData {
                 pubkey: stored_account.pubkey(),
                 lamports: stored_account.lamports(),
@@ -1008,16 +1007,24 @@ impl AppendVec {
                 executable: stored_account.executable(),
                 rent_epoch: stored_account.rent_epoch(),
             };
-            callback(account);
+            callback(offset, account);
         })
     }
 
     /// Iterate over all accounts and call `callback` with each account.
     ///
+    /// `callback` parameters:
+    /// * Offset: the offset within the file of this account
+    /// * StoredAccountInfo: the account itself, with account data
+    ///
     /// Prefer scan_accounts_without_data() when account data is not needed,
     /// as it can potentially read less and be faster.
-    pub fn scan_accounts(&self, mut callback: impl for<'local> FnMut(StoredAccountInfo<'local>)) {
+    pub fn scan_accounts(
+        &self,
+        mut callback: impl for<'local> FnMut(Offset, StoredAccountInfo<'local>),
+    ) {
         self.scan_accounts_stored_meta(|stored_account_meta| {
+            let offset = stored_account_meta.offset();
             let account = StoredAccountInfo {
                 pubkey: stored_account_meta.pubkey(),
                 lamports: stored_account_meta.lamports(),
@@ -1026,7 +1033,7 @@ impl AppendVec {
                 executable: stored_account_meta.executable(),
                 rent_epoch: stored_account_meta.rent_epoch(),
             };
-            callback(account);
+            callback(offset, account);
         })
     }
 
@@ -2265,8 +2272,8 @@ pub mod tests {
         });
     }
 
-    /// A helper fn to test scan_index
-    fn test_scan_index_helper(
+    /// A helper fn to test scan_stored_accounts_no_data
+    fn test_scan_stored_accounts_no_data_helper(
         storage_access: StorageAccess,
         modify_fn: impl Fn(&PathBuf, usize) -> usize,
     ) {
@@ -2275,21 +2282,19 @@ pub mod tests {
             modify_fn,
             |append_vec, pubkeys, account_offsets, accounts| {
                 let mut i = 0;
-                append_vec.scan_index(|index_info| {
+                append_vec.scan_stored_accounts_no_data(|stored_account| {
                     let pubkey = pubkeys.get(i).unwrap();
                     let account = accounts.get(i).unwrap();
                     let offset = account_offsets.get(i).unwrap();
 
                     assert_eq!(
-                        index_info.stored_size_aligned,
+                        stored_account.stored_size,
                         aligned_stored_size(account.data().len()),
                     );
-                    assert_eq!(index_info.index_info.offset, *offset);
-                    assert_eq!(index_info.index_info.pubkey, *pubkey);
-                    assert_eq!(index_info.index_info.lamports, account.lamports());
-                    assert_eq!(index_info.index_info.rent_epoch, account.rent_epoch());
-                    assert_eq!(index_info.index_info.executable, account.executable());
-                    assert_eq!(index_info.index_info.data_len, account.data().len() as u64);
+                    assert_eq!(stored_account.offset(), *offset);
+                    assert_eq!(stored_account.pubkey(), pubkey);
+                    assert_eq!(stored_account.lamports(), account.lamports());
+                    assert_eq!(stored_account.data_len(), account.data().len() as u64);
 
                     i += 1;
                 });
@@ -2300,15 +2305,15 @@ pub mod tests {
 
     #[test_case(StorageAccess::Mmap)]
     #[test_case(StorageAccess::File)]
-    fn test_scan_index(storage_access: StorageAccess) {
-        test_scan_index_helper(storage_access, |_, size| size);
+    fn test_scan_stored_accounts_no_data(storage_access: StorageAccess) {
+        test_scan_stored_accounts_no_data_helper(storage_access, |_, size| size);
     }
 
-    /// Test `scan_index` for storage with incomplete account meta data.
+    /// Test `scan_stored_accounts_no_data` for storage with incomplete account meta data.
     #[test_case(StorageAccess::Mmap)]
     #[test_case(StorageAccess::File)]
-    fn test_scan_index_incomplete_data(storage_access: StorageAccess) {
-        test_scan_index_helper(storage_access, |path, size| {
+    fn test_scan_stored_accounts_no_data_incomplete_data(storage_access: StorageAccess) {
+        test_scan_stored_accounts_no_data_helper(storage_access, |path, size| {
             // Append 1 byte of data at the end of the storage file to simulate
             // incomplete account's meta data.
             let mut f = OpenOptions::new()
@@ -2321,11 +2326,11 @@ pub mod tests {
         });
     }
 
-    /// Test `scan_index` for storage which is missing the last account data
+    /// Test `scan_stored_accounts_no_data` for storage which is missing the last account data
     #[test_case(StorageAccess::Mmap)]
     #[test_case(StorageAccess::File)]
-    fn test_scan_index_missing_account_data(storage_access: StorageAccess) {
-        test_scan_index_helper(storage_access, |path, size| {
+    fn test_scan_stored_accounts_no_data_missing_account_data(storage_access: StorageAccess) {
+        test_scan_stored_accounts_no_data_helper(storage_access, |path, size| {
             let fake_stored_meta = StoredMeta {
                 write_version_obsolete: 0,
                 data_len: 100,

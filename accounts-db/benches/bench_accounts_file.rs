@@ -19,10 +19,14 @@ use {
 
 mod utils;
 
+#[cfg(not(any(target_env = "msvc", target_os = "freebsd")))]
+#[global_allocator]
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 const ACCOUNTS_COUNTS: [usize; 4] = [
     1,      // the smallest count; will bench overhead
-    100,    // number of accounts written per slot on mnb (with *no* rent rewrites)
-    1_000,  // number of accounts written slot on mnb (with rent rewrites)
+    100,    // lower range of accounts written per slot on mnb
+    1_000,  // higher range of accounts written per slot on mnb
     10_000, // reasonable largest number of accounts written per slot
 ];
 

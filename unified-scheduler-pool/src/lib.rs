@@ -431,16 +431,33 @@ where
 
                 let banking_stage_status = scheduler_pool.banking_stage_status();
 
+                if matches!(banking_stage_status, Some(BankingStageStatus::Inactive)) {
+                    let Ok(inner) = scheduler_pool.block_production_scheduler_inner.lock() else {
+                        break;
+                    };
+
+                    if let Some(pooled) = inner.peek_pooled() {
+                        {
+                            pooled.discard_buffer();
+                            // Prevent replay stage's OpenSubchannel from winning the race by
+                            // holding the inner lock for the duration of discard message sending
+                            // just above.  The message (internally SubchanneledPayload::Reset)
+                            // must be sent only during gaps of subchannels of the new task
+                            // channel.
+                            sleepless_testing::at(CheckPoint::DiscardRequested);
+                            drop(inner);
+                        }
+                    }
+                }
+
                 let trashed_inner_count = {
-                    let Ok(mut trashed_scheduler_inners) =
-                        scheduler_pool.trashed_scheduler_inners.lock()
+                    let Ok(mut trashed_inners) = scheduler_pool.trashed_scheduler_inners.lock()
                     else {
                         break;
                     };
-                    let trashed_inners: Vec<_> = mem::take(&mut *trashed_scheduler_inners);
-                    drop(trashed_scheduler_inners);
-
                     let trashed_inner_count = trashed_inners.len();
+                    let trashed_inners: Vec<_> = mem::take(&mut *trashed_inners);
+                    // drop all the trashded schedulers outside the lock guard
                     drop(trashed_inners);
                     trashed_inner_count
                 };
@@ -468,22 +485,6 @@ where
                     }
                     count
                 };
-
-                if matches!(banking_stage_status, Some(BankingStageStatus::Inactive)) {
-                    let inner = scheduler_pool
-                        .block_production_scheduler_inner
-                        .lock()
-                        .unwrap();
-                    if let Some(pooled) = inner.peek_pooled() {
-                        pooled.discard_buffer();
-                        // Prevent replay stage's OpenSubchannel from winning the race by holding
-                        // the inner lock for the duration of discard message sending just above.
-                        // The message (internally SubchanneledPayload::Reset) must be sent only
-                        // during gaps of subchannels of the new task channel.
-                        sleepless_testing::at(CheckPoint::DiscardRequested);
-                        drop(inner);
-                    }
-                }
 
                 info!(
                     "Scheduler pool cleaner: dropped {} idle inners, {} trashed inners, triggered {} timeout listeners",
@@ -3685,7 +3686,7 @@ mod tests {
         poh_recorder
             .write()
             .unwrap()
-            .set_bank(bank.clone_with_scheduler(), true);
+            .set_bank(bank.clone_with_scheduler());
         bank.schedule_transaction_executions([(tx, ORIGINAL_TRANSACTION_INDEX)].into_iter())
             .unwrap();
         bank.unpause_new_block_production_scheduler();
@@ -3721,7 +3722,7 @@ mod tests {
         poh_recorder
             .write()
             .unwrap()
-            .set_bank(bank.clone_with_scheduler(), true);
+            .set_bank(bank.clone_with_scheduler());
         bank.unpause_new_block_production_scheduler();
 
         // Calling wait_for_completed_scheduler() for block production scheduler causes it to be

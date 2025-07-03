@@ -14,10 +14,7 @@ use {
         accounts_hash_verifier::AccountsHashVerifier,
         snapshot_packager_service::{PendingSnapshotPackages, SnapshotPackagerService},
     },
-    solana_genesis_config::{
-        ClusterType::{self, Development, Devnet, MainnetBeta, Testnet},
-        GenesisConfig,
-    },
+    solana_genesis_config::GenesisConfig,
     solana_gossip::{cluster_info::ClusterInfo, contact_info::ContactInfo},
     solana_hash::Hash,
     solana_keypair::Keypair,
@@ -32,13 +29,10 @@ use {
         genesis_utils::{create_genesis_config_with_leader, GenesisConfigInfo},
         runtime_config::RuntimeConfig,
         snapshot_archive_info::FullSnapshotArchiveInfo,
-        snapshot_bank_utils::{self, DISABLED_SNAPSHOT_ARCHIVE_INTERVAL},
+        snapshot_bank_utils,
         snapshot_config::SnapshotConfig,
         snapshot_controller::SnapshotController,
-        snapshot_utils::{
-            self,
-            SnapshotVersion::{self, V1_2_0},
-        },
+        snapshot_utils::{self, SnapshotInterval},
         status_cache::MAX_CACHE_ENTRIES,
     },
     solana_sha256_hasher::hashv,
@@ -47,6 +41,7 @@ use {
     solana_system_transaction as system_transaction,
     solana_time_utils::timestamp,
     std::{
+        num::NonZeroU64,
         path::PathBuf,
         sync::{
             atomic::{AtomicBool, Ordering},
@@ -55,7 +50,7 @@ use {
         time::{Duration, Instant},
     },
     tempfile::TempDir,
-    test_case::{test_case, test_matrix},
+    test_case::test_matrix,
 };
 
 struct SnapshotTestConfig {
@@ -73,10 +68,8 @@ struct SnapshotTestConfig {
 
 impl SnapshotTestConfig {
     fn new(
-        snapshot_version: SnapshotVersion,
-        cluster_type: ClusterType,
-        full_snapshot_archive_interval_slots: Slot,
-        incremental_snapshot_archive_interval_slots: Slot,
+        full_snapshot_archive_interval: SnapshotInterval,
+        incremental_snapshot_archive_interval: SnapshotInterval,
     ) -> SnapshotTestConfig {
         let (accounts_tmp_dir, accounts_dir) = create_tmp_accounts_dir_for_tests();
         let bank_snapshots_dir = TempDir::new().unwrap();
@@ -86,12 +79,11 @@ impl SnapshotTestConfig {
         // account will not be stored in accounts-db but still cached in
         // bank stakes which results in mismatch when banks are loaded from
         // snapshots.
-        let mut genesis_config_info = create_genesis_config_with_leader(
+        let genesis_config_info = create_genesis_config_with_leader(
             10_000,                     // mint_lamports
             &solana_pubkey::new_rand(), // validator_pubkey
             1,                          // validator_stake_lamports
         );
-        genesis_config_info.genesis_config.cluster_type = cluster_type;
         let bank0 = Bank::new_with_paths_for_tests(
             &genesis_config_info.genesis_config,
             Arc::<RuntimeConfig>::default(),
@@ -103,14 +95,13 @@ impl SnapshotTestConfig {
         let bank_forks_arc = BankForks::new_rw_arc(bank0);
 
         let snapshot_config = SnapshotConfig {
-            full_snapshot_archive_interval_slots,
-            incremental_snapshot_archive_interval_slots,
+            full_snapshot_archive_interval,
+            incremental_snapshot_archive_interval,
             full_snapshot_archives_dir: full_snapshot_archives_dir.path().to_path_buf(),
             incremental_snapshot_archives_dir: incremental_snapshot_archives_dir
                 .path()
                 .to_path_buf(),
             bank_snapshots_dir: bank_snapshots_dir.path().to_path_buf(),
-            snapshot_version,
             ..SnapshotConfig::default()
         };
         SnapshotTestConfig {
@@ -175,22 +166,15 @@ fn restore_from_snapshot(
 // also marks each bank as root and generates snapshots
 // finally tries to restore from the last bank's snapshot and compares the restored bank to the
 // `last_slot` bank
-fn run_bank_forks_snapshot_n<F>(
-    snapshot_version: SnapshotVersion,
-    cluster_type: ClusterType,
-    last_slot: Slot,
-    f: F,
-    set_root_interval: u64,
-) where
+fn run_bank_forks_snapshot_n<F>(last_slot: Slot, f: F, set_root_interval: u64)
+where
     F: Fn(&Bank, &Keypair),
 {
     solana_logger::setup();
     // Set up snapshotting config
     let snapshot_test_config = SnapshotTestConfig::new(
-        snapshot_version,
-        cluster_type,
-        set_root_interval,
-        DISABLED_SNAPSHOT_ARCHIVE_INTERVAL,
+        SnapshotInterval::Slots(NonZeroU64::new(set_root_interval).unwrap()),
+        SnapshotInterval::Disabled,
     );
 
     let bank_forks = snapshot_test_config.bank_forks.clone();
@@ -240,7 +224,7 @@ fn run_bank_forks_snapshot_n<F>(
     snapshot_bank_utils::bank_to_full_snapshot_archive(
         &snapshot_config.bank_snapshots_dir,
         &last_bank,
-        Some(snapshot_version),
+        Some(snapshot_config.snapshot_version),
         &snapshot_config.full_snapshot_archives_dir,
         &snapshot_config.incremental_snapshot_archives_dir,
         snapshot_config.archive_format,
@@ -260,16 +244,11 @@ fn run_bank_forks_snapshot_n<F>(
     );
 }
 
-#[test_case(V1_2_0, Development)]
-#[test_case(V1_2_0, Devnet)]
-#[test_case(V1_2_0, Testnet)]
-#[test_case(V1_2_0, MainnetBeta)]
-fn test_bank_forks_snapshot(snapshot_version: SnapshotVersion, cluster_type: ClusterType) {
+#[test]
+fn test_bank_forks_snapshot() {
     // create banks up to slot 4 and create 1 new account in each bank. test that bank 4 snapshots
     // and restores correctly
     run_bank_forks_snapshot_n(
-        snapshot_version,
-        cluster_type,
         4,
         |bank, mint_keypair| {
             let key1 = Keypair::new().pubkey();
@@ -296,11 +275,8 @@ fn goto_end_of_slot(bank: &Bank) {
     }
 }
 
-#[test_case(V1_2_0, Development)]
-#[test_case(V1_2_0, Devnet)]
-#[test_case(V1_2_0, Testnet)]
-#[test_case(V1_2_0, MainnetBeta)]
-fn test_slots_to_snapshot(snapshot_version: SnapshotVersion, cluster_type: ClusterType) {
+#[test]
+fn test_slots_to_snapshot() {
     solana_logger::setup();
     let num_set_roots = MAX_CACHE_ENTRIES * 2;
 
@@ -308,10 +284,10 @@ fn test_slots_to_snapshot(snapshot_version: SnapshotVersion, cluster_type: Clust
         let (snapshot_sender, _snapshot_receiver) = unbounded();
         // Make sure this test never clears bank.slots_since_snapshot
         let snapshot_test_config = SnapshotTestConfig::new(
-            snapshot_version,
-            cluster_type,
-            (*add_root_interval * num_set_roots * 2) as Slot,
-            DISABLED_SNAPSHOT_ARCHIVE_INTERVAL,
+            SnapshotInterval::Slots(
+                NonZeroU64::new((*add_root_interval * num_set_roots * 2) as Slot).unwrap(),
+            ),
+            SnapshotInterval::Disabled,
         );
         let bank_forks = snapshot_test_config.bank_forks.clone();
         let bank_forks_r = bank_forks.read().unwrap();
@@ -376,14 +352,8 @@ fn test_slots_to_snapshot(snapshot_version: SnapshotVersion, cluster_type: Clust
     }
 }
 
-#[test_case(V1_2_0, Development)]
-#[test_case(V1_2_0, Devnet)]
-#[test_case(V1_2_0, Testnet)]
-#[test_case(V1_2_0, MainnetBeta)]
-fn test_bank_forks_status_cache_snapshot(
-    snapshot_version: SnapshotVersion,
-    cluster_type: ClusterType,
-) {
+#[test]
+fn test_bank_forks_status_cache_snapshot() {
     // create banks up to slot (MAX_CACHE_ENTRIES * 2) + 1 while transferring 1 lamport into 2 different accounts each time
     // this is done to ensure the AccountStorageEntries keep getting cleaned up as the root moves
     // ahead. Also tests the status_cache purge and status cache snapshotting.
@@ -392,8 +362,6 @@ fn test_bank_forks_status_cache_snapshot(
     let key2 = Keypair::new().pubkey();
     for set_root_interval in &[1, 4] {
         run_bank_forks_snapshot_n(
-            snapshot_version,
-            cluster_type,
             (MAX_CACHE_ENTRIES * 2) as u64,
             |bank, mint_keypair| {
                 let tx = system_transaction::transfer(
@@ -417,14 +385,8 @@ fn test_bank_forks_status_cache_snapshot(
     }
 }
 
-#[test_case(V1_2_0, Development)]
-#[test_case(V1_2_0, Devnet)]
-#[test_case(V1_2_0, Testnet)]
-#[test_case(V1_2_0, MainnetBeta)]
-fn test_bank_forks_incremental_snapshot(
-    snapshot_version: SnapshotVersion,
-    cluster_type: ClusterType,
-) {
+#[test]
+fn test_bank_forks_incremental_snapshot() {
     solana_logger::setup();
 
     const SET_ROOT_INTERVAL: Slot = 2;
@@ -443,10 +405,10 @@ fn test_bank_forks_incremental_snapshot(
     );
 
     let snapshot_test_config = SnapshotTestConfig::new(
-        snapshot_version,
-        cluster_type,
-        FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
-        INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
+        SnapshotInterval::Slots(NonZeroU64::new(FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS).unwrap()),
+        SnapshotInterval::Slots(
+            NonZeroU64::new(INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS).unwrap(),
+        ),
     );
     trace!(
         "SnapshotTestConfig:\naccounts_dir: {}\nbank_snapshots_dir: \
@@ -639,14 +601,10 @@ enum VerifySnapshotHashKind {
 
 /// Spin up the background services fully then test taking & verifying snapshots
 #[test_matrix(
-    V1_2_0,
-    [Development, Devnet, Testnet, MainnetBeta],
     [VerifyAccountsKind::Merkle, VerifyAccountsKind::Lattice],
     [VerifySnapshotHashKind::Merkle, VerifySnapshotHashKind::Lattice]
 )]
 fn test_snapshots_with_background_services(
-    snapshot_version: SnapshotVersion,
-    cluster_type: ClusterType,
     verify_accounts_kind: VerifyAccountsKind,
     verify_snapshot_hash_kind: VerifySnapshotHashKind,
 ) {
@@ -680,10 +638,10 @@ fn test_snapshots_with_background_services(
     );
 
     let snapshot_test_config = SnapshotTestConfig::new(
-        snapshot_version,
-        cluster_type,
-        FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
-        INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
+        SnapshotInterval::Slots(NonZeroU64::new(FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS).unwrap()),
+        SnapshotInterval::Slots(
+            NonZeroU64::new(INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS).unwrap(),
+        ),
     );
 
     let node_keypair = Arc::new(Keypair::new());

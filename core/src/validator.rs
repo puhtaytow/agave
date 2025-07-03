@@ -109,11 +109,11 @@ use {
         prioritization_fee_cache::PrioritizationFeeCache,
         runtime_config::RuntimeConfig,
         snapshot_archive_info::SnapshotArchiveInfoGetter,
-        snapshot_bank_utils::{self, DISABLED_SNAPSHOT_ARCHIVE_INTERVAL},
+        snapshot_bank_utils,
         snapshot_config::SnapshotConfig,
         snapshot_controller::SnapshotController,
         snapshot_hash::StartingSnapshotHashes,
-        snapshot_utils::{self, clean_orphaned_account_snapshot_dirs},
+        snapshot_utils::{self, clean_orphaned_account_snapshot_dirs, SnapshotInterval},
     },
     solana_send_transaction_service::send_transaction_service::Config as SendTransactionServiceConfig,
     solana_shred_version::compute_shred_version,
@@ -744,25 +744,23 @@ impl Validator {
                 .register_exit(Box::new(move || cancel_tpu_client_next.cancel()));
         }
 
-        let accounts_update_notifier = geyser_plugin_service
-            .as_ref()
-            .and_then(|geyser_plugin_service| geyser_plugin_service.get_accounts_update_notifier());
-
-        let transaction_notifier = geyser_plugin_service
-            .as_ref()
-            .and_then(|geyser_plugin_service| geyser_plugin_service.get_transaction_notifier());
-
-        let entry_notifier = geyser_plugin_service
-            .as_ref()
-            .and_then(|geyser_plugin_service| geyser_plugin_service.get_entry_notifier());
-
-        let block_metadata_notifier = geyser_plugin_service
-            .as_ref()
-            .and_then(|geyser_plugin_service| geyser_plugin_service.get_block_metadata_notifier());
-
-        let slot_status_notifier = geyser_plugin_service
-            .as_ref()
-            .and_then(|geyser_plugin_service| geyser_plugin_service.get_slot_status_notifier());
+        let (
+            accounts_update_notifier,
+            transaction_notifier,
+            entry_notifier,
+            block_metadata_notifier,
+            slot_status_notifier,
+        ) = if let Some(service) = &geyser_plugin_service {
+            (
+                service.get_accounts_update_notifier(),
+                service.get_transaction_notifier(),
+                service.get_entry_notifier(),
+                service.get_block_metadata_notifier(),
+                service.get_slot_status_notifier(),
+            )
+        } else {
+            (None, None, None, None, None)
+        };
 
         info!(
             "Geyser plugin: accounts_update_notifier: {}, transaction_notifier: {}, \
@@ -936,7 +934,7 @@ impl Validator {
 
         let leader_schedule_cache = Arc::new(leader_schedule_cache);
         let startup_verification_complete;
-        let (poh_recorder, entry_receiver) = {
+        let (mut poh_recorder, entry_receiver) = {
             let bank = &bank_forks.read().unwrap().working_bank();
             startup_verification_complete = Arc::clone(bank.get_startup_verification_complete());
             PohRecorder::new_with_clear_signal(
@@ -953,6 +951,9 @@ impl Validator {
                 exit.clone(),
             )
         };
+        if transaction_status_sender.is_some() {
+            poh_recorder.track_transaction_indexes();
+        }
         let (record_sender, record_receiver) = unbounded();
         let transaction_recorder =
             TransactionRecorder::new(record_sender, poh_recorder.is_exited.clone());
@@ -1319,7 +1320,7 @@ impl Validator {
         let gossip_service = GossipService::new(
             &cluster_info,
             Some(bank_forks.clone()),
-            node.sockets.gossip,
+            node.sockets.gossip.clone(),
             config.gossip_validators.clone(),
             should_check_duplicate_instance,
             Some(stats_reporter_sender.clone()),
@@ -1611,6 +1612,7 @@ impl Validator {
                 transactions_forwards_quic: node.sockets.tpu_forwards_quic,
                 vote_quic: node.sockets.tpu_vote_quic,
                 vote_forwarding_client: node.sockets.tpu_vote_forwarding_client,
+                vortexor_receivers: node.sockets.vortexor_receivers,
             },
             &rpc_subscriptions,
             transaction_status_sender,
@@ -1679,6 +1681,7 @@ impl Validator {
             repair_socket: Arc::new(node.sockets.repair),
             outstanding_repair_requests,
             cluster_slots,
+            gossip_socket: Some(node.sockets.gossip.clone()),
         });
 
         Ok(Self {
@@ -2779,16 +2782,18 @@ pub fn is_snapshot_config_valid(snapshot_config: &SnapshotConfig) -> bool {
         return true;
     }
 
-    let full_snapshot_interval_slots = snapshot_config.full_snapshot_archive_interval_slots;
-    let incremental_snapshot_interval_slots =
-        snapshot_config.incremental_snapshot_archive_interval_slots;
+    let SnapshotInterval::Slots(full_snapshot_interval_slots) =
+        snapshot_config.full_snapshot_archive_interval
+    else {
+        // if we *are* generating snapshots, then the full snapshot interval cannot be disabled
+        return false;
+    };
 
-    if incremental_snapshot_interval_slots == DISABLED_SNAPSHOT_ARCHIVE_INTERVAL {
-        true
-    } else if incremental_snapshot_interval_slots == 0 {
-        false
-    } else {
-        full_snapshot_interval_slots > incremental_snapshot_interval_slots
+    match snapshot_config.incremental_snapshot_archive_interval {
+        SnapshotInterval::Disabled => true,
+        SnapshotInterval::Slots(incremental_snapshot_interval_slots) => {
+            full_snapshot_interval_slots > incremental_snapshot_interval_slots
+        }
     }
 }
 
@@ -2807,7 +2812,7 @@ mod tests {
         solana_poh_config::PohConfig,
         solana_sha256_hasher::hash,
         solana_tpu_client::tpu_client::DEFAULT_TPU_ENABLE_UDP,
-        std::{fs::remove_dir_all, thread, time::Duration},
+        std::{fs::remove_dir_all, num::NonZeroU64, thread, time::Duration},
     };
 
     #[test]
@@ -3163,60 +3168,61 @@ mod tests {
     }
 
     #[test]
-    fn test_interval_check() {
+    fn test_is_snapshot_config_valid() {
         fn new_snapshot_config(
             full_snapshot_archive_interval_slots: Slot,
             incremental_snapshot_archive_interval_slots: Slot,
         ) -> SnapshotConfig {
             SnapshotConfig {
-                full_snapshot_archive_interval_slots,
-                incremental_snapshot_archive_interval_slots,
+                full_snapshot_archive_interval: SnapshotInterval::Slots(
+                    NonZeroU64::new(full_snapshot_archive_interval_slots).unwrap(),
+                ),
+                incremental_snapshot_archive_interval: SnapshotInterval::Slots(
+                    NonZeroU64::new(incremental_snapshot_archive_interval_slots).unwrap(),
+                ),
                 ..SnapshotConfig::default()
             }
         }
 
-        assert!(is_snapshot_config_valid(&new_snapshot_config(300, 200)));
+        // default config must be valid
+        assert!(is_snapshot_config_valid(&SnapshotConfig::default()));
 
-        assert!(is_snapshot_config_valid(&new_snapshot_config(
-            snapshot_bank_utils::DEFAULT_FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
-            snapshot_bank_utils::DEFAULT_INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS
-        )));
-        assert!(is_snapshot_config_valid(&new_snapshot_config(
-            snapshot_bank_utils::DEFAULT_FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
-            DISABLED_SNAPSHOT_ARCHIVE_INTERVAL
-        )));
-        assert!(is_snapshot_config_valid(&new_snapshot_config(
-            snapshot_bank_utils::DEFAULT_INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
-            DISABLED_SNAPSHOT_ARCHIVE_INTERVAL
-        )));
-        assert!(is_snapshot_config_valid(&new_snapshot_config(
-            DISABLED_SNAPSHOT_ARCHIVE_INTERVAL,
-            DISABLED_SNAPSHOT_ARCHIVE_INTERVAL
-        )));
+        // disabled incremental snapshot must be valid
+        assert!(is_snapshot_config_valid(&SnapshotConfig {
+            incremental_snapshot_archive_interval: SnapshotInterval::Disabled,
+            ..SnapshotConfig::default()
+        }));
 
-        // Full snaphot intervals used to be required to be a multiple of
-        // incremental snapshot intervals, but that's no longer the case
-        // so test that the check is relaxed.
+        // disabled full snapshot must be invalid though (if generating snapshots)
+        assert!(!is_snapshot_config_valid(&SnapshotConfig {
+            full_snapshot_archive_interval: SnapshotInterval::Disabled,
+            ..SnapshotConfig::default()
+        }));
+
+        // simple config must be valid
+        assert!(is_snapshot_config_valid(&new_snapshot_config(400, 200)));
         assert!(is_snapshot_config_valid(&new_snapshot_config(100, 42)));
         assert!(is_snapshot_config_valid(&new_snapshot_config(444, 200)));
         assert!(is_snapshot_config_valid(&new_snapshot_config(400, 222)));
 
-        assert!(!is_snapshot_config_valid(&new_snapshot_config(0, 100)));
-        assert!(!is_snapshot_config_valid(&new_snapshot_config(100, 0)));
-        assert!(!is_snapshot_config_valid(&new_snapshot_config(0, 0)));
+        // config where full interval is not larger than incremental interval must be invalid
         assert!(!is_snapshot_config_valid(&new_snapshot_config(42, 100)));
         assert!(!is_snapshot_config_valid(&new_snapshot_config(100, 100)));
         assert!(!is_snapshot_config_valid(&new_snapshot_config(100, 200)));
 
+        // config with snapshots disabled (or load-only) must be valid
+        assert!(is_snapshot_config_valid(&SnapshotConfig::new_disabled()));
         assert!(is_snapshot_config_valid(&SnapshotConfig::new_load_only()));
         assert!(is_snapshot_config_valid(&SnapshotConfig {
-            full_snapshot_archive_interval_slots: 37,
-            incremental_snapshot_archive_interval_slots: 41,
+            full_snapshot_archive_interval: SnapshotInterval::Slots(NonZeroU64::new(37).unwrap()),
+            incremental_snapshot_archive_interval: SnapshotInterval::Slots(
+                NonZeroU64::new(41).unwrap()
+            ),
             ..SnapshotConfig::new_load_only()
         }));
         assert!(is_snapshot_config_valid(&SnapshotConfig {
-            full_snapshot_archive_interval_slots: DISABLED_SNAPSHOT_ARCHIVE_INTERVAL,
-            incremental_snapshot_archive_interval_slots: DISABLED_SNAPSHOT_ARCHIVE_INTERVAL,
+            full_snapshot_archive_interval: SnapshotInterval::Disabled,
+            incremental_snapshot_archive_interval: SnapshotInterval::Disabled,
             ..SnapshotConfig::new_load_only()
         }));
     }

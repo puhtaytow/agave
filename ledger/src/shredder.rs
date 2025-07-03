@@ -586,7 +586,7 @@ mod tests {
         solana_signer::Signer,
         solana_system_transaction as system_transaction,
         std::{collections::HashSet, convert::TryInto, iter::repeat_with, sync::Arc},
-        test_case::test_case,
+        test_case::{test_case, test_matrix},
     };
 
     fn verify_test_code_shred(shred: &Shred, index: u32, slot: Slot, pk: &Pubkey, verify: bool) {
@@ -687,18 +687,18 @@ mod tests {
         assert_eq!(entries, deshred_entries);
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_data_shredder(chained: bool, is_last_in_slot: bool) {
         run_test_data_shredder(0x1234_5678_9abc_def0, chained, is_last_in_slot);
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_deserialize_shred_payload(chained: bool, is_last_in_slot: bool) {
         let keypair = Arc::new(Keypair::new());
         let shredder = Shredder::new(
@@ -735,10 +735,10 @@ mod tests {
         }
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_shred_reference_tick(chained: bool, is_last_in_slot: bool) {
         let keypair = Arc::new(Keypair::new());
         let slot = 1;
@@ -776,10 +776,10 @@ mod tests {
         assert_eq!(deserialized_shred.reference_tick(), 5);
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_shred_reference_tick_overflow(chained: bool, is_last_in_slot: bool) {
         let keypair = Arc::new(Keypair::new());
         let slot = 1;
@@ -871,10 +871,10 @@ mod tests {
         }
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_data_and_code_shredder(chained: bool, is_last_in_slot: bool) {
         run_test_data_and_code_shredder(0x1234_5678_9abc_def0, chained, is_last_in_slot);
     }
@@ -1196,10 +1196,10 @@ mod tests {
         }
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_shred_version(chained: bool, is_last_in_slot: bool) {
         let keypair = Arc::new(Keypair::new());
         let hash = hash(Hash::default().as_ref());
@@ -1233,10 +1233,10 @@ mod tests {
             .any(|s| s.version() != version));
     }
 
-    #[test_case(false, false)]
-    #[test_case(false, true)]
-    #[test_case(true, false)]
-    #[test_case(true, true)]
+    #[test_matrix(
+        [true, false],
+        [true, false]
+    )]
     fn test_shred_fec_set_index(chained: bool, is_last_in_slot: bool) {
         let keypair = Arc::new(Keypair::new());
         let hash = hash(Hash::default().as_ref());
