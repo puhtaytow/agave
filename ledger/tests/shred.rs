@@ -226,7 +226,8 @@ fn setup_different_sized_fec_blocks(
     let reed_solomon_cache = ReedSolomonCache::default();
     for i in 0..2 {
         let is_last = i == 1;
-        let shreds: Vec<Shred> = shredder
+
+        let (data_shreds, coding_shreds): (Vec<Shred>, Vec<Shred>) = shredder
             .make_merkle_shreds_from_entries(
                 &keypair,
                 &entries,
@@ -237,9 +238,8 @@ fn setup_different_sized_fec_blocks(
                 &reed_solomon_cache,
                 &mut ProcessShredsStats::default(),
             )
-            .collect();
-        let (data_shreds, coding_shreds): (Vec<Shred>, Vec<Shred>) =
-            shreds.into_iter().partition(Shred::is_data);
+            .partition(Shred::is_data);
+
         for shred in &data_shreds {
             if (shred.index() as usize) == total_num_data_shreds - 1 {
                 assert!(shred.data_complete());
