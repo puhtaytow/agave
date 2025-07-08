@@ -3,26 +3,26 @@ use {
         nonblocking::{
             connection_rate_limiter::{ConnectionRateLimiter, TotalConnectionRateLimiter},
             stream_throttle::{
-                ConnectionStreamCounter, StakedStreamLoadEMA, STREAM_THROTTLING_INTERVAL,
-                STREAM_THROTTLING_INTERVAL_MS,
+                ConnectionStreamCounter, STREAM_THROTTLING_INTERVAL, STREAM_THROTTLING_INTERVAL_MS,
+                StakedStreamLoadEMA,
             },
         },
-        quic::{configure_server, QuicServerError, QuicServerParams, StreamerStats},
+        quic::{QuicServerError, QuicServerParams, StreamerStats, configure_server},
         streamer::StakedNodes,
     },
     bytes::{BufMut, Bytes, BytesMut},
-    crossbeam_channel::{bounded, Receiver, Sender, TrySendError},
-    futures::{stream::FuturesUnordered, Future, StreamExt as _},
+    crossbeam_channel::{Receiver, Sender, TrySendError, bounded},
+    futures::{Future, StreamExt as _, stream::FuturesUnordered},
     indexmap::map::{Entry, IndexMap},
     percentage::Percentage,
     quinn::{Accept, Connecting, Connection, Endpoint, EndpointConfig, TokioRuntime, VarInt},
     quinn_proto::VarIntBoundsExceeded,
-    rand::{thread_rng, Rng},
+    rand::{Rng, thread_rng},
     smallvec::SmallVec,
     solana_keypair::Keypair,
     solana_measure::measure::Measure,
     solana_packet::{Meta, PACKET_DATA_SIZE},
-    solana_perf::packet::{BytesPacket, BytesPacketBatch, PacketBatch, PACKETS_PER_BATCH},
+    solana_perf::packet::{BytesPacket, BytesPacketBatch, PACKETS_PER_BATCH, PacketBatch},
     solana_pubkey::Pubkey,
     solana_quic_definitions::{
         QUIC_MAX_STAKED_CONCURRENT_STREAMS, QUIC_MAX_STAKED_RECEIVE_WINDOW_RATIO,
@@ -42,8 +42,8 @@ use {
         pin::Pin,
         // CAUTION: be careful not to introduce any awaits while holding an RwLock.
         sync::{
-            atomic::{AtomicBool, AtomicU64, Ordering},
             Arc, RwLock,
+            atomic::{AtomicBool, AtomicU64, Ordering},
         },
         task::Poll,
         thread,
@@ -1563,14 +1563,14 @@ pub mod test {
             nonblocking::{
                 quic::compute_max_allowed_uni_streams,
                 testing_utilities::{
-                    check_multiple_streams, get_client_config, make_client_endpoint,
-                    setup_quic_server, SpawnTestServerResult,
+                    SpawnTestServerResult, check_multiple_streams, get_client_config,
+                    make_client_endpoint, setup_quic_server,
                 },
             },
             quic::DEFAULT_TPU_COALESCE,
         },
         assert_matches::assert_matches,
-        crossbeam_channel::{unbounded, Receiver},
+        crossbeam_channel::{Receiver, unbounded},
         quinn::{ApplicationClose, ConnectionError},
         solana_keypair::Keypair,
         solana_net_utils::sockets::bind_to_localhost_unique,
@@ -2177,32 +2177,36 @@ pub mod test {
 
         // We should NOT be able to add more entries than max_connections_per_peer, since we are
         // using the same peer pubkey.
-        assert!(table
-            .try_add_connection(
-                ConnectionTableKey::Pubkey(pubkey),
-                0,
-                ClientConnectionTracker::new(stats.clone(), 1000).unwrap(),
-                None,
-                ConnectionPeerType::Unstaked,
-                10,
-                max_connections_per_peer,
-            )
-            .is_none());
+        assert!(
+            table
+                .try_add_connection(
+                    ConnectionTableKey::Pubkey(pubkey),
+                    0,
+                    ClientConnectionTracker::new(stats.clone(), 1000).unwrap(),
+                    None,
+                    ConnectionPeerType::Unstaked,
+                    10,
+                    max_connections_per_peer,
+                )
+                .is_none()
+        );
 
         // We should be able to add an entry from another peer pubkey
         let num_entries = max_connections_per_peer + 1;
         let pubkey2 = Pubkey::new_unique();
-        assert!(table
-            .try_add_connection(
-                ConnectionTableKey::Pubkey(pubkey2),
-                0,
-                ClientConnectionTracker::new(stats.clone(), 1000).unwrap(),
-                None,
-                ConnectionPeerType::Unstaked,
-                10,
-                max_connections_per_peer,
-            )
-            .is_some());
+        assert!(
+            table
+                .try_add_connection(
+                    ConnectionTableKey::Pubkey(pubkey2),
+                    0,
+                    ClientConnectionTracker::new(stats.clone(), 1000).unwrap(),
+                    None,
+                    ConnectionPeerType::Unstaked,
+                    10,
+                    max_connections_per_peer,
+                )
+                .is_some()
+        );
 
         assert_eq!(table.total_size, num_entries);
 
