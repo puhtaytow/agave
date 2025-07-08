@@ -729,7 +729,7 @@ mod tests {
     }
 
     fn make_entries<R: Rng>(rng: &mut R, num_entries: usize) -> Vec<Entry> {
-        let prev_hash = solana_sha256_hasher::hashv(&[&rng.r#rgen::<[u8; 32]>()]);
+        let prev_hash = solana_sha256_hasher::hashv(&[&rng.r#gen::<[u8; 32]>()]);
         let entry = make_entry(rng, &prev_hash);
         std::iter::successors(Some(entry), |entry| Some(make_entry(rng, &entry.hash)))
             .take(num_entries)

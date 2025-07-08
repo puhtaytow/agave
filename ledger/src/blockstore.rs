@@ -2216,7 +2216,7 @@ impl Blockstore {
         shred: &Shred,
         write_batch: &mut WriteBatch,
         shred_source: ShredSource,
-    ) -> Result<impl Iterator<Item = CompletedDataSetInfo> + 'a + use<'a>> {
+    ) -> Result<impl Iterator<Item = CompletedDataSetInfo> + 'a> {
         let slot = shred.slot();
         let index = u64::from(shred.index());
 
@@ -2256,7 +2256,7 @@ impl Blockstore {
             shred.bytes_to_store(),
         )?;
         data_index.insert(index);
-        let newly_completed_data_sets = update_slot_meta(
+        let newly_completed_data_sets: Vec<_> = update_slot_meta(
             last_in_slot,
             last_in_data,
             slot_meta,
@@ -2265,7 +2265,8 @@ impl Blockstore {
             shred.reference_tick(),
             data_index,
         )
-        .map(move |indices| CompletedDataSetInfo { slot, indices });
+        .map(move |indices| CompletedDataSetInfo { slot, indices })
+        .collect();
 
         self.slots_stats.record_shred(
             shred.slot(),
@@ -2276,7 +2277,7 @@ impl Blockstore {
 
         trace!("inserted shred into slot {:?} and index {:?}", slot, index);
 
-        Ok(newly_completed_data_sets)
+        Ok(newly_completed_data_sets.into_iter())
     }
 
     pub fn get_data_shred(&self, slot: Slot, index: u64) -> Result<Option<Vec<u8>>> {
