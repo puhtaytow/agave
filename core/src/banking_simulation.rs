@@ -27,7 +27,7 @@ use {
         blockstore::{Blockstore, PurgeType},
         leader_schedule_cache::LeaderScheduleCache,
     },
-    solana_net_utils::bind_to_localhost,
+    solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
     solana_poh::{
         poh_recorder::{PohRecorder, GRACE_TICKS_FACTOR, MAX_GRACE_SLOTS},
         poh_service::{PohService, DEFAULT_HASHES_PER_BATCH, DEFAULT_PINNED_CPU_CORE},
@@ -49,6 +49,7 @@ use {
         fmt::Display,
         fs::File,
         io::{self, BufRead, BufReader},
+        net::{IpAddr, Ipv4Addr},
         path::PathBuf,
         sync::{
             atomic::{AtomicBool, Ordering},
@@ -800,8 +801,13 @@ impl BankingSimulator {
         ));
         // Broadcast stage is needed to save the simulated blocks for post-run analysis by
         // inserting produced shreds into the blockstore.
+        let port_range = localhost_port_range_for_tests();
+        let mut port_range = port_range.0..port_range.1;
         let broadcast_stage = BroadcastStageType::Standard.new_broadcast_stage(
-            vec![bind_to_localhost().unwrap()],
+            vec![
+                bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
+                    .expect("should bind"),
+            ],
             cluster_info_for_broadcast.clone(),
             entry_receiver,
             retransmit_slots_receiver,

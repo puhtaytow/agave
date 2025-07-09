@@ -9,7 +9,11 @@ use {
         },
     },
     solana_client::connection_cache::ConnectionCache,
-    std::{net::SocketAddr, sync::Arc},
+    solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
+    std::{
+        net::{Ipv4Addr, SocketAddr},
+        sync::Arc,
+    },
     tokio::runtime::Handle,
     tokio_util::sync::CancellationToken,
 };
@@ -53,8 +57,13 @@ impl CreateClient for TpuClientNextClient {
     ) -> Self {
         let runtime_handle =
             maybe_runtime.expect("Runtime should be provided for the TpuClientNextClient.");
-        let bind_socket = solana_net_utils::bind_to_localhost()
-            .expect("Should be able to open UdpSocket for tests.");
+        let port_range = localhost_port_range_for_tests();
+        let mut port_range = port_range.0..port_range.1;
+        let bind_socket = bind_to(
+            std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
+            port_range.next().unwrap(),
+        )
+        .expect("Should be able to open UdpSocket for tests.");
         Self::new::<NullTpuInfo>(
             runtime_handle,
             my_tpu_address,
