@@ -802,12 +802,8 @@ impl BankingSimulator {
         // Broadcast stage is needed to save the simulated blocks for post-run analysis by
         // inserting produced shreds into the blockstore.
         let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
         let broadcast_stage = BroadcastStageType::Standard.new_broadcast_stage(
-            vec![
-                bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-                    .expect("should bind"),
-            ],
+            vec![bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind")],
             cluster_info_for_broadcast.clone(),
             entry_receiver,
             retransmit_slots_receiver,
