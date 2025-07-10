@@ -1557,9 +1557,9 @@ pub mod test {
         crossbeam_channel::{unbounded, Receiver},
         quinn::{ApplicationClose, ConnectionError},
         solana_keypair::Keypair,
-        solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
+        solana_net_utils::sockets::bind_to_localhost_for_tests_ipv4,
         solana_signer::Signer,
-        std::{collections::HashMap, net::Ipv4Addr},
+        std::collections::HashMap,
         tokio::time::sleep,
     };
 
@@ -1811,11 +1811,7 @@ pub mod test {
                 ..QuicServerParams::default_for_tests()
             },
         );
-
-        let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let client_socket = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind reader");
+        let client_socket = bind_to_localhost_for_tests_ipv4();
         let mut endpoint = quinn::Endpoint::new(
             EndpointConfig::default(),
             None,
@@ -1978,10 +1974,7 @@ pub mod test {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_quic_server_unstaked_node_connect_failure() {
         solana_logger::setup();
-        let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let s = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind");
+        let s = bind_to_localhost_for_tests_ipv4();
         let exit = Arc::new(AtomicBool::new(false));
         let (sender, _) = unbounded();
         let keypair = Keypair::new();
@@ -2014,10 +2007,7 @@ pub mod test {
     #[tokio::test(flavor = "multi_thread")]
     async fn test_quic_server_multiple_streams() {
         solana_logger::setup();
-        let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let s = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind");
+        let s = bind_to_localhost_for_tests_ipv4();
         let exit = Arc::new(AtomicBool::new(false));
         let (sender, receiver) = unbounded();
         let keypair = Keypair::new();

@@ -631,11 +631,10 @@ mod test {
             streamer::{receiver, responder},
         },
         crossbeam_channel::unbounded,
-        solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
+        solana_net_utils::sockets::bind_to_localhost_for_tests_ipv4,
         solana_perf::recycler::Recycler,
         std::{
             io::{self, Write},
-            net::Ipv4Addr,
             sync::{
                 atomic::{AtomicBool, Ordering},
                 Arc,
@@ -666,16 +665,12 @@ mod test {
     }
     #[test]
     fn streamer_send_test() {
-        let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let read_socket = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind reader");
+        let read_socket = bind_to_localhost_for_tests_ipv4();
         read_socket
             .set_read_timeout(Some(SOCKET_READ_TIMEOUT))
             .unwrap();
         let addr = read_socket.local_addr().unwrap();
-        let send_socket = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind sender");
+        let send_socket = bind_to_localhost_for_tests_ipv4();
         let exit = Arc::new(AtomicBool::new(false));
         let (s_reader, r_reader) = unbounded();
         let stats = Arc::new(StreamerReceiveStats::new("test"));
