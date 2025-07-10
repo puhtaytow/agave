@@ -1,29 +1,19 @@
 #![cfg(target_os = "linux")]
 
 use {
-    solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
+    solana_net_utils::sockets::bind_to_localhost_for_tests_ipv4,
     solana_streamer::{
         packet::{Meta, Packet, PACKET_DATA_SIZE},
         recvmmsg::*,
     },
-    std::{net::Ipv4Addr, time::Instant},
+    std::time::Instant,
 };
 
 #[test]
 pub fn test_recv_mmsg_batch_size() {
-    let port_range = localhost_port_range_for_tests();
-    let mut port_range = port_range.0..port_range.1;
-    let reader_socket = bind_to(
-        std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
-        port_range.next().unwrap(),
-    )
-    .expect("should bind reader");
+    let reader_socket = bind_to_localhost_for_tests_ipv4();
     let addr = reader_socket.local_addr().unwrap();
-    let sender_socket = bind_to(
-        std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
-        port_range.next().unwrap(),
-    )
-    .expect("should bind sender");
+    let sender_socket = bind_to_localhost_for_tests_ipv4();
 
     const TEST_BATCH_SIZE: usize = 64;
     let sent = TEST_BATCH_SIZE;
