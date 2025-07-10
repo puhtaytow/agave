@@ -1813,9 +1813,8 @@ pub mod test {
         );
 
         let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let client_socket = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind reader");
+        let client_socket =
+            bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind reader");
         let mut endpoint = quinn::Endpoint::new(
             EndpointConfig::default(),
             None,
@@ -1979,9 +1978,7 @@ pub mod test {
     async fn test_quic_server_unstaked_node_connect_failure() {
         solana_logger::setup();
         let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let s = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind");
+        let s = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind");
         let exit = Arc::new(AtomicBool::new(false));
         let (sender, _) = unbounded();
         let keypair = Keypair::new();
@@ -2015,9 +2012,7 @@ pub mod test {
     async fn test_quic_server_multiple_streams() {
         solana_logger::setup();
         let port_range = localhost_port_range_for_tests();
-        let mut port_range = port_range.0..port_range.1;
-        let s = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.next().unwrap())
-            .expect("should bind");
+        let s = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind");
         let exit = Arc::new(AtomicBool::new(false));
         let (sender, receiver) = unbounded();
         let keypair = Keypair::new();
