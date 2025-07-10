@@ -1,15 +1,15 @@
+#[cfg(feature = "dev-context-only-utils")]
+use tokio::net::UdpSocket as TokioUdpSocket;
 use {
     crate::PortRange,
     log::warn,
     socket2::{Domain, SockAddr, Socket, Type},
     std::{
         io,
-        net::{IpAddr, SocketAddr, TcpListener, UdpSocket},
+        net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket},
         sync::atomic::{AtomicU16, Ordering},
     },
 };
-#[cfg(feature = "dev-context-only-utils")]
-use {std::net::Ipv4Addr, tokio::net::UdpSocket as TokioUdpSocket};
 // base port for deconflicted allocations
 const BASE_PORT: u16 = 5000;
 // how much to allocate per individual process.
@@ -42,6 +42,26 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
         };
     assert!(start < u16::MAX - 20, "ran out of port numbers!");
     (start, start + 20)
+}
+/// Wrapper around localhost_port_range_for_tests combined with bind_to,
+/// to provide consise way to bind sockets with non-overlapping ports
+/// for tests over loopback interface.
+///
+/// # Panics
+///
+/// Panics if it cannot allocate a port or bind the socket.
+///
+/// # Returns
+///
+/// A [`UdpSocket`] bound to loopback with a unique port.
+pub fn bind_to_localhost_for_tests_ipv4() -> UdpSocket {
+    let port_range = localhost_port_range_for_tests();
+    let mut port_range = port_range.0..port_range.1;
+    bind_to(
+        IpAddr::V4(Ipv4Addr::LOCALHOST),
+        port_range.next().expect("should iterate port"),
+    )
+    .expect("should bind socket")
 }
 
 pub fn bind_gossip_port_in_range(
