@@ -1272,12 +1272,18 @@ mod test {
             get_tmp_ledger_path_auto_delete,
             shred::max_ticks_per_n_shreds,
         },
-        solana_net_utils::{bind_to_localhost, bind_to_unspecified},
-        solana_runtime::bank::Bank,
-        solana_signer::Signer,
-        solana_streamer::socket::SocketAddrSpace,
-        solana_time_utils::timestamp,
-        std::collections::HashSet,
+        solana_net_utils::{
+            bind_to_unspecified,
+            sockets::{bind_to, localhost_port_range_for_tests},
+            solana_runtime::bank::Bank,
+            solana_signer::Signer,
+            solana_streamer::socket::SocketAddrSpace,
+            solana_time_utils::timestamp,
+            std::{
+                collections::HashSet,
+                net::{IpAddr, Ipv4Addr},
+            },
+        },
     };
 
     fn new_test_cluster_info() -> ClusterInfo {
@@ -1293,9 +1299,10 @@ mod test {
         let pubkey = cluster_info.id();
         let slot = 100;
         let shred_index = 50;
-        let reader = bind_to_localhost().expect("bind");
+        let port_range = localhost_port_range_for_tests();
+        let reader = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind");
         let address = reader.local_addr().unwrap();
-        let sender = bind_to_localhost().expect("bind");
+        let sender = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.1).expect("should bind");
         let outstanding_repair_requests = Arc::new(RwLock::new(OutstandingShredRepairs::default()));
 
         // Send a repair request
