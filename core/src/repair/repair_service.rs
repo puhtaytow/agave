@@ -1275,14 +1275,14 @@ mod test {
         solana_net_utils::{
             bind_to_unspecified,
             sockets::{bind_to, localhost_port_range_for_tests},
-            solana_runtime::bank::Bank,
-            solana_signer::Signer,
-            solana_streamer::socket::SocketAddrSpace,
-            solana_time_utils::timestamp,
-            std::{
-                collections::HashSet,
-                net::{IpAddr, Ipv4Addr},
-            },
+        },
+        solana_runtime::bank::Bank,
+        solana_signer::Signer,
+        solana_streamer::socket::SocketAddrSpace,
+        solana_time_utils::timestamp,
+        std::{
+            collections::HashSet,
+            net::{IpAddr, Ipv4Addr},
         },
     };
 
