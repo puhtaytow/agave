@@ -1016,11 +1016,6 @@ mod tests {
             let vote_account = vote_keypair.pubkey();
             let start_progress = Arc::new(RwLock::new(ValidatorStartProgress::default()));
             let repair_whitelist = Arc::new(RwLock::new(HashSet::new()));
-            let repair_socket = bind_to(
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                localhost_port_range_for_tests().0,
-            )
-            .expect("should bind");
             let meta = AdminRpcRequestMetadata {
                 rpc_addr: None,
                 start_time: SystemTime::now(),
@@ -1035,7 +1030,13 @@ mod tests {
                     vote_account,
                     repair_whitelist,
                     notifies: Arc::new(RwLock::new(KeyUpdaters::default())),
-                    repair_socket: Arc::new(repair_socket),
+                    repair_socket: Arc::new(
+                        bind_to(
+                            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                            localhost_port_range_for_tests().0,
+                        )
+                        .expect("should bind"),
+                    ),
                     outstanding_repair_requests: Arc::<
                         RwLock<repair_service::OutstandingShredRepairs>,
                     >::default(),
