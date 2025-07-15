@@ -4,12 +4,15 @@ use {
     criterion::{criterion_group, criterion_main, black_box, Criterion},
     rand::Rng,
     solana_entry::entry::{create_ticks, Entry},
+    solana_hash::Hash,
+    solana_keypair::Keypair,
     solana_ledger::shred::{
-        max_entries_per_n_shred, max_ticks_per_n_shreds, ProcessShredsStats, ReedSolomonCache,
-        Shred, ShredFlags, Shredder, LEGACY_SHRED_DATA_CAPACITY,
+        get_data_shred_bytes_per_batch_typical, max_entries_per_n_shred, max_ticks_per_n_shreds,
+        ProcessShredsStats, ReedSolomonCache, Shred, Shredder, DATA_SHREDS_PER_FEC_BLOCK,
     },
     solana_perf::test_tx,
     solana_sdk::{hash::Hash, signature::Keypair},
+    test::{black_box, Bencher},
 };
 
 fn make_test_entry(txs_per_entry: u64) -> Entry {
@@ -24,13 +27,17 @@ fn make_large_unchained_entries(txs_per_entry: u64, num_entries: u64) -> Vec<Ent
         .map(|_| make_test_entry(txs_per_entry))
         .collect()
 }
+const SHRED_SIZE_TYPICAL: usize = {
+    let batch_payload = get_data_shred_bytes_per_batch_typical() as usize;
+    batch_payload / DATA_SHREDS_PER_FEC_BLOCK
+};
 
 fn bench_shredder_ticks(c: &mut Criterion) {
     let kp = Keypair::new();
-    let shred_size = LEGACY_SHRED_DATA_CAPACITY;
-    let num_shreds = 1_000_000_usize.div_ceil(shred_size);
+
+    let num_shreds = 1_000_000_usize.div_ceil(SHRED_SIZE_TYPICAL);
     // ~1Mb
-    let num_ticks = max_ticks_per_n_shreds(1, Some(LEGACY_SHRED_DATA_CAPACITY)) * num_shreds as u64;
+    let num_ticks = max_ticks_per_n_shreds(1, Some(SHRED_SIZE_TYPICAL)) * num_shreds as u64;
     let entries = create_ticks(num_ticks, 0, Hash::default());
     let reed_solomon_cache = ReedSolomonCache::default();
     let chained_merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
@@ -54,7 +61,7 @@ fn bench_shredder_ticks(c: &mut Criterion) {
 
 fn bench_shredder_large_entries(c: &mut Criterion) {
     let kp = Keypair::new();
-    let shred_size = LEGACY_SHRED_DATA_CAPACITY;
+    let shred_size = SHRED_SIZE_TYPICAL;
     let num_shreds = 1_000_000_usize.div_ceil(shred_size);
     let txs_per_entry = 128;
     let num_entries = max_entries_per_n_shred(
@@ -86,7 +93,7 @@ fn bench_shredder_large_entries(c: &mut Criterion) {
 
 fn bench_deshredder(c: &mut Criterion) {
     let kp = Keypair::new();
-    let shred_size = LEGACY_SHRED_DATA_CAPACITY;
+    let shred_size = SHRED_SIZE_TYPICAL;
     // ~10Mb
     let num_shreds = 10_000_000_usize.div_ceil(shred_size);
     let num_ticks = max_ticks_per_n_shreds(1, Some(shred_size)) * num_shreds as u64;
@@ -113,11 +120,27 @@ fn bench_deshredder(c: &mut Criterion) {
     });
 }
 
-fn bench_deserialize_hdr(c: &mut Criterion) {
-    let data = vec![0; LEGACY_SHRED_DATA_CAPACITY];
-
-    let shred = Shred::new_from_data(2, 1, 1, &data, ShredFlags::LAST_SHRED_IN_SLOT, 0, 0, 1);
-
+fn bench_deserialize_hdr(bencher: &mut Bencher) {
+    let keypair = Keypair::new();
+    let shredder = Shredder::new(2, 1, 0, 0).unwrap();
+    let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
+    let mut stats = ProcessShredsStats::default();
+    let reed_solomon_cache = ReedSolomonCache::default();
+    let mut shreds = shredder
+        .make_merkle_shreds_from_entries(
+            &keypair,
+            &[],
+            true, // is_last_in_slot
+            merkle_root,
+            1, // next_shred_index
+            0, // next_code_index
+            &reed_solomon_cache,
+            &mut stats,
+        )
+        .filter(Shred::is_data)
+        .collect::<Vec<_>>();
+    let shred = shreds.remove(0);
+  
     c.bench_function("deserialize_hdr", |b| {
         b.iter(|| {
             let payload = shred.payload().clone();
@@ -137,22 +160,22 @@ fn bench_shredder_coding(c: &mut Criterion) {
     let shredder = Shredder::new(1, 0, 0, 0).unwrap();
     let reed_solomon_cache = ReedSolomonCache::default();
     let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
-    c.bench_function("shredder_coding", |b| {
-        b.iter(|| {
-            let result = shredder.entries_to_shreds(
+
+    bencher.iter(|| {
+        let result: Vec<_> = shredder
+            .make_merkle_shreds_from_entries(
                 &Keypair::new(),
                 &entries,
-            true, // is_last_in_slot
-            merkle_root,
-            0,     // next_shred_index
-            0,     // next_code_index
-            false, // merkle_variant
-            &reed_solomon_cache,
+                true, // is_last_in_slot
+                merkle_root,
+                0, // next_shred_index
+                0, // next_code_index
+                &reed_solomon_cache,
                 &mut ProcessShredsStats::default(),
-            );
-            black_box(result);
-        })
-    });
+            )
+            .collect();
+        black_box(result);
+    })
 }
 
 fn bench_shredder_decoding(c: &mut Criterion) {
@@ -160,17 +183,18 @@ fn bench_shredder_decoding(c: &mut Criterion) {
     let shredder = Shredder::new(1, 0, 0, 0).unwrap();
     let reed_solomon_cache = ReedSolomonCache::default();
     let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
-    let (_data_shreds, coding_shreds) = shredder.entries_to_shreds(
-        &Keypair::new(),
-        &entries,
-        true, // is_last_in_slot
-        merkle_root,
-        0,     // next_shred_index
-        0,     // next_code_index
-        false, // merkle_variant
-        &reed_solomon_cache,
-        &mut ProcessShredsStats::default(),
-    );
+    let (_data_shreds, coding_shreds): (Vec<_>, Vec<_>) = shredder
+        .make_merkle_shreds_from_entries(
+            &Keypair::new(),
+            &entries,
+            true, // is_last_in_slot
+            merkle_root,
+            0, // next_shred_index
+            0, // next_code_index
+            &reed_solomon_cache,
+            &mut ProcessShredsStats::default(),
+        )
+        .partition(Shred::is_data);
 
     c.bench_function("shredder_decoding", |b| {
         b.iter(|| {
