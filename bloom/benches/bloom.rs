@@ -66,7 +66,6 @@ fn bench_sigs_hashmap(b: &mut Bencher) {
     let mut id = blockhash;
     let mut falses = 0;
     let mut iterations = 0;
-
     b.iter(|| {
         id = hash(id.as_ref());
         let mut sigbytes = Vec::from(id.as_ref());
@@ -90,7 +89,6 @@ fn bench_add_hash(b: &mut Bencher) {
         .take(1200)
         .collect();
     let mut fail = 0;
-
     b.iter(|| {
         let mut bloom = Bloom::random(1287, 0.1, 7424);
         for hash_value in &hash_values {
@@ -110,7 +108,6 @@ fn bench_add_hash_atomic(b: &mut Bencher) {
         .take(1200)
         .collect();
     let mut fail = 0;
-
     b.iter(|| {
         let bloom: ConcurrentBloom<_> = Bloom::random(1287, 0.1, 7424).into();
         // Intentionally not using parallelism here, so that this and above
