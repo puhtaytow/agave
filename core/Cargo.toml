@@ -242,6 +242,10 @@ name = "shredder"
 harness = false
 
 [[bench]]
+name = "scheduler"
+harness = false
+
+[[bench]]
 name = "sigverify_stage"
 harness = false
 
