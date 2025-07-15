@@ -56,6 +56,7 @@ fn bench_sigs_bloom(b: &mut Bencher) {
         sigs.contains(&sig);
         iterations += 1;
     });
+    assert_eq!(falses, 0);
 }
 
 fn bench_sigs_hashmap(b: &mut Bencher) {
