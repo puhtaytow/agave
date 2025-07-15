@@ -42,7 +42,6 @@ fn bench_sigs_bloom(b: &mut Bencher) {
     let mut id = blockhash;
     let mut falses = 0;
     let mut iterations = 0;
-
     b.iter(|| {
         id = hash(id.as_ref());
         let mut sigbytes = Vec::from(id.as_ref());
