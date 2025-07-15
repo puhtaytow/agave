@@ -182,7 +182,7 @@ thiserror = { workspace = true }
 zstd = { workspace = true }
 
 [dev-dependencies]
-criterion = { workspace = true }
+bencher = { workspace = true }
 agave-transaction-view = { workspace = true }
 ed25519-dalek = { workspace = true }
 libsecp256k1 = { workspace = true }
