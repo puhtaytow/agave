@@ -11,6 +11,7 @@ use {
     lru::LruCache,
     rand::Rng,
     rayon::{prelude::*, ThreadPool, ThreadPoolBuilder},
+    solana_clock::Slot,
     solana_gossip::{cluster_info::ClusterInfo, contact_info::Protocol},
     solana_ledger::{
         leader_schedule_cache::LeaderScheduleCache,
@@ -18,6 +19,7 @@ use {
     },
     solana_measure::measure::Measure,
     solana_perf::deduper::Deduper,
+    solana_pubkey::Pubkey,
     solana_rpc::{
         max_slots::MaxSlots, rpc_subscriptions::RpcSubscriptions,
         slot_status_notifier::SlotStatusNotifier,
@@ -27,11 +29,11 @@ use {
         bank::{Bank, MAX_LEADER_SCHEDULE_STAKES},
         bank_forks::BankForks,
     },
-    solana_sdk::{clock::Slot, pubkey::Pubkey, timing::timestamp},
     solana_streamer::{
         sendmmsg::{multi_target_send, SendPktsError},
         socket::SocketAddrSpace,
     },
+    solana_time_utils::timestamp,
     static_assertions::const_assert_eq,
     std::{
         borrow::Cow,
@@ -217,6 +219,9 @@ enum RetransmitSocket<'a> {
     Xdp(&'a XdpSender),
 }
 
+/// The number of shreds to pull from the retransmit_receiver at a time.
+const RETRANSMIT_BATCH_SIZE: usize = 4096;
+
 // pull the shreds from the shreds_receiver until empty, then retransmit them.
 // uses a thread_pool to parallelize work if there are enough shreds to justify that
 #[allow(clippy::too_many_arguments)]
@@ -236,12 +241,15 @@ fn retransmit(
     max_slots: &MaxSlots,
     rpc_subscriptions: Option<&RpcSubscriptions>,
     slot_status_notifier: Option<&SlotStatusNotifier>,
+    shred_buf: &mut Vec<Vec<shred::Payload>>,
 ) -> Result<(), RecvError> {
     // Try to receive shreds from the channel without blocking. If the channel
     // is empty precompute turbine trees speculatively. If no cache updates are
     // made then block on the channel until some shreds are received.
-    let mut shreds = match retransmit_receiver.try_recv() {
-        Ok(shreds) => shreds,
+    match retransmit_receiver.try_recv() {
+        Ok(shreds) => {
+            shred_buf.push(shreds);
+        }
         Err(TryRecvError::Disconnected) => return Err(RecvError),
         Err(TryRecvError::Empty) => {
             if cache_retransmit_addrs(
@@ -254,14 +262,23 @@ fn retransmit(
             ) {
                 return Ok(());
             }
-            retransmit_receiver.recv()?
+            shred_buf.push(retransmit_receiver.recv()?);
         }
     };
     // now the batch has started
     let mut timer_start = Measure::start("retransmit");
-    // drain the channel until it is empty to form a batch
-    shreds.extend(retransmit_receiver.try_iter().flatten());
-    stats.num_shreds += shreds.len();
+    let mut num_shreds = shred_buf[0].len();
+    // Create a RETRANSMIT_BATCH_SIZE sized batch from the channel
+    for shreds in retransmit_receiver
+        .try_iter()
+        // We already pulled 1 batch
+        .take(RETRANSMIT_BATCH_SIZE - 1)
+    {
+        num_shreds += shreds.len();
+        shred_buf.push(shreds);
+    }
+
+    stats.num_shreds += num_shreds;
     stats.total_batches += 1;
 
     let mut epoch_fetch = Measure::start("retransmit_epoch_fetch");
@@ -281,8 +298,9 @@ fn retransmit(
     epoch_cache_update.stop();
     stats.epoch_cache_update += epoch_cache_update.as_us();
     // Lookup slot leader and cluster nodes for each slot.
-    let cache: HashMap<Slot, _> = shreds
+    let cache: HashMap<Slot, _> = shred_buf
         .iter()
+        .flatten()
         .filter_map(|shred| shred::layout::get_slot(shred))
         .collect::<HashSet<Slot>>()
         .into_iter()
@@ -295,7 +313,7 @@ fn retransmit(
             // skip the shred.
             let Some(slot_leader) = leader_schedule_cache.slot_leader_at(slot, Some(&working_bank))
             else {
-                stats.unknown_shred_slot_leader += shreds.len();
+                stats.unknown_shred_slot_leader += num_shreds;
                 return None;
             };
             let cluster_nodes =
@@ -331,17 +349,19 @@ fn retransmit(
         socket
     };
 
-    let slot_stats = if shreds.len() < PAR_ITER_MIN_NUM_SHREDS {
+    let slot_stats = if num_shreds < PAR_ITER_MIN_NUM_SHREDS {
         stats.num_small_batches += 1;
-        shreds
-            .into_iter()
+        shred_buf
+            .drain(..)
+            .flatten()
             .enumerate()
             .filter_map(|(index, shred)| retransmit_shred(shred, retransmit_socket(index), stats))
             .fold(HashMap::new(), record)
     } else {
         thread_pool.install(|| {
-            shreds
-                .into_par_iter()
+            shred_buf
+                .par_drain(..)
+                .flatten()
                 .filter_map(|shred| {
                     retransmit_shred(
                         shred,
@@ -602,6 +622,7 @@ impl RetransmitStage {
             .name("solRetransmittr".to_string())
             .spawn({
                 move || {
+                    let mut shred_buf = Vec::with_capacity(RETRANSMIT_BATCH_SIZE);
                     while retransmit(
                         &thread_pool,
                         &bank_forks,
@@ -618,6 +639,7 @@ impl RetransmitStage {
                         &max_slots,
                         rpc_subscriptions.as_deref(),
                         slot_status_notifier.as_ref(),
+                        &mut shred_buf,
                     )
                     .is_ok()
                     {}
@@ -829,8 +851,10 @@ mod tests {
         super::*,
         rand::SeedableRng,
         rand_chacha::ChaChaRng,
-        solana_ledger::shred::{Shred, ShredFlags},
-        solana_sdk::signature::Keypair,
+        solana_entry::entry::create_ticks,
+        solana_hash::Hash,
+        solana_keypair::Keypair,
+        solana_ledger::shred::{ProcessShredsStats, ReedSolomonCache, Shredder},
     };
 
     fn get_keypair() -> Keypair {
@@ -845,74 +869,109 @@ mod tests {
     }
 
     #[test]
-    fn test_already_received() {
-        let slot = 1;
-        let index = 5;
-        let version = 0x40;
+    fn test_shred_deduper() {
         let keypair = get_keypair();
-        let mut shred = Shred::new_from_data(
-            slot,
-            index,
-            0,
-            &[],
-            ShredFlags::LAST_SHRED_IN_SLOT,
-            0,
-            version,
-            0,
-        );
-        shred.sign(&keypair);
+        let entries = create_ticks(10, 1, Hash::new_unique());
+        let rsc = ReedSolomonCache::default();
+        let make_shreds_for_slot = |slot, parent, code_index| {
+            let shredder = Shredder::new(slot, parent, 1, 0).unwrap();
+            shredder.entries_to_shreds(
+                &keypair,
+                &entries,
+                true,
+                // chained_merkle_root
+                Some(Hash::new_from_array(rand::thread_rng().gen())),
+                0,
+                code_index,
+                true,
+                &rsc,
+                &mut ProcessShredsStats::default(),
+            )
+        };
+
         let mut rng = ChaChaRng::from_seed([0xa5; 32]);
         let shred_deduper = ShredDeduper::<2>::new(&mut rng, /*num_bits:*/ 640_007);
-        // unique shred for (1, 5) should pass
-        assert!(!shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-        // duplicate shred for (1, 5) blocked
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-        let mut shred = Shred::new_from_data(
-            slot,
-            index,
-            2,
-            &[],
-            ShredFlags::LAST_SHRED_IN_SLOT,
-            0,
-            version,
-            0,
+
+        // make a set of shreds for slot 5 with parent slot 4
+        let (shreds_data_5_4, shreds_code_5_4) = make_shreds_for_slot(5, 4, 0);
+        // make a set of shreds for slot 5 with parent slot 3
+        let (shreds_data_5_3, _shreds_code_5_3) = make_shreds_for_slot(5, 3, 0);
+        // make a set of shreds for slot 5 with parent slot 2
+        let (shreds_data_5_2, _shreds_code_5_2) = make_shreds_for_slot(5, 2, 0);
+        // pick a shred for tests
+        let shred = shreds_data_5_4.last().unwrap().clone();
+        // unique shred should pass
+        assert!(
+            !shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT),
+            "First time shred X => Not dup because it is the only shred"
         );
-        shred.sign(&keypair);
-        // first duplicate shred for (1, 5) passed
-        assert!(!shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-        // then blocked
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-
-        let mut shred = Shred::new_from_data(
-            slot,
-            index,
-            8,
-            &[],
-            ShredFlags::LAST_SHRED_IN_SLOT,
-            0,
-            version,
-            0,
+        // duplicate shred blocked
+        assert!(
+            shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT),
+            "
+            Second time shred X => Dup because common header is duplicate
+            "
         );
-        shred.sign(&keypair);
-        // 2nd duplicate shred for (1, 5) blocked
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-
-        let shred = Shred::new_from_parity_shard(slot, index, &[], 0, 1, 1, 0, version);
-        // Coding at (1, 5) passes
-        assert!(!shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
+        // Pick a shred with same index as `shred` but different parent offset
+        let shred_dup = shreds_data_5_3.last().unwrap().clone();
+        // first shred passed through
+        assert!(!shred_deduper.dedup(shred_dup.id(), shred_dup.payload(), MAX_DUPLICATE_COUNT),
+        "First time seeing shred X with differnt parent slot (3 instead of 4) => Not dup because common header is unique & shred ID only seen once"
+        );
         // then blocked
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
+        assert!(shred_deduper.dedup(shred_dup.id(), shred_dup.payload(), MAX_DUPLICATE_COUNT),
+        "Second time seeing shred X with parent slot 3 => Dup because common header is not unique & shred ID seen twice"
+        );
 
-        let shred = Shred::new_from_parity_shard(slot, index, &[], 2, 1, 1, 0, version);
-        // 2nd unique coding at (1, 5) passes
-        assert!(!shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
+        let shred_dup2 = shreds_data_5_2.last().unwrap().clone();
+
+        assert!(shred_deduper.dedup(shred_dup2.id(), shred_dup2.payload(), MAX_DUPLICATE_COUNT),
+            "First time seeing shred X with parent slot 2 => Dup because common header is unique but shred ID seen twice already"
+        );
+
+        /* Coding shreds */
+
+        // Pick a coding shred at index 4 based off FEC set index 0
+        let shred = shreds_code_5_4[4].clone();
+        // Coding passes
+        assert!(
+            !shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT),
+            "
+           First time seeing coding shred Y => Not dup because common header & shred ID are unique"
+        );
+        // then blocked
+        assert!(
+            shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT),
+            "
+            Second time seeing coding shred Y => Dup because common header is dup
+            "
+        );
+
+        // Make a coding shred at index 4 based off FEC set index 2
+        let (_, shreds_code_invalid) = make_shreds_for_slot(5, 4, 2);
+
+        let shred_inv_code_1 = shreds_code_invalid[2].clone();
+        assert_eq!(
+            shred.index(),
+            shred_inv_code_1.index(),
+            "we want a shred with same index but different FEC set index"
+        );
+        // 2nd unique coding passes
+        assert!(!shred_deduper.dedup(shred_inv_code_1.id(), shred_inv_code_1.payload(), MAX_DUPLICATE_COUNT),
+            "First time seeing shred Y w/ changed header (FEC Set index 2) => Not dup because common header is unique & shred ID only seen once");
         // same again is blocked
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
+        assert!(shred_deduper.dedup(shred_inv_code_1.id(), shred_inv_code_1.payload(), MAX_DUPLICATE_COUNT),"
+           Second time seeing shred Y w/ changed header (FEC Set index 2) => Dup because common header is not unique & shred ID seen twice ");
+        // Make a coding shred at index 4 based off FEC set index 3
+        let (_, shreds_code_invalid) = make_shreds_for_slot(5, 4, 3);
 
-        let shred = Shred::new_from_parity_shard(slot, index, &[], 3, 1, 1, 0, version);
-        // Another unique coding at (1, 5) always blocked
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
-        assert!(shred_deduper.dedup(shred.id(), shred.payload(), MAX_DUPLICATE_COUNT));
+        let shred_inv_code_2 = shreds_code_invalid[1].clone();
+        assert_eq!(
+            shred.index(),
+            shred_inv_code_2.index(),
+            "we want a shred with same index but different FEC set index"
+        );
+        assert!(shred_deduper.dedup(shred_inv_code_2.id(), shred_inv_code_2.payload(), MAX_DUPLICATE_COUNT),"
+           First time seeing shred Y w/ changed header (FEC Set index 3)=>Dup because common header is unique but shred ID seen twice already");
     }
 }
