@@ -1,5 +1,5 @@
 use {
-    criterion::{criterion_group, criterion_main, Criterion},
+    bencher::{benchmark_group, benchmark_main, Bencher},
     rand::{thread_rng, Rng},
     solana_compute_budget_interface::ComputeBudgetInstruction,
     solana_message::Message,
@@ -35,7 +35,7 @@ fn build_sanitized_transaction(
     RuntimeTransaction::from_transaction_for_tests(transaction)
 }
 
-fn bench_process_transactions_single_slot(c: &mut Criterion) {
+fn bench_process_transactions_single_slot(b: &mut Bencher) {
     let prioritization_fee_cache = PrioritizationFeeCache::default();
 
     let bank = Arc::new(Bank::default_for_tests());
@@ -52,10 +52,8 @@ fn bench_process_transactions_single_slot(c: &mut Criterion) {
         })
         .collect();
 
-    c.bench_function("process_transactions_single_slot", |b| {
-        b.iter(|| {
-            prioritization_fee_cache.update(&bank, transactions.iter());
-        });
+    b.iter(|| {
+        prioritization_fee_cache.update(&bank, transactions.iter());
     });
 }
 
@@ -88,7 +86,7 @@ fn process_transactions_multiple_slots(banks: &[Arc<Bank>], num_slots: usize, nu
     }
 }
 
-fn bench_process_transactions_multiple_slots(c: &mut Criterion) {
+fn bench_process_transactions_multiple_slots(b: &mut Bencher) {
     const NUM_SLOTS: usize = 5;
     const NUM_THREADS: usize = 3;
 
@@ -101,16 +99,14 @@ fn bench_process_transactions_multiple_slots(c: &mut Criterion) {
         .map(|n| Arc::new(Bank::new_from_parent(bank.clone(), &collector, n as u64)))
         .collect::<Vec<_>>();
 
-    c.bench_function("process_transactions_multiple_slots", |b| {
-        b.iter(|| {
-            process_transactions_multiple_slots(&banks, NUM_SLOTS, NUM_THREADS);
-        });
+    b.iter(|| {
+        process_transactions_multiple_slots(&banks, NUM_SLOTS, NUM_THREADS);
     });
 }
 
-criterion_group!(
+benchmark_group!(
     benches,
     bench_process_transactions_single_slot,
     bench_process_transactions_multiple_slots
 );
-criterion_main!(benches);
+benchmark_main!(benches);

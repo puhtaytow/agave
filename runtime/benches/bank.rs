@@ -1,7 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use {
-    criterion::{criterion_group, criterion_main, Criterion},
+    bencher::{benchmark_group, benchmark_main, Bencher},
     log::*,
     solana_client_traits::{AsyncClient, SyncClient},
     solana_clock::MAX_RECENT_BLOCKHASHES,
@@ -105,6 +105,7 @@ fn async_bencher(bank: &Bank, bank_client: &BankClient, transactions: &[(Transac
 }
 
 #[allow(clippy::type_complexity)]
+fn do_bench_transactions(
     bencher: &mut Bencher,
     bench_work: &dyn Fn(&Bank, &BankClient, &[(Transaction, Hash)]),
     create_transactions: &dyn Fn(&BankClient, &Keypair) -> Vec<(Transaction, Hash)>,
@@ -133,32 +134,30 @@ fn async_bencher(bank: &Bank, bank_client: &BankClient, transactions: &[(Transac
     let results = bank.process_transactions(transactions.iter().map(|(tx, _)| tx));
     assert!(results.iter().all(Result::is_ok));
 
-    c.bench_function("process_transactions", |b| {
-        // Since bencher runs this multiple times, we need to clear the signatures.
-        bank.clear_signatures();
-        b.iter(|| {
-            bench_work(&bank, &bank_client, &transactions);
-        });
+    // Since bencher runs this multiple times, we need to clear the signatures.
+    bank.clear_signatures();
+    b.iter(|| {
+        bench_work(&bank, &bank_client, &transactions);
     });
 }
 
-fn bench_bank_sync_process_builtin_transactions(c: &mut Criterion) {
-    do_bench_transactions(c, &sync_bencher, &create_builtin_transactions);
+fn bench_bank_sync_process_builtin_transactions(b: &mut Bencher) {
+    do_bench_transactions(b, &sync_bencher, &create_builtin_transactions);
 }
 
-fn bench_bank_sync_process_native_loader_transactions(c: &mut Criterion) {
-    do_bench_transactions(c, &sync_bencher, &create_native_loader_transactions);
+fn bench_bank_sync_process_native_loader_transactions(b: &mut Bencher) {
+    do_bench_transactions(b, &sync_bencher, &create_native_loader_transactions);
 }
 
-fn bench_bank_async_process_builtin_transactions(c: &mut Criterion) {
-    do_bench_transactions(c, &async_bencher, &create_builtin_transactions);
+fn bench_bank_async_process_builtin_transactions(b: &mut Bencher) {
+    do_bench_transactions(b, &async_bencher, &create_builtin_transactions);
 }
 
-fn bench_bank_async_process_native_loader_transactions(c: &mut Criterion) {
-    do_bench_transactions(c, &async_bencher, &create_native_loader_transactions);
+fn bench_bank_async_process_native_loader_transactions(b: &mut Bencher) {
+    do_bench_transactions(b, &async_bencher, &create_native_loader_transactions);
 }
 
-fn bench_bank_update_recent_blockhashes(c: &mut Criterion) {
+fn bench_bank_update_recent_blockhashes(b: &mut Bencher) {
     let (genesis_config, _mint_keypair) = create_genesis_config(100);
     let mut bank = Arc::new(Bank::new_for_benches(&genesis_config));
     goto_end_of_slot(bank.clone());
@@ -174,14 +173,12 @@ fn bench_bank_update_recent_blockhashes(c: &mut Criterion) {
     }
     // Verify blockhash_queue is full (genesis hash has been kicked out)
     assert!(!bank.is_hash_valid_for_age(&genesis_hash, MAX_RECENT_BLOCKHASHES));
-    c.bench_function("update_recent_blockhashes", |b| {
-        b.iter(|| {
-            bank.update_recent_blockhashes();
-        });
+    b.iter(|| {
+        bank.update_recent_blockhashes();
     });
 }
 
-criterion_group!(
+benchmark_group!(
     benches,
     bench_bank_async_process_builtin_transactions,
     bench_bank_async_process_native_loader_transactions,
@@ -189,4 +186,4 @@ criterion_group!(
     bench_bank_sync_process_native_loader_transactions,
     bench_bank_update_recent_blockhashes,
 );
-criterion_main!(benches);
+benchmark_main!(benches);
