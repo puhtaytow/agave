@@ -1,7 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use {
-    criterion::{criterion_group, criterion_main, black_box, Criterion},
+    bencher::{benchmark_group, benchmark_main, Bencher},
     rand::Rng,
     solana_entry::entry::{create_ticks, Entry},
     solana_hash::Hash,
@@ -32,7 +32,7 @@ const SHRED_SIZE_TYPICAL: usize = {
     batch_payload / DATA_SHREDS_PER_FEC_BLOCK
 };
 
-fn bench_shredder_ticks(c: &mut Criterion) {
+fn bench_shredder_ticks(b: &mut Bencher) {
     let kp = Keypair::new();
 
     let num_shreds = 1_000_000_usize.div_ceil(SHRED_SIZE_TYPICAL);
@@ -41,25 +41,23 @@ fn bench_shredder_ticks(c: &mut Criterion) {
     let entries = create_ticks(num_ticks, 0, Hash::default());
     let reed_solomon_cache = ReedSolomonCache::default();
     let chained_merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
-    c.bench_function("shredder_ticks", |b| {
-        b.iter(|| {
-            let shredder = Shredder::new(1, 0, 0, 0).unwrap();
-            shredder.entries_to_shreds(
-                &kp,
-                &entries,
-                true,
-                chained_merkle_root,
-                0,
-                0,
-                true, // merkle_variant
-                &reed_solomon_cache,
-                &mut ProcessShredsStats::default(),
-            );
-        })
-    });
+    b.iter(|| {
+        let shredder = Shredder::new(1, 0, 0, 0).unwrap();
+        shredder.entries_to_shreds(
+            &kp,
+            &entries,
+            true,
+            chained_merkle_root,
+            0,
+            0,
+            true, // merkle_variant
+            &reed_solomon_cache,
+            &mut ProcessShredsStats::default(),
+        );
+    })
 }
 
-fn bench_shredder_large_entries(c: &mut Criterion) {
+fn bench_shredder_large_entries(b: &mut Bencher) {
     let kp = Keypair::new();
     let shred_size = SHRED_SIZE_TYPICAL;
     let num_shreds = 1_000_000_usize.div_ceil(shred_size);
@@ -73,25 +71,23 @@ fn bench_shredder_large_entries(c: &mut Criterion) {
     let chained_merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
     let reed_solomon_cache = ReedSolomonCache::default();
     // 1Mb
-    c.bench_function("shredder_large_entries", |b| {
-        b.iter(|| {
-            let shredder = Shredder::new(1, 0, 0, 0).unwrap();
-            shredder.entries_to_shreds(
-                &kp,
+    b.iter(|| {
+        let shredder = Shredder::new(1, 0, 0, 0).unwrap();
+        shredder.entries_to_shreds(
+            &kp,
             &entries,
             true,
             chained_merkle_root,
             0,
-                0,
-                true, // merkle_variant
-                &reed_solomon_cache,
-                &mut ProcessShredsStats::default(),
-            );
-        })
-    });
+            0,
+            true, // merkle_variant
+            &reed_solomon_cache,
+            &mut ProcessShredsStats::default(),
+        );
+    })
 }
 
-fn bench_deshredder(c: &mut Criterion) {
+fn bench_deshredder(b: &mut Bencher) {
     let kp = Keypair::new();
     let shred_size = SHRED_SIZE_TYPICAL;
     // ~10Mb
@@ -111,16 +107,14 @@ fn bench_deshredder(c: &mut Criterion) {
         &ReedSolomonCache::default(),
         &mut ProcessShredsStats::default(),
     );
-    c.bench_function("deshredder", |b| {
-        b.iter(|| {
-            let data_shreds = data_shreds.iter().map(Shred::payload);
-            let raw = &mut Shredder::deshred(data_shreds).unwrap();
-            assert_ne!(raw.len(), 0);
-        })
-    });
+    b.iter(|| {
+        let data_shreds = data_shreds.iter().map(Shred::payload);
+        let raw = &mut Shredder::deshred(data_shreds).unwrap();
+        assert_ne!(raw.len(), 0);
+    })
 }
 
-fn bench_deserialize_hdr(bencher: &mut Bencher) {
+fn bench_deserialize_hdr(b: &mut Bencher) {
     let keypair = Keypair::new();
     let shredder = Shredder::new(2, 1, 0, 0).unwrap();
     let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
@@ -140,13 +134,11 @@ fn bench_deserialize_hdr(bencher: &mut Bencher) {
         .filter(Shred::is_data)
         .collect::<Vec<_>>();
     let shred = shreds.remove(0);
-  
-    c.bench_function("deserialize_hdr", |b| {
-        b.iter(|| {
-            let payload = shred.payload().clone();
-            let _ = Shred::new_from_serialized_shred(payload).unwrap();
-        })
-    });
+
+    b.iter(|| {
+        let payload = shred.payload().clone();
+        let _ = Shred::new_from_serialized_shred(payload).unwrap();
+    })
 }
 
 fn make_entries() -> Vec<Entry> {
@@ -155,13 +147,13 @@ fn make_entries() -> Vec<Entry> {
     make_large_unchained_entries(txs_per_entry, num_entries)
 }
 
-fn bench_shredder_coding(c: &mut Criterion) {
+fn bench_shredder_coding(b: &mut Bencher) {
     let entries = make_entries();
     let shredder = Shredder::new(1, 0, 0, 0).unwrap();
     let reed_solomon_cache = ReedSolomonCache::default();
     let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
 
-    bencher.iter(|| {
+    b.iter(|| {
         let result: Vec<_> = shredder
             .make_merkle_shreds_from_entries(
                 &Keypair::new(),
@@ -178,7 +170,7 @@ fn bench_shredder_coding(c: &mut Criterion) {
     })
 }
 
-fn bench_shredder_decoding(c: &mut Criterion) {
+fn bench_shredder_decoding(b: &mut Bencher) {
     let entries = make_entries();
     let shredder = Shredder::new(1, 0, 0, 0).unwrap();
     let reed_solomon_cache = ReedSolomonCache::default();
@@ -196,13 +188,19 @@ fn bench_shredder_decoding(c: &mut Criterion) {
         )
         .partition(Shred::is_data);
 
-    c.bench_function("shredder_decoding", |b| {
-        b.iter(|| {
-            let result = Shredder::try_recovery(coding_shreds.clone(), &reed_solomon_cache).unwrap();
-            black_box(result);
-        })
-    });
+    b.iter(|| {
+        let result = Shredder::try_recovery(coding_shreds.clone(), &reed_solomon_cache).unwrap();
+        black_box(result);
+    })
 }
 
-criterion_group!(benches, bench_shredder_ticks, bench_shredder_large_entries, bench_deshredder, bench_deserialize_hdr, bench_shredder_coding, bench_shredder_decoding);
-criterion_main!(benches);
+benchmark_group!(
+    benches,
+    bench_shredder_ticks,
+    bench_shredder_large_entries,
+    bench_deshredder,
+    bench_deserialize_hdr,
+    bench_shredder_coding,
+    bench_shredder_decoding
+);
+benchmark_main!(benches);

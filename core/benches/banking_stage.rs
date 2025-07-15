@@ -2,21 +2,16 @@
 
 use {
     agave_banking_stage_ingress_types::BankingPacketBatch,
-    criterion::{criterion_group, criterion_main, Criterion},
-    solana_core::{
-        banking_trace::Channels,
-        validator::{BlockProductionMethod, TransactionStructure},
-    },
-    solana_vote::vote_transaction::new_tower_sync_transaction,
-    solana_vote_program::vote_state::TowerSync,
-};
-
-use {
+    bencher::{benchmark_group, benchmark_main, Bencher},
     crossbeam_channel::{unbounded, Receiver},
     log::*,
     rand::{thread_rng, Rng},
     rayon::prelude::*,
-    solana_core::{banking_stage::BankingStage, banking_trace::BankingTracer},
+    solana_core::{
+        banking_stage::BankingStage,
+        banking_trace::{BankingTracer, Channels},
+        validator::{BlockProductionMethod, TransactionStructure},
+    },
     solana_entry::entry::{next_hash, Entry},
     solana_genesis_config::GenesisConfig,
     solana_gossip::cluster_info::{ClusterInfo, Node},
@@ -42,6 +37,8 @@ use {
     solana_system_transaction as system_transaction,
     solana_time_utils::timestamp,
     solana_transaction::{versioned::VersionedTransaction, Transaction},
+    solana_vote::vote_transaction::new_tower_sync_transaction,
+    solana_vote_program::vote_state::TowerSync,
     std::{
         iter::repeat_with,
         sync::{atomic::Ordering, Arc},
@@ -133,7 +130,7 @@ enum TransactionType {
 }
 
 fn bench_banking(
-    c: &mut Criterion,
+    b: &mut Bencher,
     tx_type: TransactionType,
     block_production_method: BlockProductionMethod,
     transaction_struct: TransactionStructure,
@@ -264,11 +261,11 @@ fn bench_banking(
     // calling send() on the channel.
     let signal_receiver = Arc::new(signal_receiver);
     let signal_receiver2 = signal_receiver;
-    c.bench_function("banking_stage", |b| {
-        b.iter( || {
-            let now = Instant::now();
-            let mut sent = 0;
-            if let Some(vote_packets) = &vote_packets {
+
+    b.iter(|| {
+        let now = Instant::now();
+        let mut sent = 0;
+        if let Some(vote_packets) = &vote_packets {
             tpu_vote_sender
                 .send(BankingPacketBatch::new(
                     vote_packets[start..start + chunk_len].to_vec(),
@@ -309,79 +306,78 @@ fn bench_banking(
             sent,
         );
         start += chunk_len;
-            start %= verified.len();
-        });
+        start %= verified.len();
     });
     exit.store(true, Ordering::Relaxed);
     poh_service.join().unwrap();
 }
 
-fn bench_banking_stage_multi_accounts(c: &mut Criterion) {
+fn bench_banking_stage_multi_accounts(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::Accounts,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::Sdk,
     );
 }
 
-fn bench_banking_stage_multi_programs(c: &mut Criterion) {
+fn bench_banking_stage_multi_programs(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::Programs,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::Sdk,
     );
 }
 
-fn bench_banking_stage_multi_accounts_with_voting(c: &mut Criterion) {
+fn bench_banking_stage_multi_accounts_with_voting(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::AccountsAndVotes,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::Sdk,
     );
 }
 
-fn bench_banking_stage_multi_programs_with_voting(c: &mut Criterion) {
+fn bench_banking_stage_multi_programs_with_voting(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::ProgramsAndVotes,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::Sdk,
     );
 }
 
-fn bench_banking_stage_multi_accounts_view(c: &mut Criterion) {
+fn bench_banking_stage_multi_accounts_view(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::Accounts,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::View,
     );
 }
 
-fn bench_banking_stage_multi_programs_view(c: &mut Criterion) {
+fn bench_banking_stage_multi_programs_view(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::Programs,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::View,
     );
 }
 
-fn bench_banking_stage_multi_accounts_with_voting_view(c: &mut Criterion) {
+fn bench_banking_stage_multi_accounts_with_voting_view(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::AccountsAndVotes,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::View,
     );
 }
 
-fn bench_banking_stage_multi_programs_with_voting_view(c: &mut Criterion) {
+fn bench_banking_stage_multi_programs_with_voting_view(b: &mut Bencher) {
     bench_banking(
-        c,
+        b,
         TransactionType::ProgramsAndVotes,
         BlockProductionMethod::CentralScheduler,
         TransactionStructure::View,
@@ -429,7 +425,7 @@ fn simulate_process_entries(
     process_entries_for_tests(&bank, vec![entry], None, None).unwrap();
 }
 
-fn bench_process_entries(c: &mut Criterion) {
+fn bench_process_entries(b: &mut Bencher) {
     // entropy multiplier should be big enough to provide sufficient entropy
     // but small enough to not take too much time while executing the test.
     let entropy_multiplier: usize = 25;
@@ -447,19 +443,28 @@ fn bench_process_entries(c: &mut Criterion) {
     let keypairs: Vec<Keypair> = repeat_with(Keypair::new).take(num_accounts).collect();
     let tx_vector: Vec<VersionedTransaction> = Vec::with_capacity(num_accounts / 2);
 
-    c.bench_function("process_entries", |b| {
-        b.iter(|| {
-            simulate_process_entries(
-                &mint_keypair,
-                tx_vector.clone(),
-                &genesis_config,
-                &keypairs,
-                initial_lamports,
-                num_accounts,
-            );
-        });
+    b.iter(|| {
+        simulate_process_entries(
+            &mint_keypair,
+            tx_vector.clone(),
+            &genesis_config,
+            &keypairs,
+            initial_lamports,
+            num_accounts,
+        );
     });
 }
 
-criterion_group!(benches, bench_banking_stage_multi_accounts, bench_banking_stage_multi_programs, bench_banking_stage_multi_accounts_with_voting, bench_banking_stage_multi_programs_with_voting, bench_banking_stage_multi_accounts_view, bench_banking_stage_multi_programs_view, bench_banking_stage_multi_accounts_with_voting_view, bench_banking_stage_multi_programs_with_voting_view, bench_process_entries);
-criterion_main!(benches);
+benchmark_group!(
+    benches,
+    bench_banking_stage_multi_accounts,
+    bench_banking_stage_multi_programs,
+    bench_banking_stage_multi_accounts_with_voting,
+    bench_banking_stage_multi_programs_with_voting,
+    bench_banking_stage_multi_accounts_view,
+    bench_banking_stage_multi_programs_view,
+    bench_banking_stage_multi_accounts_with_voting_view,
+    bench_banking_stage_multi_programs_with_voting_view,
+    bench_process_entries
+);
+benchmark_main!(benches);

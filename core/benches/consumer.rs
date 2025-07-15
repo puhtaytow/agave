@@ -1,7 +1,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use {
-    criterion::{criterion_group, criterion_main, Criterion},
+    bencher::{benchmark_group, benchmark_main, Bencher},
     crossbeam_channel::{unbounded, Receiver},
     rayon::{
         iter::IndexedParallelIterator,
@@ -132,7 +132,7 @@ fn setup() -> BenchFrame {
     }
 }
 
-fn bench_process_and_record_transactions(c: &mut Criterion, batch_size: usize) {
+fn bench_process_and_record_transactions(b: &mut Bencher, batch_size: usize) {
     const TRANSACTIONS_PER_ITERATION: usize = 64;
     assert_eq!(
         TRANSACTIONS_PER_ITERATION % batch_size,
@@ -154,36 +154,38 @@ fn bench_process_and_record_transactions(c: &mut Criterion, batch_size: usize) {
     let consumer = create_consumer(transaction_recorder);
     let transactions = create_transactions(&bank, 2_usize.pow(20));
 
-    c.bench_function("process_and_record_transactions", |b| {
-        b.iter(|| {
-            let mut transaction_iter = transactions.chunks(batch_size);
-            for _ in 0..batches_per_iteration {
-                let summary =
-                    consumer.process_and_record_transactions(&bank, transaction_iter.next().unwrap());
-                assert!(summary
-                    .execute_and_commit_transactions_output
-                    .commit_transactions_result
-                    .is_ok());
-            }
-        })
+    b.iter(|| {
+        let mut transaction_iter = transactions.chunks(batch_size);
+        for _ in 0..batches_per_iteration {
+            let summary =
+                consumer.process_and_record_transactions(&bank, transaction_iter.next().unwrap());
+            assert!(summary
+                .execute_and_commit_transactions_output
+                .commit_transactions_result
+                .is_ok());
+        }
     });
 
     exit.store(true, Ordering::Relaxed);
     poh_service.join().unwrap();
 }
 
-
-fn bench_process_and_record_transactions_unbatched(c: &mut Criterion) {
+fn bench_process_and_record_transactions_unbatched(b: &mut Bencher) {
     bench_process_and_record_transactions(c, 1);
 }
 
-fn bench_process_and_record_transactions_half_batch(c: &mut Criterion) {
+fn bench_process_and_record_transactions_half_batch(b: &mut Bencher) {
     bench_process_and_record_transactions(c, 32);
 }
 
-fn bench_process_and_record_transactions_full_batch(c: &mut Criterion) {
+fn bench_process_and_record_transactions_full_batch(b: &mut Bencher) {
     bench_process_and_record_transactions(c, 64);
 }
 
-criterion_group!(benches, bench_process_and_record_transactions_unbatched, bench_process_and_record_transactions_half_batch, bench_process_and_record_transactions_full_batch);
-criterion_main!(benches);
+benchmark_group!(
+    benches,
+    bench_process_and_record_transactions_unbatched,
+    bench_process_and_record_transactions_half_batch,
+    bench_process_and_record_transactions_full_batch
+);
+benchmark_main!(benches);

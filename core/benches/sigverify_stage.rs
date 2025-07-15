@@ -3,6 +3,7 @@
 extern crate solana_core;
 
 use {
+    bencher::{benchmark_group, benchmark_main, Bencher},
     crossbeam_channel::unbounded,
     log::*,
     rand::{
@@ -27,7 +28,7 @@ use {
 };
 
 #[allow(dead_code)]
-fn run_bench_packet_discard(num_ips: usize, c: &mut Criterion) {
+fn run_bench_packet_discard(num_ips: usize, b: &mut Bencher) {
     solana_logger::setup();
     let len = 30 * 1000;
     let chunk_size = 1024;
@@ -52,8 +53,8 @@ fn run_bench_packet_discard(num_ips: usize, c: &mut Criterion) {
         }
     }
     info!("total packets: {}", total);
-  
-    bencher.iter(move || {
+
+    b.iter(move || {
         SigVerifyStage::discard_excess_packets(&mut batches, 10_000);
         let mut num_packets = 0;
         for batch in batches.iter_mut() {
@@ -63,22 +64,22 @@ fn run_bench_packet_discard(num_ips: usize, c: &mut Criterion) {
                 }
             }
             assert_eq!(num_packets, 10_000);
-        })
+        }
     });
 }
 
 #[allow(dead_code)]
-fn bench_packet_discard_many_senders(c: &mut Criterion) {
-    run_bench_packet_discard(1000, c);
+fn bench_packet_discard_many_senders(b: &mut Bencher) {
+    run_bench_packet_discard(1000, b);
 }
 
 #[allow(dead_code)]
-fn bench_packet_discard_single_sender(c: &mut Criterion) {
-    run_bench_packet_discard(1, c);
+fn bench_packet_discard_single_sender(b: &mut Bencher) {
+    run_bench_packet_discard(1, b);
 }
 
 #[allow(dead_code)]
-fn bench_packet_discard_mixed_senders(c: &mut Criterion) {
+fn bench_packet_discard_mixed_senders(b: &mut Bencher) {
     const SIZE: usize = 30 * 1000;
     const CHUNK_SIZE: usize = 1024;
     fn new_rand_addr<R: Rng>(rng: &mut R) -> std::net::IpAddr {
@@ -99,7 +100,7 @@ fn bench_packet_discard_mixed_senders(c: &mut Criterion) {
             }
         }
     }
-    bencher.iter(move || {
+    b.iter(move || {
         SigVerifyStage::discard_excess_packets(&mut batches, 10_000);
         let mut num_packets = 0;
         for batch in batches.iter_mut() {
@@ -109,7 +110,7 @@ fn bench_packet_discard_mixed_senders(c: &mut Criterion) {
                 }
             }
             assert_eq!(num_packets, 10_000);
-        })
+        }
     });
 }
 
@@ -139,17 +140,17 @@ fn gen_batches(use_same_tx: bool) -> Vec<PacketBatch> {
 }
 
 #[allow(dead_code)]
-fn bench_sigverify_stage_with_same_tx(c: &mut Criterion) {
-    bench_sigverify_stage(c, true)
+fn bench_sigverify_stage_with_same_tx(b: &mut Bencher) {
+    bench_sigverify_stage(b, true)
 }
 
 #[allow(dead_code)]
-fn bench_sigverify_stage_without_same_tx(c: &mut Criterion) {
-    bench_sigverify_stage(c, false)
+fn bench_sigverify_stage_without_same_tx(b: &mut Bencher) {
+    bench_sigverify_stage(b, false)
 }
 
 #[allow(dead_code)]
-fn bench_sigverify_stage(c: &mut Criterion, use_same_tx: bool) {
+fn bench_sigverify_stage(b: &mut Bencher, use_same_tx: bool) {
     solana_logger::setup();
     trace!("start");
     let (packet_s, packet_r) = unbounded();
@@ -157,11 +158,10 @@ fn bench_sigverify_stage(c: &mut Criterion, use_same_tx: bool) {
     let verifier = TransactionSigVerifier::new(verified_s, None);
     let stage = SigVerifyStage::new(packet_r, verifier, "solSigVerBench", "bench");
 
-    c.bench_function("sigverify_stage", |b| {
-        b.iter( || {
-            let now = Instant::now();
-            let batches = gen_batches(use_same_tx);
-            trace!(
+    b.iter(|| {
+        let now = Instant::now();
+        let batches = gen_batches(use_same_tx);
+        trace!(
             "starting... generation took: {} ms batches: {}",
             now.elapsed().as_millis(),
             batches.len()
@@ -185,7 +185,6 @@ fn bench_sigverify_stage(c: &mut Criterion, use_same_tx: bool) {
             }
             trace!("received: {}", received);
         }
-        })
     });
     // This will wait for all packets to make it through sigverify.
     stage.join().unwrap();
@@ -227,7 +226,7 @@ fn prepare_batches(discard_factor: i32) -> (Vec<PacketBatch>, usize) {
     (batches, len - c)
 }
 
-fn bench_shrink_sigverify_stage_core(c: &mut Criterion, discard_factor: i32) {
+fn bench_shrink_sigverify_stage_core(b: &mut Bencher, discard_factor: i32) {
     let (batches0, num_valid_packets) = prepare_batches(discard_factor);
     let (verified_s, _verified_r) = BankingTracer::channel_for_test();
     let verifier = TransactionSigVerifier::new(verified_s, None);
@@ -236,7 +235,7 @@ fn bench_shrink_sigverify_stage_core(c: &mut Criterion, discard_factor: i32) {
     let mut total_verify_time = 0;
     let mut count = 0;
 
-    bencher.iter(|| {
+    b.iter(|| {
         let batches = batches0.clone();
         let (pre_shrink_time_us, _pre_shrink_total, batches) =
             SigVerifyStage::maybe_shrink_batches(batches);
@@ -245,10 +244,9 @@ fn bench_shrink_sigverify_stage_core(c: &mut Criterion, discard_factor: i32) {
         let _batches = verifier.verify_batches(batches, num_valid_packets);
         verify_time.stop();
 
-            count += 1;
-            total_shrink_time += pre_shrink_time_us;
-            total_verify_time += verify_time.as_us();
-        })
+        count += 1;
+        total_shrink_time += pre_shrink_time_us;
+        total_verify_time += verify_time.as_us();
     });
 
     error!(
@@ -278,17 +276,21 @@ gen_shrink_sigverify_bench!(bsv_70, 70);
 gen_shrink_sigverify_bench!(bsv_80, 80);
 gen_shrink_sigverify_bench!(bsv_90, 90);
 
-criterion_group!(
-    name = benches;
-    config = Criterion::default();
-    targets = 
-        
-        bench_packet_discard_many_senders,
-        bench_packet_discard_single_sender,
-        bench_packet_discard_mixed_senders,
-        bench_sigverify_stage_with_same_tx,
-        bench_sigverify_stage_without_same_tx,
-        bsv_0, bsv_10, bsv_20, bsv_30, bsv_40, bsv_50, bsv_60, bsv_70, bsv_80, bsv_90,
+benchmark_group!(
+    bench_packet_discard_many_senders,
+    bench_packet_discard_single_sender,
+    bench_packet_discard_mixed_senders,
+    bench_sigverify_stage_with_same_tx,
+    bench_sigverify_stage_without_same_tx,
+    bsv_0,
+    bsv_10,
+    bsv_20,
+    bsv_30,
+    bsv_40,
+    bsv_50,
+    bsv_60,
+    bsv_70,
+    bsv_80,
+    bsv_90,
 );
-
-criterion_main!(benches);
+benchmark_main!(benches);

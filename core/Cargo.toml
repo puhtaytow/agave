@@ -181,7 +181,7 @@ sysctl = { workspace = true }
 
 [dev-dependencies]
 agave-reserved-account-keys = { workspace = true }
-criterion = { workspace = true }
+bencher = { workspace = true }
 fs_extra = { workspace = true }
 serde_json = { workspace = true }
 serial_test = { workspace = true }
