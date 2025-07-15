@@ -70,6 +70,7 @@ Add
 
 ```
 LimitNOFILE=1000000
+LimitMEMLOCK=2000000000
 ```
 
 to the `[Service]` section of your systemd service file, if you use one,
@@ -77,6 +78,7 @@ otherwise add
 
 ```
 DefaultLimitNOFILE=1000000
+DefaultLimitMEMLOCK=2000000000
 ```
 
 to the `[Manager]` section of `/etc/systemd/system.conf`.
@@ -89,6 +91,8 @@ sudo systemctl daemon-reload
 sudo bash -c "cat >/etc/security/limits.d/90-solana-nofiles.conf <<EOF
 # Increase process file descriptor count limit
 * - nofile 1000000
+# Increase memory locked limit (kB)
+* - memlock 2000000
 EOF"
 ```
 
@@ -216,7 +220,7 @@ Or to see in finer detail:
 solana balance --lamports
 ```
 
-Read more about the [difference between SOL and lamports here](https://solana.com/docs/intro#what-are-sols).
+Read more about the difference between SOL and lamports here: [What is SOL?](https://solana.com/docs/references/terminology#sol), [What is a lamport?](https://solana.com/docs/references/terminology#lamport).
 
 ## Create Authorized Withdrawer Account
 
@@ -314,11 +318,11 @@ the validator to ports 11000-11020.
 ### Limiting ledger size to conserve disk space
 
 The `--limit-ledger-size` parameter allows you to specify how many ledger
-[shreds](https://solana.com/docs/terminology#shred) your node retains on disk. If you do not
-include this parameter, the validator will keep all received ledger data
-until it runs out of disk space. Otherwise, the validator will continually
-purge the oldest data once to stay under the specified `--limit-ledger-size`
-value.
+[shreds](https://solana.com/docs/terminology#shred) your node retains on disk.
+If you do not include this parameter, the validator will keep all received
+ledger data until it runs out of disk space. Otherwise, the validator will
+periodically purge the oldest data (FIFO) to remain under the specified
+`--limit-ledger-size` value.
 
 The default value attempts to keep the blockstore (data within the rocksdb
 directory) disk usage under 500 GB. More or less disk usage may be requested
@@ -332,6 +336,11 @@ These items may include (but are not limited to):
 - Persistent accounts data
 - Persistent accounts index
 - Snapshots
+
+Additionally, specifying `--enable-rpc-transaction-history` will store extra
+block and transaction metadata. The space required to store this data varies
+with cluster activity, and is hard to account for. Thus, using this flag will
+likely cause the 500 GB target to be exceeded.
 
 ### Systemd Unit
 
@@ -353,6 +362,7 @@ Restart=always
 RestartSec=1
 User=sol
 LimitNOFILE=1000000
+LimitMEMLOCK=2000000000
 LogRateLimitIntervalSec=0
 Environment="PATH=/bin:/usr/bin:/home/sol/.local/share/solana/install/active_release/bin"
 ExecStart=/home/sol/bin/validator.sh
