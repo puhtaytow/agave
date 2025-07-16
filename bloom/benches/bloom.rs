@@ -1,16 +1,19 @@
-#![allow(unused_imports)]
-
 use {
     bencher::{benchmark_group, benchmark_main, Bencher},
+    rand::Rng,
+    solana_bloom::bloom::{Bloom, ConcurrentBloom},
+    solana_hash::Hash,
+};
+#[cfg(feature = "full-bench")]
+use {
     bv::BitVec,
     fnv::FnvHasher,
-    rand::Rng,
-    solana_bloom::bloom::{Bloom, BloomHashIndex, ConcurrentBloom},
-    solana_hash::Hash,
+    solana_bloom::bloom::BloomHashIndex,
     solana_sha256_hasher::hash,
     solana_signature::Signature,
     std::{collections::HashSet, hash::Hasher},
 };
+
 #[cfg(feature = "full-bench")]
 fn bench_bits_set(b: &mut Bencher) {
     let mut bits: BitVec<u8> = BitVec::new_fill(false, 38_340_234_u64);
