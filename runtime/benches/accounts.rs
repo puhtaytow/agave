@@ -28,7 +28,6 @@ fn deposit_many(bank: &Bank, pubkeys: &mut Vec<Pubkey>, num: usize) -> Result<()
 fn bench_accounts_create(b: &mut Bencher) {
     let (genesis_config, _) = create_genesis_config(10_000);
     let bank0 = Bank::new_with_paths_for_benches(&genesis_config, vec![PathBuf::from("bench_a0")]);
-
     b.iter(|| {
         let mut pubkeys: Vec<Pubkey> = vec![];
         deposit_many(&bank0, &mut pubkeys, 1000).unwrap();
