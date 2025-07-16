@@ -7270,7 +7270,6 @@ dependencies = [
  "memmap2 0.9.7",
  "modular-bitfield",
  "num_enum",
- "paste",
  "rand 0.8.5",
  "rayon",
  "solana-clock",
