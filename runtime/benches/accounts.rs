@@ -35,7 +35,6 @@ fn bench_accounts_create(b: &mut Bencher) {
     });
 }
 
-#[bench]
 fn bench_accounts_squash(b: &mut Bencher) {
     let (genesis_config, _) = create_genesis_config(100_000);
     let mut prev_bank = Arc::new(Bank::new_with_paths_for_benches(
@@ -73,4 +72,4 @@ fn bench_accounts_squash(b: &mut Bencher) {
 }
 
 benchmark_group!(benches, bench_accounts_create, bench_accounts_squash);
-benchmark_main_main!(benches);
+benchmark_main!(benches);

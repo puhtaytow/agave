@@ -2,7 +2,6 @@
 
 use {
     bencher::{benchmark_group, benchmark_main, Bencher},
-    log::*,
     solana_client_traits::{AsyncClient, SyncClient},
     solana_clock::MAX_RECENT_BLOCKHASHES,
     solana_genesis_config::create_genesis_config,
@@ -106,7 +105,7 @@ fn async_bencher(bank: &Bank, bank_client: &BankClient, transactions: &[(Transac
 
 #[allow(clippy::type_complexity)]
 fn do_bench_transactions(
-    bencher: &mut Bencher,
+    b: &mut Bencher,
     bench_work: &dyn Fn(&Bank, &BankClient, &[(Transaction, Hash)]),
     create_transactions: &dyn Fn(&BankClient, &Keypair) -> Vec<(Transaction, Hash)>,
 ) {

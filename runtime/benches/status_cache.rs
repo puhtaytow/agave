@@ -1,5 +1,7 @@
+#![allow(clippy::arithmetic_side_effects)]
+
 use {
-    bencher::{benchmark_group, benchmark_main, Bencher},
+    bencher::{benchmark_group, benchmark_main, black_box, Bencher},
     bincode::serialize,
     rand::{rngs::SmallRng, Rng, SeedableRng},
     solana_accounts_db::ancestors::Ancestors,
@@ -7,7 +9,6 @@ use {
     solana_runtime::{bank::BankStatusCache, status_cache::*},
     solana_sha256_hasher::hash,
     solana_signature::{Signature, SIGNATURE_BYTES},
-    test::Bencher,
 };
 
 fn bench_status_cache_serialize(b: &mut Bencher) {
