@@ -105,5 +105,4 @@ benchmark_group!(
     dim_32x64_baseline,
     dim_32x64_bucket_map,
 );
-
 benchmark_main!(benches);
