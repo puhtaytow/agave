@@ -48,26 +48,47 @@ fn do_bench_insert_bucket_map(b: &mut Bencher, n: usize, m: usize) {
     });
 }
 
-macro_rules! define_benches {
-    ($n:literal, $m:literal) => {
-        paste::item! {
-            fn [<dim_ $n x $m _baseline>](b: &mut Bencher) {
-                do_bench_insert_baseline_hashmap(b, $n, $m);
-            }
-
-            fn [<dim_ $n x $m _bucket_map>](b: &mut Bencher) {
-                do_bench_insert_bucket_map(b, $n, $m);
-            }
-        }
-    };
+fn dim_1x2_baseline(b: &mut Bencher) {
+    do_bench_insert_baseline_hashmap(b, 1, 2);
+}
+fn dim_1x2_bucket_map(b: &mut Bencher) {
+    do_bench_insert_bucket_map(b, 1, 2);
 }
 
-define_benches!(1, 2);
-define_benches!(2, 4);
-define_benches!(4, 8);
-define_benches!(8, 16);
-define_benches!(16, 32);
-define_benches!(32, 64);
+fn dim_2x4_baseline(b: &mut Bencher) {
+    do_bench_insert_baseline_hashmap(b, 2, 4);
+}
+fn dim_2x4_bucket_map(b: &mut Bencher) {
+    do_bench_insert_bucket_map(b, 2, 4);
+}
+
+fn dim_4x8_baseline(b: &mut Bencher) {
+    do_bench_insert_baseline_hashmap(b, 4, 8);
+}
+fn dim_4x8_bucket_map(b: &mut Bencher) {
+    do_bench_insert_bucket_map(b, 4, 8);
+}
+
+fn dim_8x16_baseline(b: &mut Bencher) {
+    do_bench_insert_baseline_hashmap(b, 8, 16);
+}
+fn dim_8x16_bucket_map(b: &mut Bencher) {
+    do_bench_insert_bucket_map(b, 8, 16);
+}
+
+fn dim_16x32_baseline(b: &mut Bencher) {
+    do_bench_insert_baseline_hashmap(b, 16, 32);
+}
+fn dim_16x32_bucket_map(b: &mut Bencher) {
+    do_bench_insert_bucket_map(b, 16, 32);
+}
+
+fn dim_32x64_baseline(b: &mut Bencher) {
+    do_bench_insert_baseline_hashmap(b, 32, 64);
+}
+fn dim_32x64_bucket_map(b: &mut Bencher) {
+    do_bench_insert_bucket_map(b, 32, 64);
+}
 
 benchmark_group!(
     benches,
@@ -82,6 +103,7 @@ benchmark_group!(
     dim_16x32_baseline,
     dim_16x32_bucket_map,
     dim_32x64_baseline,
-    dim_32x64_bucket_map
+    dim_32x64_bucket_map,
 );
+
 benchmark_main!(benches);
