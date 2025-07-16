@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use {
     bencher::{benchmark_group, benchmark_main, Bencher},
     bv::BitVec,
@@ -9,7 +11,7 @@ use {
     solana_signature::Signature,
     std::{collections::HashSet, hash::Hasher},
 };
-
+#[cfg(feature = "full-bench")]
 fn bench_bits_set(b: &mut Bencher) {
     let mut bits: BitVec<u8> = BitVec::new_fill(false, 38_340_234_u64);
     let mut hasher = FnvHasher::default();
@@ -21,6 +23,7 @@ fn bench_bits_set(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "full-bench")]
 fn bench_bits_set_hasher(b: &mut Bencher) {
     let bits: BitVec<u8> = BitVec::new_fill(false, 38_340_234_u64);
     let mut hasher = FnvHasher::default();
@@ -31,6 +34,7 @@ fn bench_bits_set_hasher(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "full-bench")]
 fn bench_sigs_bloom(b: &mut Bencher) {
     // 1M TPS * 1s (length of block in sigs) == 1M items in filter
     // 1.0E-8 false positive rate
@@ -59,6 +63,7 @@ fn bench_sigs_bloom(b: &mut Bencher) {
     assert_eq!(falses, 0);
 }
 
+#[cfg(feature = "full-bench")]
 fn bench_sigs_hashmap(b: &mut Bencher) {
     let blockhash = hash(Hash::default().as_ref());
     let mut sigs: HashSet<Signature> = HashSet::new();
@@ -125,13 +130,20 @@ fn bench_add_hash_atomic(b: &mut Bencher) {
     assert_eq!(fail, 0);
 }
 
+#[cfg(feature = "full-bench")]
 benchmark_group!(
-    benches,
+    all_benches,
+    bench_add_hash,
+    bench_add_hash_atomic,
     bench_bits_set,
     bench_bits_set_hasher,
     bench_sigs_bloom,
     bench_sigs_hashmap,
-    bench_add_hash,
-    bench_add_hash_atomic
 );
-benchmark_main!(benches);
+#[cfg(feature = "full-bench")]
+benchmark_main!(all_benches);
+
+#[cfg(not(feature = "full-bench"))]
+benchmark_group!(default_benches, bench_add_hash, bench_add_hash_atomic);
+#[cfg(not(feature = "full-bench"))]
+benchmark_main!(default_benches);
