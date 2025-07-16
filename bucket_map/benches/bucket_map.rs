@@ -8,7 +8,7 @@ use {
 
 type IndexValue = u64;
 
-/// Benchmark insert with Hashmap as baseline for N threads inserting M keys each
+// Benchmark insert with Hashmap as baseline for N threads inserting M keys each
 fn do_bench_insert_baseline_hashmap(b: &mut Bencher, n: usize, m: usize) {
     let index = RwLock::new(HashMap::new());
     (0..n).into_par_iter().for_each(|i| {
@@ -31,7 +31,7 @@ fn do_bench_insert_baseline_hashmap(b: &mut Bencher, n: usize, m: usize) {
     });
 }
 
-/// Benchmark insert with BucketMap with N buckets for N threads inserting M keys each
+// Benchmark insert with BucketMap with N buckets for N threads inserting M keys each
 fn do_bench_insert_bucket_map(b: &mut Bencher, n: usize, m: usize) {
     let index = BucketMap::new(BucketMapConfig::new(n));
     (0..n).into_par_iter().for_each(|i| {
