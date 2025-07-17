@@ -1276,9 +1276,7 @@ mod test {
             get_tmp_ledger_path_auto_delete,
             shred::max_ticks_per_n_shreds,
         },
-        solana_net_utils::sockets::{
-            bind_to, bind_to_localhost_unique, localhost_port_range_for_tests,
-        },
+        solana_net_utils::sockets::bind_to_localhost_unique,
         solana_runtime::bank::Bank,
         solana_signer::Signer,
         solana_streamer::socket::SocketAddrSpace,
@@ -1735,11 +1733,7 @@ mod test {
             &blockstore,
             &serve_repair,
             &mut RepairStats::default(),
-            &bind_to(
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                localhost_port_range_for_tests().0,
-            )
-            .expect("should bind"),
+            &bind_to_localhost_unique().expect("should bind"),
             &None,
             &RwLock::new(OutstandingRequests::default()),
             &identity_keypair,
