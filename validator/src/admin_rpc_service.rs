@@ -961,7 +961,7 @@ mod tests {
                 create_genesis_config, create_genesis_config_with_leader, GenesisConfigInfo,
             },
         },
-        solana_net_utils::sockets::localhost_port_range_for_tests,
+        solana_net_utils::sockets::bind_to_unique_unspecified,
         solana_program_option::COption,
         solana_program_pack::Pack,
         solana_pubkey::Pubkey,
@@ -1030,13 +1030,7 @@ mod tests {
                     vote_account,
                     repair_whitelist,
                     notifies: Arc::new(RwLock::new(KeyUpdaters::default())),
-                    repair_socket: Arc::new(
-                        bind_to(
-                            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                            localhost_port_range_for_tests().0,
-                        )
-                        .expect("should bind"),
-                    ),
+                    repair_socket: Arc::new(bind_to_unique_unspecified().expect("should bind")),
                     outstanding_repair_requests: Arc::<
                         RwLock<repair_service::OutstandingShredRepairs>,
                     >::default(),

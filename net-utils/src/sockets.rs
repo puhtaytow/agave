@@ -43,28 +43,33 @@ pub fn unique_port_range_for_tests(size: u16) -> (u16, u16) {
 }
 
 /// Retrieve a free 20-port slice for unit tests
-#[inline]
 pub fn localhost_port_range_for_tests() -> (u16, u16) {
     unique_port_range_for_tests(20)
 }
 
 /// Retrieve a single free port for unit tests
-#[inline]
 pub fn localhost_unique_port_for_tests() -> u16 {
     unique_port_range_for_tests(1).0
 }
 
-/// Bind a `UdpSocket` to a unique, test-safe port on the given IPv4 address.
-/// Port collisions are managed at `unique_port_range_for_tests` level.
-#[inline]
+/// Bind a `UdpSocket` to a unique, localhost test-safe port on the given IPv4 address.
 pub fn bind_to_unique_port(addr: Ipv4Addr) -> io::Result<UdpSocket> {
     bind_to(IpAddr::V4(addr), localhost_unique_port_for_tests())
 }
 
-/// Bind a `UdpSocket` to a unique port at every interface - Test-safe.
-#[inline]
+/// Bind a `UdpSocket` to a unique, test-safe port on the given IPv4 address / async.
+pub async fn bind_to_unique_port_async(addr: Ipv4Addr) -> io::Result<TokioUdpSocket> {
+    bind_to_async(IpAddr::V4(addr), localhost_unique_port_for_tests()).await
+}
+
+/// Bind a `UdpSocket` to a unique port at every interface.
 pub fn bind_to_unique_unspecified() -> io::Result<UdpSocket> {
     bind_to_unique_port(Ipv4Addr::UNSPECIFIED)
+}
+
+/// Bind a `UdpSocket` to a unique port at every interface / async.
+pub async fn bind_to_unique_unspecified_async() -> io::Result<TokioUdpSocket> {
+    bind_to_unique_port_async(Ipv4Addr::UNSPECIFIED).await
 }
 
 pub fn bind_gossip_port_in_range(

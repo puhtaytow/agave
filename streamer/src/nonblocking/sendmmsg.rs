@@ -62,7 +62,8 @@ mod tests {
         },
         assert_matches::assert_matches,
         solana_net_utils::sockets::{
-            bind_to_async, bind_to_localhost_async, localhost_port_range_for_tests,
+            bind_to_localhost_async, bind_to_unique_port_async, bind_to_unique_unspecified_async,
+            localhost_port_range_for_tests,
         },
         solana_packet::PACKET_DATA_SIZE,
         std::{
@@ -179,12 +180,7 @@ mod tests {
         ];
         let dest_refs: Vec<_> = vec![&ip4, &ip6, &ip4];
 
-        let sender = bind_to_async(
-            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-            localhost_port_range_for_tests().0,
-        )
-        .await
-        .expect("should bind");
+        let sender = bind_to_unique_unspecified_async.expect("should bind");
         let res = batch_send(&sender, &packet_refs[..]).await;
         assert_matches!(res, Err(SendPktsError::IoError(_, /*num_failed*/ 1)));
         let res = multi_target_send(&sender, &packets[0], &dest_refs).await;
@@ -196,12 +192,7 @@ mod tests {
         let packets: Vec<_> = (0..5).map(|_| vec![0u8; PACKET_DATA_SIZE]).collect();
         let ipv4local = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
         let ipv4broadcast = SocketAddr::new(IpAddr::V4(Ipv4Addr::BROADCAST), 8080);
-        let sender = bind_to_async(
-            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-            localhost_port_range_for_tests().0,
-        )
-        .await
-        .expect("should bind");
+        let sender = bind_to_unique_unspecified_async.expect("should bind");
 
         // test intermediate failures for batch_send
         let packet_refs: Vec<_> = vec![
