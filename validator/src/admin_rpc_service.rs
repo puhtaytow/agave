@@ -975,7 +975,7 @@ mod tests {
         solana_tpu_client::tpu_client::DEFAULT_TPU_ENABLE_UDP,
         spl_generic_token::token,
         spl_token_2022::state::{Account as TokenAccount, AccountState as TokenAccountState, Mint},
-        std::{collections::HashSet, fs::remove_dir_all, net::Ipv4Addr, sync::atomic::AtomicBool},
+        std::{collections::HashSet, fs::remove_dir_all, sync::atomic::AtomicBool},
     };
 
     #[derive(Default)]

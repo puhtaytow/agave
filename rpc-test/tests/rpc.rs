@@ -31,7 +31,6 @@ use {
     solana_transaction_status::TransactionStatus,
     std::{
         collections::HashSet,
-        net::{IpAddr, Ipv4Addr},
         sync::{
             atomic::{AtomicUsize, Ordering},
             Arc,
@@ -291,7 +290,7 @@ fn test_rpc_subscriptions() {
     let test_validator =
         TestValidator::with_no_fees_udp(alice.pubkey(), None, SocketAddrSpace::Unspecified);
 
-    let transactions_socket = bind_to_unique_unspecified.expect("should bind");
+    let transactions_socket = bind_to_unique_unspecified().expect("should bind");
     transactions_socket.connect(test_validator.tpu()).unwrap();
 
     let rpc_client = RpcClient::new(test_validator.rpc_url());

@@ -374,11 +374,7 @@ mod tests {
         let packets: Vec<_> = (0..5).map(|_| vec![0u8; PACKET_DATA_SIZE]).collect();
         let ipv4local = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080);
         let ipv4broadcast = SocketAddr::new(IpAddr::V4(Ipv4Addr::BROADCAST), 8080);
-        let sender = bind_to(
-            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-            localhost_port_range_for_tests().0,
-        )
-        .expect("should bind");
+        let sender = bind_to_unique_unspecified().expect("should bind");
 
         // test intermediate failures for batch_send
         let packet_refs: Vec<_> = vec![

@@ -503,12 +503,7 @@ mod test {
         solana_runtime::bank::Bank,
         solana_signer::Signer,
         solana_streamer::socket::SocketAddrSpace,
-        std::{
-            net::{IpAddr, Ipv4Addr},
-            ops::Deref,
-            sync::Arc,
-            time::Duration,
-        },
+        std::{ops::Deref, sync::Arc, time::Duration},
     };
 
     #[allow(clippy::type_complexity)]

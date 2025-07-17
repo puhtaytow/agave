@@ -928,10 +928,7 @@ mod test {
         solana_runtime::bank_forks::BankForks,
         solana_signer::Signer,
         solana_streamer::socket::SocketAddrSpace,
-        std::{
-            collections::HashMap,
-            net::{IpAddr, Ipv4Addr},
-        },
+        std::collections::HashMap,
         trees::tr,
     };
 
@@ -1361,7 +1358,7 @@ mod test {
         fn new(bank_forks: Arc<RwLock<BankForks>>) -> Self {
             let ancestor_hashes_request_statuses = Arc::new(DashMap::new());
             let ancestor_hashes_request_socket =
-                Arc::new(bind_to_unique_unspecified.expect("should bind"));
+                Arc::new(bind_to_unique_unspecified().expect("should bind"));
             let epoch_schedule = bank_forks
                 .read()
                 .unwrap()
