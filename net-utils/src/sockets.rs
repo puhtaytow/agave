@@ -55,7 +55,7 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
     unique_port_range_for_tests(20)
 }
 
-/// Bind a `UdpSocket` to a unique port at every interface.
+/// Bind a `UdpSocket` to a unique port.
 pub fn bind_to_localhost_unique() -> io::Result<UdpSocket> {
     bind_to(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
