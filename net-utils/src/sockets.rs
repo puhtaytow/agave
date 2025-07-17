@@ -56,28 +56,34 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
 }
 
 /// Retrieve a single free port for unit tests
+///
+/// When running under nextest, this will try to provide
+/// a unique slice of port numbers (assuming no other nextest processes
+/// are running on the same host) based on NEXTEST_TEST_GLOBAL_SLOT variable
+/// The port ranges will be reused following nextest logic.
+///
+/// When running without nextest, this will only bump an atomic and eventually
+/// panic when it runs out of port numbers to assign.
 pub fn localhost_unique_port_for_tests() -> u16 {
     unique_port_range_for_tests(1).0
 }
 
-/// Bind a `UdpSocket` to a unique, test-safe port on the given IPv4 address / async.
-#[cfg(feature = "dev-context-only-utils")]
-pub async fn bind_to_unique_port_async_for_tests(addr: Ipv4Addr) -> io::Result<TokioUdpSocket> {
-    bind_to_async(IpAddr::V4(addr), localhost_unique_port_for_tests()).await
-}
-
 /// Bind a `UdpSocket` to a unique port at every interface.
-pub fn bind_to_unique_unspecified() -> io::Result<UdpSocket> {
+pub fn bind_to_unique_localhost() -> io::Result<UdpSocket> {
     bind_to(
-        IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        IpAddr::V4(Ipv4Addr::LOCALHOST),
         localhost_unique_port_for_tests(),
     )
 }
 
 /// Bind a `UdpSocket` to a unique port at every interface / async.
 #[cfg(feature = "dev-context-only-utils")]
-pub async fn bind_to_unique_unspecified_async() -> io::Result<TokioUdpSocket> {
-    bind_to_unique_port_async_for_tests(Ipv4Addr::UNSPECIFIED).await
+pub async fn bind_to_unique_localhost_async() -> io::Result<TokioUdpSocket> {
+    bind_to_async(
+        IpAddr::V4(Ipv4Addr::LOCALHOST),
+        localhost_unique_port_for_tests(),
+    )
+    .await
 }
 
 pub fn bind_gossip_port_in_range(

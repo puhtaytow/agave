@@ -1277,7 +1277,7 @@ mod test {
             shred::max_ticks_per_n_shreds,
         },
         solana_net_utils::sockets::{
-            bind_to, bind_to_unique_unspecified, localhost_port_range_for_tests,
+            bind_to, bind_to_unique_localhost, localhost_port_range_for_tests,
         },
         solana_runtime::bank::Bank,
         solana_signer::Signer,
@@ -1661,7 +1661,7 @@ mod test {
         };
         let mut duplicate_slot_repair_statuses = HashMap::new();
         let dead_slot = 9;
-        let receive_socket = &bind_to_unique_unspecified().expect("should bind");
+        let receive_socket = &bind_to_unique_localhost().expect("should bind");
         let duplicate_status = DuplicateSlotRepairStatus {
             correct_ancestor_to_repair: (dead_slot, Hash::default()),
             start_ts: u64::MAX,
@@ -1690,7 +1690,7 @@ mod test {
             &blockstore,
             &serve_repair,
             &mut RepairStats::default(),
-            &bind_to_unique_unspecified().expect("should bind"),
+            &bind_to_unique_localhost().expect("should bind"),
             &None,
             &RwLock::new(OutstandingRequests::default()),
             &identity_keypair,
@@ -1716,7 +1716,7 @@ mod test {
             &blockstore,
             &serve_repair,
             &mut RepairStats::default(),
-            &bind_to_unique_unspecified().expect("should bind"),
+            &bind_to_unique_localhost().expect("should bind"),
             &None,
             &RwLock::new(OutstandingRequests::default()),
             &identity_keypair,
@@ -1754,7 +1754,7 @@ mod test {
         let bank_forks = BankForks::new_rw_arc(bank);
         let dummy_addr = Some((
             Pubkey::default(),
-            bind_to_unique_unspecified()
+            bind_to_unique_localhost()
                 .expect("should bind")
                 .local_addr()
                 .unwrap(),
