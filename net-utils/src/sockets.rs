@@ -59,7 +59,7 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
 pub fn bind_to_localhost_unique() -> io::Result<UdpSocket> {
     bind_to(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
-        localhost_port_range_for_tests().0,
+        unique_port_range_for_tests(1).0,
     )
 }
 
