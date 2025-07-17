@@ -60,11 +60,6 @@ pub fn localhost_unique_port_for_tests() -> u16 {
     unique_port_range_for_tests(1).0
 }
 
-/// Bind a `UdpSocket` to a unique, localhost test-safe port on the given IPv4 address.
-pub fn bind_to_unique_port_for_tests(addr: Ipv4Addr) -> io::Result<UdpSocket> {
-    bind_to(IpAddr::V4(addr), localhost_unique_port_for_tests())
-}
-
 /// Bind a `UdpSocket` to a unique, test-safe port on the given IPv4 address / async.
 #[cfg(feature = "dev-context-only-utils")]
 pub async fn bind_to_unique_port_async_for_tests(addr: Ipv4Addr) -> io::Result<TokioUdpSocket> {
@@ -73,7 +68,10 @@ pub async fn bind_to_unique_port_async_for_tests(addr: Ipv4Addr) -> io::Result<T
 
 /// Bind a `UdpSocket` to a unique port at every interface.
 pub fn bind_to_unique_unspecified() -> io::Result<UdpSocket> {
-    bind_to_unique_port_for_tests(Ipv4Addr::UNSPECIFIED)
+    bind_to(
+        IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        localhost_unique_port_for_tests(),
+    )
 }
 
 /// Bind a `UdpSocket` to a unique port at every interface / async.
