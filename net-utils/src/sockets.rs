@@ -56,7 +56,7 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
 }
 
 /// Bind a `UdpSocket` to a unique port at every interface.
-pub fn bind_to_unique_localhost() -> io::Result<UdpSocket> {
+pub fn bind_to_unique_localhost_for_tests() -> io::Result<UdpSocket> {
     bind_to(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
         localhost_port_range_for_tests().0,
@@ -65,7 +65,7 @@ pub fn bind_to_unique_localhost() -> io::Result<UdpSocket> {
 
 /// Bind a `UdpSocket` to a unique port at every interface / async.
 #[cfg(feature = "dev-context-only-utils")]
-pub async fn bind_to_unique_localhost_async() -> io::Result<TokioUdpSocket> {
+pub async fn bind_to_unique_localhost_for_tests_async() -> io::Result<TokioUdpSocket> {
     bind_to_async(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
         localhost_port_range_for_tests().0,
