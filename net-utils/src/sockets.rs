@@ -63,7 +63,7 @@ pub fn bind_to_unique_port(addr: Ipv4Addr) -> io::Result<UdpSocket> {
 
 /// Bind a `UdpSocket` to a unique port at every interface - Test-safe.
 #[inline]
-pub fn bing_to_unique_unspecified() -> io::Result<UdpSocket> {
+pub fn bind_to_unique_unspecified() -> io::Result<UdpSocket> {
     bind_to_unique_port(Ipv4Addr::UNSPECIFIED)
 }
 
