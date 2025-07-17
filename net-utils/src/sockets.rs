@@ -55,24 +55,11 @@ pub fn localhost_port_range_for_tests() -> (u16, u16) {
     unique_port_range_for_tests(20)
 }
 
-/// Retrieve a single free port for unit tests
-///
-/// When running under nextest, this will try to provide
-/// a unique slice of port numbers (assuming no other nextest processes
-/// are running on the same host) based on NEXTEST_TEST_GLOBAL_SLOT variable
-/// The port ranges will be reused following nextest logic.
-///
-/// When running without nextest, this will only bump an atomic and eventually
-/// panic when it runs out of port numbers to assign.
-pub fn localhost_unique_port_for_tests() -> u16 {
-    unique_port_range_for_tests(1).0
-}
-
 /// Bind a `UdpSocket` to a unique port at every interface.
 pub fn bind_to_unique_localhost() -> io::Result<UdpSocket> {
     bind_to(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
-        localhost_unique_port_for_tests(),
+        localhost_port_range_for_tests().0,
     )
 }
 
@@ -81,7 +68,7 @@ pub fn bind_to_unique_localhost() -> io::Result<UdpSocket> {
 pub async fn bind_to_unique_localhost_async() -> io::Result<TokioUdpSocket> {
     bind_to_async(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
-        localhost_unique_port_for_tests(),
+        localhost_port_range_for_tests().0,
     )
     .await
 }
