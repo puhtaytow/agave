@@ -1276,7 +1276,7 @@ mod test {
             get_tmp_ledger_path_auto_delete,
             shred::max_ticks_per_n_shreds,
         },
-        solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
+        solana_net_utils::sockets::bind_to_unique_unspecified,
         solana_runtime::bank::Bank,
         solana_signer::Signer,
         solana_streamer::socket::SocketAddrSpace,
@@ -1659,11 +1659,7 @@ mod test {
         };
         let mut duplicate_slot_repair_statuses = HashMap::new();
         let dead_slot = 9;
-        let receive_socket = &bind_to(
-            IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-            localhost_port_range_for_tests().0,
-        )
-        .expect("should bind");
+        let receive_socket = &bind_to_unique_unspecified.expect("should bind");
         let duplicate_status = DuplicateSlotRepairStatus {
             correct_ancestor_to_repair: (dead_slot, Hash::default()),
             start_ts: u64::MAX,
@@ -1692,11 +1688,7 @@ mod test {
             &blockstore,
             &serve_repair,
             &mut RepairStats::default(),
-            &bind_to(
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                localhost_port_range_for_tests().0,
-            )
-            .expect("should bind"),
+            &bind_to_unique_unspecified.expect("should bind"),
             &None,
             &RwLock::new(OutstandingRequests::default()),
             &identity_keypair,
@@ -1722,11 +1714,7 @@ mod test {
             &blockstore,
             &serve_repair,
             &mut RepairStats::default(),
-            &bind_to(
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                localhost_port_range_for_tests().0,
-            )
-            .expect("should bind"),
+            &bind_to_unique_unspecified.expect("should bind"),
             &None,
             &RwLock::new(OutstandingRequests::default()),
             &identity_keypair,
@@ -1764,13 +1752,10 @@ mod test {
         let bank_forks = BankForks::new_rw_arc(bank);
         let dummy_addr = Some((
             Pubkey::default(),
-            bind_to(
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                localhost_port_range_for_tests().0,
-            )
-            .expect("should bind")
-            .local_addr()
-            .unwrap(),
+            bind_to_unique_unspecified
+                .expect("should bind")
+                .local_addr()
+                .unwrap(),
         ));
         let cluster_info = Arc::new(new_test_cluster_info());
         let ledger_path = get_tmp_ledger_path_auto_delete!();

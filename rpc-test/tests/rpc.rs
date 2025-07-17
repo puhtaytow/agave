@@ -10,7 +10,7 @@ use {
     solana_commitment_config::CommitmentConfig,
     solana_hash::Hash,
     solana_keypair::Keypair,
-    solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
+    solana_net_utils::sockets::bind_to_unique_unspecified,
     solana_pubkey::Pubkey,
     solana_pubsub_client::nonblocking::pubsub_client::PubsubClient,
     solana_rent::Rent,
@@ -291,11 +291,7 @@ fn test_rpc_subscriptions() {
     let test_validator =
         TestValidator::with_no_fees_udp(alice.pubkey(), None, SocketAddrSpace::Unspecified);
 
-    let transactions_socket = bind_to(
-        IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-        localhost_port_range_for_tests().0,
-    )
-    .expect("should bind");
+    let transactions_socket = bind_to_unique_unspecified.expect("should bind");
     transactions_socket.connect(test_validator.tpu()).unwrap();
 
     let rpc_client = RpcClient::new(test_validator.rpc_url());
