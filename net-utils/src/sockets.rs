@@ -1,15 +1,15 @@
+#[cfg(feature = "dev-context-only-utils")]
+use tokio::net::UdpSocket as TokioUdpSocket;
 use {
     crate::PortRange,
     log::warn,
     socket2::{Domain, SockAddr, Socket, Type},
     std::{
         io,
-        net::{IpAddr, SocketAddr, TcpListener, UdpSocket},
+        net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket},
         sync::atomic::{AtomicU16, Ordering},
     },
 };
-#[cfg(feature = "dev-context-only-utils")]
-use {std::net::Ipv4Addr, tokio::net::UdpSocket as TokioUdpSocket};
 // base port for deconflicted allocations
 const BASE_PORT: u16 = 5000;
 // how much to allocate per individual process.
