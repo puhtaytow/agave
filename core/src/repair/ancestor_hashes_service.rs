@@ -923,7 +923,7 @@ mod test {
             blockstore::make_many_slot_entries, get_tmp_ledger_path,
             get_tmp_ledger_path_auto_delete, shred::Nonce,
         },
-        solana_net_utils::sockets::bind_to_unique_localhost_for_tests,
+        solana_net_utils::sockets::bind_to_unique_localhost,
         solana_perf::packet::Packet,
         solana_runtime::bank_forks::BankForks,
         solana_signer::Signer,
@@ -1358,7 +1358,7 @@ mod test {
         fn new(bank_forks: Arc<RwLock<BankForks>>) -> Self {
             let ancestor_hashes_request_statuses = Arc::new(DashMap::new());
             let ancestor_hashes_request_socket =
-                Arc::new(bind_to_unique_localhost_for_tests().expect("should bind"));
+                Arc::new(bind_to_unique_localhost().expect("should bind"));
             let epoch_schedule = bank_forks
                 .read()
                 .unwrap()
