@@ -406,6 +406,11 @@ pub fn bind_to_localhost() -> io::Result<UdpSocket> {
     sockets::bind_to_with_config(IpAddr::V4(Ipv4Addr::LOCALHOST), 0, config)
 }
 
+#[deprecated(
+    since = "3.0.0",
+    note = "Please avoid this function in favor of sockets::bind_to_localhost_unique"
+)]
+#[allow(deprecated)]
 pub fn bind_to_unspecified() -> io::Result<UdpSocket> {
     let config = sockets::SocketConfiguration::default();
     sockets::bind_to_with_config(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0, config)
@@ -724,13 +729,13 @@ mod tests {
     #[test]
     fn test_bind() {
         let pr = sockets::localhost_port_range_for_tests();
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let s = bind_in_range(ip_addr, pr.as_tuple()).unwrap();
         assert_eq!(
             s.0, pr.start,
             "bind_in_range should use first available port"
         );
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let config = SocketConfig::default().reuseport(true);
         let x = bind_to_with_config(ip_addr, pr.start + 1, config).unwrap();
         let y = bind_to_with_config(ip_addr, pr.start + 1, config).unwrap();
@@ -750,7 +755,7 @@ mod tests {
 
     #[test]
     fn test_bind_with_any_port() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let config = SocketConfig::default();
         let x = bind_with_any_port_with_config(ip_addr, config).unwrap();
         let y = bind_with_any_port_with_config(ip_addr, config).unwrap();
@@ -762,7 +767,7 @@ mod tests {
 
     #[test]
     fn test_bind_in_range_nil() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         bind_in_range(ip_addr, (2000, 2000)).unwrap_err();
         bind_in_range(ip_addr, (2000, 1999)).unwrap_err();
     }
@@ -829,11 +834,8 @@ mod tests {
 
         let server_ip_echo_addr = server_udp_socket.local_addr().unwrap();
         assert_eq!(
-            get_public_ip_addr_with_binding(
-                &server_ip_echo_addr,
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED)
-            )
-            .unwrap(),
+            get_public_ip_addr_with_binding(&server_ip_echo_addr, IpAddr::V4(Ipv4Addr::LOCALHOST))
+                .unwrap(),
             parse_host("127.0.0.1").unwrap(),
         );
         assert_eq!(get_cluster_shred_version(&server_ip_echo_addr).unwrap(), 42);
@@ -959,11 +961,8 @@ mod tests {
         );
 
         assert_eq!(
-            get_public_ip_addr_with_binding(
-                &ip_echo_server_addr,
-                IpAddr::V4(Ipv4Addr::UNSPECIFIED)
-            )
-            .unwrap(),
+            get_public_ip_addr_with_binding(&ip_echo_server_addr, IpAddr::V4(Ipv4Addr::LOCALHOST))
+                .unwrap(),
             parse_host("127.0.0.1").unwrap(),
         );
 
@@ -978,7 +977,7 @@ mod tests {
     #[test]
     fn test_bind_two_in_range_with_offset() {
         solana_logger::setup();
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let offset = 6;
         if let Ok(((port1, _), (port2, _))) =
             bind_two_in_range_with_offset(ip_addr, (1024, 65535), offset)
