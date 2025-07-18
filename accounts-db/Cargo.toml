@@ -37,6 +37,7 @@ frozen-abi = [
 
 [dependencies]
 ahash = { workspace = true }
+bencher ={ workspace = true }
 bincode = { workspace = true }
 blake3 = { workspace = true }
 bv = { workspace = true, features = ["serde"] }
@@ -136,6 +137,18 @@ test-case = { workspace = true }
 
 [target.'cfg(not(any(target_env = "msvc", target_os = "freebsd")))'.dev-dependencies]
 jemallocator = { workspace = true }
+
+[[bench]]
+name = "accounts_index"
+harness = false
+
+[[bench]]
+name = "accounts"
+harness = false
+
+[[bench]]
+name = "append_vec"
+harness = false
 
 [[bench]]
 name = "bench_accounts_file"

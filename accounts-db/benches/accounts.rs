@@ -1,9 +1,7 @@
-#![feature(test)]
 #![allow(clippy::arithmetic_side_effects)]
 
-extern crate test;
-
 use {
+    bencher::{benchmark_group, benchmark_main, Bencher},
     dashmap::DashMap,
     rand::Rng,
     rayon::iter::{IntoParallelRefIterator, ParallelIterator},
@@ -24,11 +22,11 @@ use {
     solana_sysvar::epoch_schedule::EpochSchedule,
     std::{
         collections::{HashMap, HashSet},
+        hint::black_box,
         path::PathBuf,
         sync::{Arc, RwLock},
         thread::Builder,
     },
-    test::Bencher,
 };
 
 #[cfg(not(any(target_env = "msvc", target_os = "freebsd")))]
@@ -44,8 +42,7 @@ fn new_accounts_db(account_paths: Vec<PathBuf>) -> AccountsDb {
     )
 }
 
-#[bench]
-fn bench_accounts_hash_bank_hash(bencher: &mut Bencher) {
+fn bench_accounts_hash_bank_hash(b: &mut Bencher) {
     let accounts_db = new_accounts_db(vec![PathBuf::from("bench_accounts_hash_internal")]);
     let accounts = Accounts::new(Arc::new(accounts_db));
     let mut pubkeys: Vec<Pubkey> = vec![];
@@ -58,7 +55,7 @@ fn bench_accounts_hash_bank_hash(bencher: &mut Bencher) {
         .update_accounts_hash_for_tests(0, &ancestors, false, false);
     accounts.add_root(slot);
     accounts.accounts_db.flush_accounts_cache(true, Some(slot));
-    bencher.iter(|| {
+    b.iter(|| {
         assert!(accounts
             .accounts_db
             .verify_accounts_hash_and_lamports_for_tests(
@@ -77,8 +74,7 @@ fn bench_accounts_hash_bank_hash(bencher: &mut Bencher) {
     });
 }
 
-#[bench]
-fn bench_update_accounts_hash(bencher: &mut Bencher) {
+fn bench_update_accounts_hash(b: &mut Bencher) {
     solana_logger::setup();
     let accounts_db = new_accounts_db(vec![PathBuf::from("update_accounts_hash")]);
     let accounts = Accounts::new(Arc::new(accounts_db));
@@ -86,28 +82,26 @@ fn bench_update_accounts_hash(bencher: &mut Bencher) {
     create_test_accounts(&accounts, &mut pubkeys, 50_000, 0);
     accounts.accounts_db.add_root_and_flush_write_cache(0);
     let ancestors = Ancestors::from(vec![0]);
-    bencher.iter(|| {
+    b.iter(|| {
         accounts
             .accounts_db
             .update_accounts_hash_for_tests(0, &ancestors, false, false);
     });
 }
 
-#[bench]
-fn bench_accounts_delta_hash(bencher: &mut Bencher) {
+fn bench_accounts_delta_hash(b: &mut Bencher) {
     solana_logger::setup();
     let accounts_db = new_accounts_db(vec![PathBuf::from("accounts_delta_hash")]);
     let accounts = Accounts::new(Arc::new(accounts_db));
     let mut pubkeys: Vec<Pubkey> = vec![];
     create_test_accounts(&accounts, &mut pubkeys, 100_000, 0);
     accounts.accounts_db.add_root_and_flush_write_cache(0);
-    bencher.iter(|| {
+    b.iter(|| {
         accounts.accounts_db.calculate_accounts_delta_hash(0);
     });
 }
 
-#[bench]
-fn bench_delete_dependencies(bencher: &mut Bencher) {
+fn bench_delete_dependencies(b: &mut Bencher) {
     solana_logger::setup();
     let accounts_db = new_accounts_db(vec![PathBuf::from("accounts_delete_deps")]);
     let accounts = Accounts::new(Arc::new(accounts_db));
@@ -125,12 +119,12 @@ fn bench_delete_dependencies(bencher: &mut Bencher) {
         old_pubkey = pubkey;
         accounts.accounts_db.add_root_and_flush_write_cache(i);
     }
-    bencher.iter(|| {
+    b.iter(|| {
         accounts.accounts_db.clean_accounts_for_tests();
     });
 }
 
-fn store_accounts_with_possible_contention<F>(bench_name: &str, bencher: &mut Bencher, reader_f: F)
+fn store_accounts_with_possible_contention<F>(bench_name: &str, b: &mut Bencher, reader_f: F)
 where
     F: Fn(&Accounts, &[Pubkey]) + Send + Copy + 'static,
 {
@@ -175,7 +169,7 @@ where
     }
 
     let num_new_keys = 1000;
-    bencher.iter(|| {
+    b.iter(|| {
         let new_pubkeys: Vec<_> = std::iter::repeat_with(solana_pubkey::new_rand)
             .take(num_new_keys)
             .collect();
@@ -187,29 +181,23 @@ where
     });
 }
 
-#[bench]
-fn bench_concurrent_read_write(bencher: &mut Bencher) {
-    store_accounts_with_possible_contention(
-        "concurrent_read_write",
-        bencher,
-        |accounts, pubkeys| {
-            let mut rng = rand::thread_rng();
-            loop {
-                let i = rng.gen_range(0..pubkeys.len());
-                test::black_box(
-                    accounts
-                        .load_without_fixed_root(&Ancestors::default(), &pubkeys[i])
-                        .unwrap(),
-                );
-            }
-        },
-    )
+fn bench_concurrent_read_write(b: &mut Bencher) {
+    store_accounts_with_possible_contention("concurrent_read_write", b, |accounts, pubkeys| {
+        let mut rng = rand::thread_rng();
+        loop {
+            let i = rng.gen_range(0..pubkeys.len());
+            black_box(
+                accounts
+                    .load_without_fixed_root(&Ancestors::default(), &pubkeys[i])
+                    .unwrap(),
+            );
+        }
+    })
 }
 
-#[bench]
-fn bench_concurrent_scan_write(bencher: &mut Bencher) {
-    store_accounts_with_possible_contention("concurrent_scan_write", bencher, |accounts, _| loop {
-        test::black_box(
+fn bench_concurrent_scan_write(b: &mut Bencher) {
+    store_accounts_with_possible_contention("concurrent_scan_write", b, |accounts, _| loop {
+        black_box(
             accounts
                 .load_by_program(
                     &Ancestors::default(),
@@ -222,9 +210,8 @@ fn bench_concurrent_scan_write(bencher: &mut Bencher) {
     })
 }
 
-#[bench]
-#[ignore]
-fn bench_dashmap_single_reader_with_n_writers(bencher: &mut Bencher) {
+// #[ignore]
+fn bench_dashmap_single_reader_with_n_writers(b: &mut Bencher) {
     let num_readers = 5;
     let num_keys = 10000;
     let map = Arc::new(DashMap::new());
@@ -236,20 +223,19 @@ fn bench_dashmap_single_reader_with_n_writers(bencher: &mut Bencher) {
         Builder::new()
             .name("readers".to_string())
             .spawn(move || loop {
-                test::black_box(map.entry(5).or_insert(2));
+                black_box(map.entry(5).or_insert(2));
             })
             .unwrap();
     }
-    bencher.iter(|| {
+    b.iter(|| {
         for _ in 0..num_keys {
-            test::black_box(map.get(&5).unwrap().value());
+            black_box(map.get(&5).unwrap().value());
         }
     })
 }
 
-#[bench]
-#[ignore]
-fn bench_rwlock_hashmap_single_reader_with_n_writers(bencher: &mut Bencher) {
+// #[ignore]
+fn bench_rwlock_hashmap_single_reader_with_n_writers(b: &mut Bencher) {
     let num_readers = 5;
     let num_keys = 10000;
     let map = Arc::new(RwLock::new(HashMap::new()));
@@ -261,13 +247,13 @@ fn bench_rwlock_hashmap_single_reader_with_n_writers(bencher: &mut Bencher) {
         Builder::new()
             .name("readers".to_string())
             .spawn(move || loop {
-                test::black_box(map.write().unwrap().get(&5));
+                black_box(map.write().unwrap().get(&5));
             })
             .unwrap();
     }
-    bencher.iter(|| {
+    b.iter(|| {
         for _ in 0..num_keys {
-            test::black_box(map.read().unwrap().get(&5));
+            black_box(map.read().unwrap().get(&5));
         }
     })
 }
@@ -296,12 +282,11 @@ fn setup_bench_dashmap_iter() -> (Arc<Accounts>, DashMap<Pubkey, (AccountSharedD
     (accounts, dashmap)
 }
 
-#[bench]
-fn bench_dashmap_par_iter(bencher: &mut Bencher) {
+fn bench_dashmap_par_iter(b: &mut Bencher) {
     let (accounts, dashmap) = setup_bench_dashmap_iter();
 
-    bencher.iter(|| {
-        test::black_box(accounts.accounts_db.thread_pool.install(|| {
+    b.iter(|| {
+        black_box(accounts.accounts_db.thread_pool.install(|| {
             dashmap
                 .par_iter()
                 .map(|cached_account| (*cached_account.key(), cached_account.value().1))
@@ -310,12 +295,11 @@ fn bench_dashmap_par_iter(bencher: &mut Bencher) {
     });
 }
 
-#[bench]
-fn bench_dashmap_iter(bencher: &mut Bencher) {
+fn bench_dashmap_iter(b: &mut Bencher) {
     let (_accounts, dashmap) = setup_bench_dashmap_iter();
 
-    bencher.iter(|| {
-        test::black_box(
+    b.iter(|| {
+        black_box(
             dashmap
                 .iter()
                 .map(|cached_account| (*cached_account.key(), cached_account.value().1))
@@ -324,7 +308,6 @@ fn bench_dashmap_iter(bencher: &mut Bencher) {
     });
 }
 
-#[bench]
 fn bench_load_largest_accounts(b: &mut Bencher) {
     let accounts_db = new_accounts_db(Vec::new());
     let accounts = Accounts::new(Arc::new(accounts_db));
@@ -352,7 +335,6 @@ fn bench_load_largest_accounts(b: &mut Bencher) {
     });
 }
 
-#[bench]
 fn bench_sort_and_remove_dups(b: &mut Bencher) {
     fn generate_sample_account_from_storage(i: u8) -> AccountFromStorage {
         // offset has to be 8 byte aligned
@@ -374,7 +356,6 @@ fn bench_sort_and_remove_dups(b: &mut Bencher) {
     b.iter(|| AccountsDb::sort_and_remove_dups(&mut accounts.clone()));
 }
 
-#[bench]
 fn bench_sort_and_remove_dups_no_dups(b: &mut Bencher) {
     fn generate_sample_account_from_storage(i: u8) -> AccountFromStorage {
         // offset has to be 8 byte aligned
@@ -397,3 +378,21 @@ fn bench_sort_and_remove_dups_no_dups(b: &mut Bencher) {
 
     b.iter(|| AccountsDb::sort_and_remove_dups(&mut accounts.clone()));
 }
+
+benchmark_group!(
+    benches,
+    bench_sort_and_remove_dups_no_dups,
+    bench_sort_and_remove_dups,
+    bench_load_largest_accounts,
+    bench_dashmap_iter,
+    bench_dashmap_par_iter,
+    bench_rwlock_hashmap_single_reader_with_n_writers,
+    bench_dashmap_single_reader_with_n_writers,
+    bench_concurrent_scan_write,
+    bench_concurrent_read_write,
+    bench_delete_dependencies,
+    bench_accounts_delta_hash,
+    bench_update_accounts_hash,
+    bench_accounts_hash_bank_hash
+);
+benchmark_main!(benches);

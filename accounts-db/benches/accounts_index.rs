@@ -1,8 +1,5 @@
-#![feature(test)]
-
-extern crate test;
-
 use {
+    bencher::{benchmark_group, benchmark_main, Bencher},
     rand::{thread_rng, Rng},
     solana_account::AccountSharedData,
     solana_accounts_db::{
@@ -13,15 +10,13 @@ use {
         },
     },
     std::sync::Arc,
-    test::Bencher,
 };
 
 #[cfg(not(any(target_env = "msvc", target_os = "freebsd")))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-#[bench]
-fn bench_accounts_index(bencher: &mut Bencher) {
+fn bench_accounts_index(b: &mut Bencher) {
     const NUM_PUBKEYS: usize = 10_000;
     let pubkeys: Vec<_> = (0..NUM_PUBKEYS)
         .map(|_| solana_pubkey::new_rand())
@@ -51,7 +46,7 @@ fn bench_accounts_index(bencher: &mut Bencher) {
 
     let mut fork = NUM_FORKS;
     let mut root = 0;
-    bencher.iter(|| {
+    b.iter(|| {
         for _p in 0..NUM_PUBKEYS {
             let pubkey = thread_rng().gen_range(0..NUM_PUBKEYS);
             index.upsert(
@@ -71,3 +66,6 @@ fn bench_accounts_index(bencher: &mut Bencher) {
         fork += 1;
     });
 }
+
+benchmark_group!(benches, bench_accounts_index);
+benchmark_main!(benches);

@@ -1,7 +1,5 @@
-#![feature(test)]
-extern crate test;
-
 use {
+    bencher::{benchmark_group, benchmark_main, Bencher},
     rand::{thread_rng, Rng},
     solana_account::{AccountSharedData, ReadableAccount},
     solana_accounts_db::{
@@ -17,7 +15,6 @@ use {
         thread::{sleep, spawn},
         time::Duration,
     },
-    test::Bencher,
 };
 
 #[cfg(not(any(target_env = "msvc", target_os = "freebsd")))]
@@ -39,11 +36,10 @@ fn append_account(
     vec.append_accounts(&storable_accounts, 0)
 }
 
-#[bench]
-fn append_vec_append(bencher: &mut Bencher) {
+fn append_vec_append(b: &mut Bencher) {
     let path = get_append_vec_path("bench_append");
     let vec = AppendVec::new(&path.path, true, 64 * 1024);
-    bencher.iter(|| {
+    b.iter(|| {
         let (meta, account) = create_test_account(0);
         if append_account(&vec, meta, &account).is_none() {
             vec.reset();
@@ -60,13 +56,12 @@ fn add_test_accounts(vec: &AppendVec, size: usize) -> Vec<(usize, usize)> {
         .collect()
 }
 
-#[bench]
-fn append_vec_sequential_read(bencher: &mut Bencher) {
+fn append_vec_sequential_read(b: &mut Bencher) {
     let path = get_append_vec_path("seq_read");
     let vec = AppendVec::new(&path.path, true, 64 * 1024);
     let size = 1_000;
     let mut indexes = add_test_accounts(&vec, size);
-    bencher.iter(|| {
+    b.iter(|| {
         let (sample, pos) = indexes.pop().unwrap();
         println!("reading pos {sample} {pos}");
         vec.get_stored_account_meta_callback(pos, |account| {
@@ -76,13 +71,13 @@ fn append_vec_sequential_read(bencher: &mut Bencher) {
         });
     });
 }
-#[bench]
-fn append_vec_random_read(bencher: &mut Bencher) {
+
+fn append_vec_random_read(b: &mut Bencher) {
     let path = get_append_vec_path("random_read");
     let vec = AppendVec::new(&path.path, true, 64 * 1024);
     let size = 1_000;
     let indexes = add_test_accounts(&vec, size);
-    bencher.iter(|| {
+    b.iter(|| {
         let random_index: usize = thread_rng().gen_range(0..indexes.len());
         let (sample, pos) = &indexes[random_index];
         vec.get_stored_account_meta_callback(*pos, |account| {
@@ -92,8 +87,7 @@ fn append_vec_random_read(bencher: &mut Bencher) {
     });
 }
 
-#[bench]
-fn append_vec_concurrent_append_read(bencher: &mut Bencher) {
+fn append_vec_concurrent_append_read(b: &mut Bencher) {
     let path = get_append_vec_path("concurrent_read");
     let vec = Arc::new(AppendVec::new(&path.path, true, 1024 * 1024));
     let vec1 = vec.clone();
@@ -111,7 +105,7 @@ fn append_vec_concurrent_append_read(bencher: &mut Bencher) {
     while indexes.lock().unwrap().is_empty() {
         sleep(Duration::from_millis(100));
     }
-    bencher.iter(|| {
+    b.iter(|| {
         let len = indexes.lock().unwrap().len();
         let random_index: usize = thread_rng().gen_range(0..len);
         let (sample, pos) = *indexes.lock().unwrap().get(random_index).unwrap();
@@ -122,8 +116,7 @@ fn append_vec_concurrent_append_read(bencher: &mut Bencher) {
     });
 }
 
-#[bench]
-fn append_vec_concurrent_read_append(bencher: &mut Bencher) {
+fn append_vec_concurrent_read_append(b: &mut Bencher) {
     let path = get_append_vec_path("concurrent_read");
     let vec = Arc::new(AppendVec::new(&path.path, true, 1024 * 1024));
     let vec1 = vec.clone();
@@ -141,7 +134,7 @@ fn append_vec_concurrent_read_append(bencher: &mut Bencher) {
             assert_eq!(account.data(), test.data());
         });
     });
-    bencher.iter(|| {
+    b.iter(|| {
         let sample: usize = thread_rng().gen_range(0..256);
         let (meta, account) = create_test_account(sample);
         if let Some(info) = append_account(&vec, meta, &account) {
@@ -149,3 +142,13 @@ fn append_vec_concurrent_read_append(bencher: &mut Bencher) {
         }
     });
 }
+
+benchmark_group!(
+    benches,
+    append_vec_concurrent_read_append,
+    append_vec_concurrent_append_read,
+    append_vec_random_read,
+    append_vec_sequential_read,
+    append_vec_append
+);
+benchmark_main!(benches);
