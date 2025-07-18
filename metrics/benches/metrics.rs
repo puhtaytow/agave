@@ -1,5 +1,5 @@
 use {
-    bencher::{benchmark_group, benchmark_main, black_box, Bencher},
+    bencher::{benchmark_group, benchmark_main, Bencher},
     log::*,
     rand::distributions::{Distribution, Uniform},
     solana_metrics::{
@@ -7,7 +7,7 @@ use {
         datapoint::DataPoint,
         metrics::{serialize_points, test_mocks::MockMetricsWriter, MetricsAgent},
     },
-    std::{sync::Arc, time::Duration},
+    std::{hint::black_box, sync::Arc, time::Duration},
 };
 
 fn bench_write_points(b: &mut Bencher) {
