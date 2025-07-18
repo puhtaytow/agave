@@ -38,7 +38,7 @@ pub fn unique_port_range_for_tests(size: u16) -> (u16, u16) {
             }
             Err(_) => BASE_PORT,
         };
-    assert!(start < u16::MAX - size, "ran out of port numbers!");
+    assert!(start < u16::MAX - size, "Ran out of port numbers!");
     (start, start + size)
 }
 
