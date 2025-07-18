@@ -819,7 +819,7 @@ mod tests {
                 localhost_port_range_for_tests().as_tuple(),
                 config,
             )
-            .unwrap();
+            .expect("should bind");
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -845,12 +845,12 @@ mod tests {
     fn test_get_public_ip_addr_reachable() {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let pr = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests().as_tuple();
         let config = SocketConfig::default();
         let (_server_port, (server_udp_socket, server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr, config).unwrap();
         let (_client_port, (client_udp_socket, client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr, config).unwrap();
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -1019,7 +1019,7 @@ mod tests {
             localhost_port_range_for_tests().as_tuple(),
             config,
         )
-        .unwrap();
+        .expect("should bind");
 
         let ip_echo_server_addr = srv_udp_sock.local_addr().unwrap();
         let _runtime = ip_echo_server(

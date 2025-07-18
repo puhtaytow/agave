@@ -6,7 +6,7 @@ use {
     solana_keypair::Keypair,
     solana_ledger::{blockstore::Blockstore, get_tmp_ledger_path_auto_delete},
     solana_native_token::sol_to_lamports,
-    solana_net_utils::sockets::localhost_port_range_for_tests,
+    solana_net_utils::sockets::localhost_port_single_for_tests,
     solana_pubkey::Pubkey,
     solana_pubsub_client::{nonblocking, pubsub_client::PubsubClient},
     solana_rpc::{
@@ -54,7 +54,7 @@ use {
 fn pubsub_addr() -> SocketAddr {
     SocketAddr::new(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
-        localhost_port_range_for_tests().start,
+        localhost_port_single_for_tests(),
     )
 }
 
