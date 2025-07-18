@@ -35,6 +35,8 @@ use {
     },
     url::Url,
 };
+
+/// Helper for code that still expects port ranges as `(u16, u16)`
 pub trait RangeExt {
     fn as_tuple(&self) -> (u16, u16);
 }
