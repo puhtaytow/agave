@@ -354,8 +354,10 @@ mod tests {
     async fn test_worker_stopped_after_failed_connect() {
         let endpoint = create_test_endpoint();
 
-        let pr = localhost_port_range_for_tests();
-        let peer: SocketAddr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), pr.start);
+        let peer: SocketAddr = SocketAddr::new(
+            Ipv4Addr::LOCALHOST.into(),
+            localhost_port_range_for_tests().start,
+        );
 
         let worker_channel_size = 1;
         let skip_check_transaction_age = true;
@@ -388,9 +390,10 @@ mod tests {
     async fn test_worker_shutdown() {
         let endpoint = create_test_endpoint();
 
-        let pr = localhost_port_range_for_tests();
-        let peer: SocketAddr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), pr.start);
-
+        let peer: SocketAddr = SocketAddr::new(
+            Ipv4Addr::LOCALHOST.into(),
+            localhost_port_range_for_tests().start,
+        );
         let worker_channel_size = 1;
         let skip_check_transaction_age = true;
         let max_reconnect_attempts = 0;
@@ -421,8 +424,10 @@ mod tests {
         let cancel = CancellationToken::new();
         let mut cache = WorkersCache::new(10, cancel.clone());
 
-        let pr = localhost_port_range_for_tests();
-        let peer: SocketAddr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), pr.start);
+        let peer: SocketAddr = SocketAddr::new(
+            Ipv4Addr::LOCALHOST.into(),
+            localhost_port_range_for_tests().start,
+        );
         let worker_channel_size = 1;
         let skip_check_transaction_age = true;
         let max_reconnect_attempts = 0;

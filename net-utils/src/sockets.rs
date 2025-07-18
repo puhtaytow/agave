@@ -376,7 +376,7 @@ mod tests {
         let pr = localhost_port_range_for_tests();
         let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
         let config = SocketConfiguration::default();
-        let s = bind_in_range(ip_addr, (pr.start, pr.end)).unwrap();
+        let s = bind_in_range(ip_addr, pr.as_tuple()).unwrap();
         assert_eq!(
             s.0, pr.start,
             "bind_in_range should use first available port"

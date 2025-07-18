@@ -723,7 +723,7 @@ mod tests {
     fn test_bind() {
         let pr = sockets::localhost_port_range_for_tests();
         let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-        let s = bind_in_range(ip_addr, (pr.start, pr.end)).unwrap();
+        let s = bind_in_range(ip_addr, pr.as_tuple()).unwrap();
         assert_eq!(
             s.0, pr.start,
             "bind_in_range should use first available port"
@@ -773,7 +773,7 @@ mod tests {
             find_available_port_in_range(ip_addr, (pr.start, pr.start + 1)).unwrap(),
             pr.start
         );
-        let port = find_available_port_in_range(ip_addr, (pr.start, pr.end)).unwrap();
+        let port = find_available_port_in_range(ip_addr, pr.as_tuple()).unwrap();
         assert!(pr.contains(&port));
 
         let _socket = bind_to(ip_addr, port, false).unwrap();
@@ -844,7 +844,7 @@ mod tests {
         let (_server_port, (server_udp_socket, server_tcp_listener)) =
             bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
         let (_client_port, (client_udp_socket, client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, (pr.start, pr.end), config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -1008,9 +1008,12 @@ mod tests {
         let ip_a = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let ip_b = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2));
 
-        let pr = sockets::localhost_port_range_for_tests();
-        let (_srv_udp_port, (srv_udp_sock, srv_tcp_listener)) =
-            bind_common_in_range_with_config(ip_a, pr.as_tuple(), config).unwrap();
+        let (_srv_udp_port, (srv_udp_sock, srv_tcp_listener)) = bind_common_in_range_with_config(
+            ip_a,
+            localhost_port_range_for_tests().as_tuple(),
+            config,
+        )
+        .unwrap();
 
         let ip_echo_server_addr = srv_udp_sock.local_addr().unwrap();
         let _runtime = ip_echo_server(

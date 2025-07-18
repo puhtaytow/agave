@@ -986,11 +986,11 @@ mod tests {
         let validator_exit = create_validator_exit(exit.clone());
         let bank = Bank::new_for_tests(&genesis_config);
         let cluster_info = Arc::new(new_test_cluster_info());
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-        let pr = localhost_port_range_for_tests();
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let rpc_addr = SocketAddr::new(
             ip_addr,
-            find_available_port_in_range(ip_addr, pr.as_tuple()).unwrap(),
+            find_available_port_in_range(ip_addr, localhost_port_range_for_tests().as_tuple())
+                .unwrap(),
         );
         let bank_forks = BankForks::new_rw_arc(bank);
         let ledger_path = get_tmp_ledger_path_auto_delete!();

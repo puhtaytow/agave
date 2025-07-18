@@ -66,10 +66,9 @@ pub fn create_quic_server_sockets() -> Vec<UdpSocket> {
     } else {
         1
     };
-    let port_range = localhost_port_range_for_tests();
     multi_bind_in_range_with_config(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
-        port_range.as_tuple(),
+        localhost_port_range_for_tests().as_tuple(),
         SocketConfig::default(),
         num,
     )
