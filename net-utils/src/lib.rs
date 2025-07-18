@@ -35,8 +35,6 @@ use {
     },
     url::Url,
 };
-
-/// Helper for less verbose tests transition to the new API.
 pub trait RangeExt {
     fn as_tuple(&self) -> (u16, u16);
 }
@@ -54,7 +52,6 @@ pub struct UdpSocketPair {
     pub sender: UdpSocket,   // Locally bound socket to send via public address
 }
 
-// TODO: maybe replace Tuple by Range<u16>?
 pub type PortRange = (u16, u16);
 
 pub const VALIDATOR_PORT_RANGE: PortRange = (8000, 10_000);
@@ -777,7 +774,7 @@ mod tests {
             pr.start
         );
         let port = find_available_port_in_range(ip_addr, (pr.start, pr.end)).unwrap();
-        assert!(pr.contains(&port)); // TODO: doublecheck
+        assert!(pr.contains(&port));
 
         let _socket = bind_to(ip_addr, port, false).unwrap();
         find_available_port_in_range(ip_addr, (port, port + 1)).unwrap_err();
@@ -804,7 +801,7 @@ mod tests {
         let config = SocketConfig::default();
         let (port, _sockets) =
             bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
-        assert!((pr.start..pr.end).contains(&port));
+        assert!(pr.contains(&port));
 
         bind_common_in_range_with_config(ip_addr, (port, port + 1), config).unwrap_err();
     }

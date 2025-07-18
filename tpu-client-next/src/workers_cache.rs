@@ -327,7 +327,7 @@ mod tests {
             SendTransactionStats,
         },
         quinn::Endpoint,
-        solana_net_utils::{bind_in_range, sockets::localhost_port_range_for_tests},
+        solana_net_utils::{bind_in_range, sockets::localhost_port_range_for_tests, RangeExt},
         solana_tls_utils::QuicClientCertificate,
         std::{
             net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -343,7 +343,7 @@ mod tests {
 
     fn create_test_endpoint() -> Endpoint {
         let pr = localhost_port_range_for_tests();
-        let socket = bind_in_range(IpAddr::V4(Ipv4Addr::LOCALHOST), (pr.start, pr.end))
+        let socket = bind_in_range(IpAddr::V4(Ipv4Addr::LOCALHOST), pr.as_tuple())
             .unwrap()
             .1;
         let client_config = create_client_config(&QuicClientCertificate::new(None));

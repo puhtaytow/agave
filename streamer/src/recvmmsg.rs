@@ -199,9 +199,9 @@ mod tests {
 
     fn test_setup_reader_sender(ip: IpAddr) -> io::Result<TestConfig> {
         let pr = localhost_port_range_for_tests();
-        let reader = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())?.1;
+        let reader = bind_in_range_with_config(ip, pr.as_tuple(), SocketConfig::default())?.1;
         let reader_addr = reader.local_addr()?;
-        let sender = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())?.1;
+        let sender = bind_in_range_with_config(ip, pr.as_tuple(), SocketConfig::default())?.1;
         let sender_addr = sender.local_addr()?;
         Ok((reader, reader_addr, sender, sender_addr))
     }
