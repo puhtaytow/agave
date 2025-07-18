@@ -31,9 +31,21 @@ use {
     std::{
         io::{self},
         net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, ToSocketAddrs, UdpSocket},
+        ops::Range,
     },
     url::Url,
 };
+
+/// Helper for less verbose tests transition to the new API.
+pub trait RangeExt {
+    fn as_tuple(&self) -> (u16, u16);
+}
+
+impl RangeExt for Range<u16> {
+    fn as_tuple(&self) -> (u16, u16) {
+        (self.start, self.end)
+    }
+}
 
 /// A data type representing a public Udp socket
 pub struct UdpSocketPair {
@@ -42,6 +54,7 @@ pub struct UdpSocketPair {
     pub sender: UdpSocket,   // Locally bound socket to send via public address
 }
 
+// TODO: maybe replace Tuple by Range<u16>?
 pub type PortRange = (u16, u16);
 
 pub const VALIDATOR_PORT_RANGE: PortRange = (8000, 10_000);
@@ -604,6 +617,7 @@ mod tests {
         super::*,
         ip_echo_server::IpEchoServerResponse,
         itertools::Itertools,
+        sockets::localhost_port_range_for_tests,
         std::{net::Ipv4Addr, time::Duration},
         tokio::runtime::Runtime,
     };
@@ -710,23 +724,26 @@ mod tests {
 
     #[test]
     fn test_bind() {
-        let (pr_s, pr_e) = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-        let s = bind_in_range(ip_addr, (pr_s, pr_e)).unwrap();
-        assert_eq!(s.0, pr_s, "bind_in_range should use first available port");
+        let s = bind_in_range(ip_addr, (pr.start, pr.end)).unwrap();
+        assert_eq!(
+            s.0, pr.start,
+            "bind_in_range should use first available port"
+        );
         let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
         let config = SocketConfig::default().reuseport(true);
-        let x = bind_to_with_config(ip_addr, pr_s + 1, config).unwrap();
-        let y = bind_to_with_config(ip_addr, pr_s + 1, config).unwrap();
+        let x = bind_to_with_config(ip_addr, pr.start + 1, config).unwrap();
+        let y = bind_to_with_config(ip_addr, pr.start + 1, config).unwrap();
         assert_eq!(
             x.local_addr().unwrap().port(),
             y.local_addr().unwrap().port()
         );
-        bind_to(ip_addr, pr_s, false).unwrap_err();
-        bind_in_range(ip_addr, (pr_s, pr_s + 2)).unwrap_err();
+        bind_to(ip_addr, pr.start, false).unwrap_err();
+        bind_in_range(ip_addr, (pr.start, pr.start + 2)).unwrap_err();
 
         let (port, v) =
-            multi_bind_in_range_with_config(ip_addr, (pr_s + 5, pr_e), config, 10).unwrap();
+            multi_bind_in_range_with_config(ip_addr, (pr.start + 5, pr.end), config, 10).unwrap();
         for sock in &v {
             assert_eq!(port, sock.local_addr().unwrap().port());
         }
@@ -754,13 +771,13 @@ mod tests {
     #[test]
     fn test_find_available_port_in_range() {
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let (pr_s, pr_e) = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         assert_eq!(
-            find_available_port_in_range(ip_addr, (pr_s, pr_s + 1)).unwrap(),
-            pr_s
+            find_available_port_in_range(ip_addr, (pr.start, pr.start + 1)).unwrap(),
+            pr.start
         );
-        let port = find_available_port_in_range(ip_addr, (pr_s, pr_e)).unwrap();
-        assert!((pr_s..pr_e).contains(&port));
+        let port = find_available_port_in_range(ip_addr, (pr.start, pr.end)).unwrap();
+        assert!(pr.contains(&port)); // TODO: doublecheck
 
         let _socket = bind_to(ip_addr, port, false).unwrap();
         find_available_port_in_range(ip_addr, (port, port + 1)).unwrap_err();
@@ -769,11 +786,11 @@ mod tests {
     #[test]
     fn test_find_available_ports_in_range() {
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let port_range = sockets::localhost_port_range_for_tests();
-        assert!(port_range.1 - port_range.0 > 16);
+        let pr = sockets::localhost_port_range_for_tests();
+        assert!(pr.end - pr.start > 16);
         // reserve 1 port to make it non-trivial
-        let sock = bind_to_with_config(ip_addr, port_range.0 + 2, SocketConfig::default()).unwrap();
-        let ports: [u16; 15] = find_available_ports_in_range(ip_addr, port_range).unwrap();
+        let sock = bind_to_with_config(ip_addr, pr.start + 2, SocketConfig::default()).unwrap();
+        let ports: [u16; 15] = find_available_ports_in_range(ip_addr, pr.as_tuple()).unwrap();
         let mut ports_vec = Vec::from(ports);
         ports_vec.push(sock.local_addr().unwrap().port());
         let res: Vec<_> = ports_vec.into_iter().unique().collect();
@@ -783,11 +800,11 @@ mod tests {
     #[test]
     fn test_bind_common_in_range() {
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let (pr_s, pr_e) = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let config = SocketConfig::default();
         let (port, _sockets) =
-            bind_common_in_range_with_config(ip_addr, (pr_s, pr_e), config).unwrap();
-        assert!((pr_s..pr_e).contains(&port));
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
+        assert!((pr.start..pr.end).contains(&port));
 
         bind_common_in_range_with_config(ip_addr, (port, port + 1), config).unwrap_err();
     }
@@ -796,10 +813,10 @@ mod tests {
     fn test_get_public_ip_addr_none() {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let (pr_s, pr_e) = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let config = SocketConfig::default();
         let (_server_port, (server_udp_socket, server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, (pr_s, pr_e), config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -825,12 +842,12 @@ mod tests {
     fn test_get_public_ip_addr_reachable() {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let port_range = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let config = SocketConfig::default();
         let (_server_port, (server_udp_socket, server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
         let (_client_port, (client_udp_socket, client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            bind_common_in_range_with_config(ip_addr, (pr.start, pr.end), config).unwrap();
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -865,16 +882,16 @@ mod tests {
     fn test_verify_ports_tcp_unreachable() {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let port_range = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let config = SocketConfig::default();
         let (_server_port, (server_udp_socket, _server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
 
         // make the socket unreachable by not running the ip echo server!
         let server_ip_echo_addr = server_udp_socket.local_addr().unwrap();
 
         let (_, (_client_udp_socket, client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
 
         let rt = runtime();
         assert!(!rt.block_on(ip_echo_client::verify_all_reachable_tcp(
@@ -888,16 +905,16 @@ mod tests {
     fn test_verify_ports_udp_unreachable() {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let port_range = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let config = SocketConfig::default();
         let (_server_port, (server_udp_socket, _server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
 
         // make the socket unreachable by not running the ip echo server!
         let server_ip_echo_addr = server_udp_socket.local_addr().unwrap();
 
         let (_correct_client_port, (client_udp_socket, _client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
 
         let rt = runtime();
         assert!(!rt.block_on(ip_echo_client::verify_all_reachable_udp(
@@ -994,9 +1011,9 @@ mod tests {
         let ip_a = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let ip_b = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2));
 
-        let server_ports = sockets::localhost_port_range_for_tests();
+        let pr = sockets::localhost_port_range_for_tests();
         let (_srv_udp_port, (srv_udp_sock, srv_tcp_listener)) =
-            bind_common_in_range_with_config(ip_a, server_ports, config).unwrap();
+            bind_common_in_range_with_config(ip_a, pr.as_tuple(), config).unwrap();
 
         let ip_echo_server_addr = srv_udp_sock.local_addr().unwrap();
         let _runtime = ip_echo_server(
@@ -1008,13 +1025,13 @@ mod tests {
         let mut udp_sockets = Vec::new();
         let (_p1, (sock_a, _tl_a)) = bind_common_in_range_with_config(
             ip_a,
-            sockets::localhost_port_range_for_tests(),
+            localhost_port_range_for_tests().as_tuple(),
             config,
         )
         .unwrap();
         let (_p2, (sock_b, _tl_b)) = bind_common_in_range_with_config(
             ip_b,
-            sockets::localhost_port_range_for_tests(),
+            localhost_port_range_for_tests().as_tuple(),
             config,
         )
         .unwrap();

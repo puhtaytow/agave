@@ -52,7 +52,7 @@ use {
 
 fn pubsub_addr() -> SocketAddr {
     let port_range = solana_net_utils::sockets::localhost_port_range_for_tests();
-    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0)
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.start)
 }
 
 #[test]

@@ -1303,9 +1303,10 @@ mod test {
         let slot = 100;
         let shred_index = 50;
         let port_range = localhost_port_range_for_tests();
-        let reader = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind");
+        let reader =
+            bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.start).expect("should bind"); // TODO: maybe switch to new api
         let address = reader.local_addr().unwrap();
-        let sender = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.1).expect("should bind");
+        let sender = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.end).expect("should bind"); // TODO: maybe switch to new api
         let outstanding_repair_requests = Arc::new(RwLock::new(OutstandingShredRepairs::default()));
 
         // Send a repair request
