@@ -195,10 +195,10 @@ mod tests {
     type TestConfig = (UdpSocket, SocketAddr, UdpSocket, SocketAddr);
 
     fn test_setup_reader_sender(ip: IpAddr) -> io::Result<TestConfig> {
-        let port_range = localhost_port_range_for_tests();
-        let reader = bind_in_range_with_config(ip, port_range, SocketConfig::default())?.1;
+        let pr = localhost_port_range_for_tests();
+        let reader = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())?.1;
         let reader_addr = reader.local_addr()?;
-        let sender = bind_in_range_with_config(ip, port_range, SocketConfig::default())?.1;
+        let sender = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())?.1;
         let sender_addr = sender.local_addr()?;
         Ok((reader, reader_addr, sender, sender_addr))
     }
@@ -298,18 +298,18 @@ mod tests {
     #[test]
     pub fn test_recv_mmsg_multi_addrs() {
         let ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let port_range = localhost_port_range_for_tests();
-        let reader = bind_in_range_with_config(ip, port_range, SocketConfig::default())
+        let pr = localhost_port_range_for_tests();
+        let reader = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())
             .unwrap()
             .1;
         let reader_addr = reader.local_addr().unwrap();
-        let sender1 = bind_in_range_with_config(ip, port_range, SocketConfig::default())
+        let sender1 = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())
             .unwrap()
             .1;
         let sender1_addr = sender1.local_addr().unwrap();
         let sent1 = TEST_NUM_MSGS - 1;
 
-        let sender2 = bind_in_range_with_config(ip, port_range, SocketConfig::default())
+        let sender2 = bind_in_range_with_config(ip, (pr.start, pr.end), SocketConfig::default())
             .unwrap()
             .1;
         let sender_addr = sender2.local_addr().unwrap();

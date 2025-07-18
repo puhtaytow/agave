@@ -51,9 +51,9 @@ mod tests {
     }
 
     fn server_args() -> (UdpSocket, Arc<AtomicBool>, Keypair) {
-        let port_range = localhost_port_range_for_tests();
+        let pr = localhost_port_range_for_tests();
         (
-            bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0).expect("should bind"),
+            bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), pr.start).expect("should bind"),
             Arc::new(AtomicBool::new(false)),
             Keypair::new(),
         )

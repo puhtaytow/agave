@@ -57,8 +57,8 @@ impl CreateClient for TpuClientNextClient {
     ) -> Self {
         let runtime_handle =
             maybe_runtime.expect("Runtime should be provided for the TpuClientNextClient.");
-        let port_range = localhost_port_range_for_tests();
-        let bind_socket = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), port_range.0)
+        let pr = localhost_port_range_for_tests();
+        let bind_socket = bind_to(IpAddr::V4(Ipv4Addr::LOCALHOST), pr.start)
             .expect("Should be able to open UdpSocket for tests.");
         Self::new::<NullTpuInfo>(
             runtime_handle,

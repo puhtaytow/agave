@@ -102,8 +102,8 @@ impl Default for TestValidatorNodeConfig {
         #[cfg(debug_assertions)]
         let port_range = solana_net_utils::sockets::localhost_port_range_for_tests();
         Self {
-            gossip_addr: SocketAddr::new(bind_ip_addr, port_range.0),
-            port_range,
+            gossip_addr: SocketAddr::new(bind_ip_addr, port_range.start),
+            port_range: (port_range.start, port_range.end),
             bind_ip_addr,
         }
     }
