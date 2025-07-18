@@ -57,11 +57,24 @@ pub fn localhost_port_range_for_tests() -> Range<u16> {
     unique_port_range_for_tests(20)
 }
 
+/// Retrieve a free single port for unit tests
+///
+/// When running under nextest, this will try to provide
+/// a unique port number (assuming no other nextest processes
+/// are running on the same host) based on NEXTEST_TEST_GLOBAL_SLOT variable
+/// The port will be reused following nextest logic.
+///
+/// When running without nextest, this will only bump an atomic and eventually
+/// panic when it runs out of port numbers to assign.
+pub fn localhost_port_single_for_tests() -> u16 {
+    unique_port_range_for_tests(1).start
+}
+
 /// Bind a `UdpSocket` to a unique port.
 pub fn bind_to_localhost_unique() -> io::Result<UdpSocket> {
     bind_to(
         IpAddr::V4(Ipv4Addr::LOCALHOST),
-        unique_port_range_for_tests(1).start,
+        localhost_port_single_for_tests(),
     )
 }
 
@@ -374,14 +387,14 @@ mod tests {
     #[test]
     fn test_bind() {
         let pr = localhost_port_range_for_tests();
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let config = SocketConfiguration::default();
         let s = bind_in_range(ip_addr, pr.as_tuple()).unwrap();
         assert_eq!(
             s.0, pr.start,
             "bind_in_range should use first available port"
         );
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let x = bind_to_with_config(ip_addr, pr.start + 1, config).unwrap();
         let y = bind_more_with_config(x, 2, config).unwrap();
         assert_eq!(
@@ -400,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_bind_with_any_port() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let config = SocketConfiguration::default();
         let x = bind_with_any_port_with_config(ip_addr, config).unwrap();
         let y = bind_with_any_port_with_config(ip_addr, config).unwrap();
@@ -412,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_bind_in_range_nil() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         bind_in_range(ip_addr, (2000, 2000)).unwrap_err();
         bind_in_range(ip_addr, (2000, 1999)).unwrap_err();
     }
@@ -421,11 +434,10 @@ mod tests {
     fn test_bind_on_top() {
         let config = SocketConfiguration::default();
         let localhost = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let pr = localhost_port_range_for_tests();
-        let (_p, s) = bind_in_range_with_config(localhost, pr.as_tuple(), config).unwrap();
+        let pr = localhost_port_range_for_tests().as_tuple();
+        let (_p, s) = bind_in_range_with_config(localhost, pr, config).unwrap();
         let _socks = bind_more_with_config(s, 8, config).unwrap();
-
-        let _socks2 = multi_bind_in_range_with_config(localhost, pr.as_tuple(), config, 8).unwrap();
+        let _socks2 = multi_bind_in_range_with_config(localhost, pr, config, 8).unwrap();
     }
 
     #[test]
@@ -444,7 +456,7 @@ mod tests {
     fn test_bind_two_in_range_with_offset() {
         solana_logger::setup();
         let config = SocketConfiguration::default();
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let offset = 6;
         if let Ok(((port1, _), (port2, _))) =
             bind_two_in_range_with_offset_and_config(ip_addr, (1024, 65535), offset, config, config)

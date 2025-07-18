@@ -327,7 +327,11 @@ mod tests {
             SendTransactionStats,
         },
         quinn::Endpoint,
-        solana_net_utils::{bind_in_range, sockets::localhost_port_range_for_tests, RangeExt},
+        solana_net_utils::{
+            bind_in_range,
+            sockets::{localhost_port_range_for_tests, localhost_port_single_for_tests},
+            RangeExt,
+        },
         solana_tls_utils::QuicClientCertificate,
         std::{
             net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -342,10 +346,12 @@ mod tests {
     const TEST_MAX_TIME: Duration = Duration::from_secs(5);
 
     fn create_test_endpoint() -> Endpoint {
-        let pr = localhost_port_range_for_tests();
-        let socket = bind_in_range(IpAddr::V4(Ipv4Addr::LOCALHOST), pr.as_tuple())
-            .unwrap()
-            .1;
+        let socket = bind_in_range(
+            IpAddr::V4(Ipv4Addr::LOCALHOST),
+            localhost_port_range_for_tests().as_tuple(),
+        )
+        .expect("should bind")
+        .1;
         let client_config = create_client_config(&QuicClientCertificate::new(None));
         create_client_endpoint(BindTarget::Socket(socket), client_config).unwrap()
     }
@@ -356,7 +362,7 @@ mod tests {
 
         let peer: SocketAddr = SocketAddr::new(
             Ipv4Addr::LOCALHOST.into(),
-            localhost_port_range_for_tests().start,
+            localhost_port_single_for_tests(),
         );
 
         let worker_channel_size = 1;
@@ -392,7 +398,7 @@ mod tests {
 
         let peer: SocketAddr = SocketAddr::new(
             Ipv4Addr::LOCALHOST.into(),
-            localhost_port_range_for_tests().start,
+            localhost_port_single_for_tests(),
         );
         let worker_channel_size = 1;
         let skip_check_transaction_age = true;
@@ -426,7 +432,7 @@ mod tests {
 
         let peer: SocketAddr = SocketAddr::new(
             Ipv4Addr::LOCALHOST.into(),
-            localhost_port_range_for_tests().start,
+            localhost_port_single_for_tests(),
         );
         let worker_channel_size = 1;
         let skip_check_transaction_age = true;

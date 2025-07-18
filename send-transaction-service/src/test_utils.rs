@@ -9,13 +9,8 @@ use {
         },
     },
     solana_client::connection_cache::ConnectionCache,
-    solana_net_utils::sockets::{
-        bind_to, bind_to_localhost_unique, localhost_port_range_for_tests,
-    },
-    std::{
-        net::{IpAddr, Ipv4Addr, SocketAddr},
-        sync::Arc,
-    },
+    solana_net_utils::sockets::bind_to_localhost_unique,
+    std::{net::SocketAddr, sync::Arc},
     tokio::runtime::Handle,
     tokio_util::sync::CancellationToken,
 };
