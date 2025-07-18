@@ -406,11 +406,6 @@ pub fn bind_to_localhost() -> io::Result<UdpSocket> {
     sockets::bind_to_with_config(IpAddr::V4(Ipv4Addr::LOCALHOST), 0, config)
 }
 
-#[deprecated(
-    since = "3.0.0",
-    note = "Please avoid this function in favor of sockets::bind_to_localhost_unique"
-)]
-#[allow(deprecated)]
 pub fn bind_to_unspecified() -> io::Result<UdpSocket> {
     let config = sockets::SocketConfiguration::default();
     sockets::bind_to_with_config(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0, config)
