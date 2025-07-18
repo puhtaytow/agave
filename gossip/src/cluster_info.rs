@@ -59,7 +59,7 @@ use {
             localhost_port_range_for_tests, multi_bind_in_range_with_config,
             SocketConfiguration as SocketConfig,
         },
-        PortRange, VALIDATOR_PORT_RANGE,
+        PortRange, RangeExt, VALIDATOR_PORT_RANGE,
     },
     solana_perf::{
         data_budget::DataBudget,
@@ -2441,7 +2441,7 @@ impl Node {
                 addrs: vec![bind_ip_addr],
             },
             gossip_port: port_range.start,
-            port_range: (port_range.start, port_range.end),
+            port_range: port_range.as_tuple(),
             advertised_ip: bind_ip_addr,
             public_tpu_addr: None,
             public_tpu_forwards_addr: None,
@@ -2453,8 +2453,7 @@ impl Node {
         };
         let mut node = Self::new_with_external_ip(pubkey, config);
         let rpc_ports: [u16; 2] =
-            find_available_ports_in_range(bind_ip_addr, (port_range.start, port_range.end))
-                .unwrap();
+            find_available_ports_in_range(bind_ip_addr, port_range.as_tuple()).unwrap();
         let rpc_addr = SocketAddr::new(bind_ip_addr, rpc_ports[0]);
         let rpc_pubsub_addr = SocketAddr::new(bind_ip_addr, rpc_ports[1]);
         node.info.set_rpc(rpc_addr).unwrap();
@@ -3144,7 +3143,7 @@ mod tests {
         let config = NodeConfig {
             advertised_ip: IpAddr::V4(ip),
             gossip_port: 0,
-            port_range: (port_range.start, port_range.end),
+            port_range: port_range.as_tuple(),
             bind_ip_addrs: BindIpAddrs::new(vec![IpAddr::V4(ip)]).unwrap(),
             public_tpu_addr: None,
             public_tpu_forwards_addr: None,
@@ -3156,7 +3155,7 @@ mod tests {
 
         let node = Node::new_with_external_ip(&solana_pubkey::new_rand(), config);
 
-        check_node_sockets(&node, IpAddr::V4(ip), (port_range.start, port_range.end));
+        check_node_sockets(&node, IpAddr::V4(ip), port_range.as_tuple());
     }
 
     #[test]
@@ -3169,7 +3168,7 @@ mod tests {
         let config = NodeConfig {
             advertised_ip: ip,
             gossip_port: port,
-            port_range: (port_range.start, port_range.end),
+            port_range: port_range.as_tuple(),
             bind_ip_addrs: BindIpAddrs::new(vec![ip]).unwrap(),
             public_tpu_addr: None,
             public_tpu_forwards_addr: None,
@@ -3181,7 +3180,7 @@ mod tests {
 
         let node = Node::new_with_external_ip(&solana_pubkey::new_rand(), config);
 
-        check_node_sockets(&node, ip, (port_range.start, port_range.end));
+        check_node_sockets(&node, ip, port_range.as_tuple());
 
         assert_eq!(node.sockets.gossip.local_addr().unwrap().port(), port);
     }

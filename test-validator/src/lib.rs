@@ -38,7 +38,7 @@ use {
     solana_loader_v3_interface::state::UpgradeableLoaderState,
     solana_message::Message,
     solana_native_token::sol_to_lamports,
-    solana_net_utils::{find_available_ports_in_range, PortRange},
+    solana_net_utils::{find_available_ports_in_range, PortRange, RangeExt},
     solana_pubkey::Pubkey,
     solana_rent::Rent,
     solana_rpc::{rpc::JsonRpcConfig, rpc_pubsub_service::PubSubConfig},
@@ -103,7 +103,7 @@ impl Default for TestValidatorNodeConfig {
         let port_range = solana_net_utils::sockets::localhost_port_range_for_tests();
         Self {
             gossip_addr: SocketAddr::new(bind_ip_addr, port_range.start),
-            port_range: (port_range.start, port_range.end),
+            port_range: port_range.as_tuple(),
             bind_ip_addr,
         }
     }

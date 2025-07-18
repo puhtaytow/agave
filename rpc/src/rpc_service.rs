@@ -962,7 +962,9 @@ mod tests {
             genesis_utils::{create_genesis_config, GenesisConfigInfo},
             get_tmp_ledger_path_auto_delete,
         },
-        solana_net_utils::{find_available_port_in_range, sockets::localhost_port_range_for_tests},
+        solana_net_utils::{
+            find_available_port_in_range, sockets::localhost_port_range_for_tests, RangeExt,
+        },
         solana_rpc_client_api::config::RpcContextConfig,
         solana_runtime::bank::Bank,
         solana_signer::Signer,
@@ -988,7 +990,7 @@ mod tests {
         let pr = localhost_port_range_for_tests();
         let rpc_addr = SocketAddr::new(
             ip_addr,
-            find_available_port_in_range(ip_addr, (pr.start, pr.end)).unwrap(),
+            find_available_port_in_range(ip_addr, pr.as_tuple()).unwrap(),
         );
         let bank_forks = BankForks::new_rw_arc(bank);
         let ledger_path = get_tmp_ledger_path_auto_delete!();

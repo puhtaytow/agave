@@ -11,6 +11,7 @@ use {
         sync::atomic::{AtomicU16, Ordering},
     },
 };
+
 // base port for deconflicted allocations
 const BASE_PORT: u16 = 5000;
 // how much to allocate per individual process.
@@ -366,7 +367,7 @@ pub fn bind_more_with_config(
 mod tests {
     use {
         super::*,
-        crate::{bind_in_range, sockets::localhost_port_range_for_tests},
+        crate::{bind_in_range, sockets::localhost_port_range_for_tests, RangeExt},
         std::net::Ipv4Addr,
     };
 
@@ -421,11 +422,10 @@ mod tests {
         let config = SocketConfiguration::default();
         let localhost = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let pr = localhost_port_range_for_tests();
-        let (_p, s) = bind_in_range_with_config(localhost, (pr.start, pr.end), config).unwrap(); // TODO: check if bind_in_range_with_config doesnt have bug now
+        let (_p, s) = bind_in_range_with_config(localhost, pr.as_tuple(), config).unwrap();
         let _socks = bind_more_with_config(s, 8, config).unwrap();
 
-        let _socks2 =
-            multi_bind_in_range_with_config(localhost, (pr.start, pr.end), config, 8).unwrap();
+        let _socks2 = multi_bind_in_range_with_config(localhost, pr.as_tuple(), config, 8).unwrap();
     }
 
     #[test]
@@ -434,8 +434,8 @@ mod tests {
         let pr = localhost_port_range_for_tests();
         let config = SocketConfiguration::default();
         let (port, _sockets) =
-            bind_common_in_range_with_config(ip_addr, (pr.start, pr.end), config).unwrap();
-        assert!((pr.start..pr.end).contains(&port)); // TODO: double check
+            bind_common_in_range_with_config(ip_addr, pr.as_tuple(), config).unwrap();
+        assert!(pr.contains(&port));
 
         bind_common_in_range_with_config(ip_addr, (port, port + 1), config).unwrap_err();
     }
