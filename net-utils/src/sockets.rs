@@ -33,7 +33,8 @@ pub fn unique_port_range_for_tests(size: u16) -> Range<u16> {
                 let slot: u16 = slot.parse().unwrap();
                 assert!(
                     offset < SLICE_PER_PROCESS,
-                    "Overrunning into the port range of another test! Consider using fewer ports per test."
+                    "Overrunning into the port range of another test! Consider using fewer ports \
+                     per test."
                 );
                 BASE_PORT + slot * SLICE_PER_PROCESS
             }
@@ -238,8 +239,8 @@ pub fn multi_bind_in_range_with_config(
     if !PLATFORM_SUPPORTS_SOCKET_CONFIGS && num != 1 {
         // See https://github.com/solana-labs/solana/issues/4607
         warn!(
-            "multi_bind_in_range_with_config() only supports 1 socket on this platform ({} requested)",
-            num
+            "multi_bind_in_range_with_config() only supports 1 socket on this platform ({num} \
+             requested)"
         );
         num = 1;
     }
@@ -341,8 +342,7 @@ pub fn bind_more_with_config(
     if !PLATFORM_SUPPORTS_SOCKET_CONFIGS {
         if num > 1 {
             warn!(
-                "bind_more_with_config() only supports 1 socket on this platform ({} requested)",
-                num
+                "bind_more_with_config() only supports 1 socket on this platform ({num} requested)"
             );
         }
         Ok(vec![socket])
