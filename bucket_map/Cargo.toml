@@ -30,7 +30,6 @@ tempfile = { workspace = true }
 [dev-dependencies]
 bencher = { workspace = true }
 fs_extra = { workspace = true }
-paste = { workspace = true }
 rayon = { workspace = true }
 solana-logger = { workspace = true }
 solana-pubkey = { workspace = true, features = ["rand"] }

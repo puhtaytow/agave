@@ -1,12 +1,26 @@
+#![allow(dead_code)] // TODO: remove me
+
 use {
-    bencher::{benchmark_group, benchmark_main, Bencher},
+    bencher::{benchmark_main, Bencher, TDynBenchFn, TestDesc, TestDescAndFn, TestFn},
     rayon::prelude::*,
     solana_bucket_map::bucket_map::{BucketMap, BucketMapConfig},
     solana_pubkey::Pubkey,
-    std::{collections::hash_map::HashMap, sync::RwLock},
+    std::{borrow::Cow, collections::hash_map::HashMap, sync::RwLock, vec},
 };
 
 type IndexValue = u64;
+
+/// Orphan rules workaround that allows for implementation of `TDynBenchFn`.
+struct Bench<T>(T);
+
+impl<T> TDynBenchFn for Bench<T>
+where
+    T: Fn(&mut Bencher) + Send + 'static,
+{
+    fn run(&self, harness: &mut Bencher) {
+        (self.0)(harness)
+    }
+}
 
 /// Benchmark insert with Hashmap as baseline for N threads inserting M keys each
 fn do_bench_insert_baseline_hashmap(b: &mut Bencher, n: usize, m: usize) {
@@ -48,40 +62,38 @@ fn do_bench_insert_bucket_map(b: &mut Bencher, n: usize, m: usize) {
     });
 }
 
-macro_rules! define_benches {
-    ($n:literal, $m:literal) => {
-        paste::item! {
-            fn [<dim_ $n x $m _baseline>](b: &mut Bencher) {
-                do_bench_insert_baseline_hashmap(b, $n, $m);
-            }
+static BENCH_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
 
-            fn [<dim_ $n x $m _bucket_map>](b: &mut Bencher) {
-                do_bench_insert_bucket_map(b, $n, $m);
-            }
-        }
-    };
+pub fn benches() -> Vec<TestDescAndFn> {
+    let mut benches = vec![];
+
+    BENCH_CASES.iter().enumerate().for_each(|(i, &(n, m))| {
+        let name = format!("{:?}-bench_insert_baseline_hashmap[{:?}, {:?}]", i, n, m);
+        benches.push(TestDescAndFn {
+            desc: TestDesc {
+                name: Cow::from(name),
+                ignore: false,
+            },
+            testfn: TestFn::DynBenchFn(Box::new(Bench(move |b: &mut Bencher| {
+                do_bench_insert_baseline_hashmap(b, n, m);
+            }))),
+        });
+    });
+
+    BENCH_CASES.iter().enumerate().for_each(|(i, &(n, m))| {
+        let name = format!("{:?}-bench_insert_bucket_map[{:?}, {:?}", i, n, m);
+        benches.push(TestDescAndFn {
+            desc: TestDesc {
+                name: Cow::from(name),
+                ignore: false,
+            },
+            testfn: TestFn::DynBenchFn(Box::new(Bench(move |b: &mut Bencher| {
+                do_bench_insert_bucket_map(b, n, m);
+            }))),
+        });
+    });
+
+    benches
 }
 
-define_benches!(1, 2);
-define_benches!(2, 4);
-define_benches!(4, 8);
-define_benches!(8, 16);
-define_benches!(16, 32);
-define_benches!(32, 64);
-
-benchmark_group!(
-    benches,
-    dim_1x2_baseline,
-    dim_1x2_bucket_map,
-    dim_2x4_baseline,
-    dim_2x4_bucket_map,
-    dim_4x8_baseline,
-    dim_4x8_bucket_map,
-    dim_8x16_baseline,
-    dim_8x16_bucket_map,
-    dim_16x32_baseline,
-    dim_16x32_bucket_map,
-    dim_32x64_baseline,
-    dim_32x64_bucket_map
-);
 benchmark_main!(benches);
