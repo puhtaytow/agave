@@ -33,7 +33,6 @@ tempfile = { workspace = true }
 [dev-dependencies]
 bencher = { workspace = true }
 fs_extra = { workspace = true }
-paste = { workspace = true }
 rayon = { workspace = true }
 solana-bucket-map = { path = ".", features = ["dev-context-only-utils"] }
 solana-logger = { workspace = true }
