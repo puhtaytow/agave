@@ -733,11 +733,12 @@ pub mod test {
             tokio::sync::mpsc::channel(/*capacity:*/ 128);
 
         // Make the leader node and scheduler
-        let leader_info = Node::new_localhost_with_pubkey(&leader_keypair.pubkey());
+        let leader_info = crate::test_helpers::new_localhost_with_pubkey(&leader_keypair.pubkey());
 
         // Make a node to broadcast to
         let buddy_keypair = Keypair::new();
-        let broadcast_buddy = Node::new_localhost_with_pubkey(&buddy_keypair.pubkey());
+        let broadcast_buddy =
+            crate::test_helpers::new_localhost_with_pubkey(&buddy_keypair.pubkey());
 
         // Fill the cluster_info with the buddy's info
         let cluster_info = ClusterInfo::new(

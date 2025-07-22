@@ -1,20 +1,27 @@
-#[cfg(feature = "dev-context-only-utils")]
-use tokio::net::UdpSocket as TokioUdpSocket;
 use {
     crate::PortRange,
     log::warn,
     socket2::{Domain, SockAddr, Socket, Type},
     std::{
         io,
-        net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, UdpSocket},
+        net::{IpAddr, SocketAddr, TcpListener, UdpSocket},
+    },
+};
+#[cfg(feature = "dev-context-only-utils")]
+use {
+    std::{
+        net::Ipv4Addr,
         ops::Range,
         sync::atomic::{AtomicU16, Ordering},
     },
+    tokio::net::UdpSocket as TokioUdpSocket,
 };
 // base port for deconflicted allocations
+#[cfg(feature = "dev-context-only-utils")]
 const BASE_PORT: u16 = 5000;
 // how much to allocate per individual process.
 // we expect to have at most 64 concurrent tests in CI at any moment on a given host.
+#[cfg(feature = "dev-context-only-utils")]
 const SLICE_PER_PROCESS: u16 = (u16::MAX - BASE_PORT) / 64;
 /// When running under nextest, this will try to provide
 /// a unique slice of port numbers (assuming no other nextest processes
@@ -24,6 +31,7 @@ const SLICE_PER_PROCESS: u16 = (u16::MAX - BASE_PORT) / 64;
 /// When running without nextest, this will only bump an atomic and eventually
 /// panic when it runs out of port numbers to assign.
 #[allow(clippy::arithmetic_side_effects)]
+#[cfg(feature = "dev-context-only-utils")]
 pub fn unique_port_range_for_tests(size: u16) -> Range<u16> {
     static SLICE: AtomicU16 = AtomicU16::new(0);
     let offset = SLICE.fetch_add(size, Ordering::Relaxed);
@@ -52,12 +60,14 @@ pub fn unique_port_range_for_tests(size: u16) -> Range<u16> {
 ///
 /// When running without nextest, this will only bump an atomic and eventually
 /// panic when it runs out of port numbers to assign.
+#[cfg(feature = "dev-context-only-utils")]
 pub fn localhost_port_range_for_tests() -> (u16, u16) {
     let pr = unique_port_range_for_tests(20);
     (pr.start, pr.end)
 }
 
 /// Bind a `UdpSocket` to a unique port.
+#[cfg(feature = "dev-context-only-utils")]
 pub fn bind_to_localhost_unique() -> io::Result<UdpSocket> {
     bind_to(
         IpAddr::V4(Ipv4Addr::LOCALHOST),

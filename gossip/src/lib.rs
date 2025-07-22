@@ -42,6 +42,13 @@ mod received_cache;
 pub mod restart_crds_values;
 pub mod weighted_shuffle;
 
+// #[cfg(test)]
+// pub(crate) mod test_helpers;
+// #[cfg(test)]
+// pub use test_helpers::*;
+// #[cfg(any(test, doctest, feature = "dev-context-only-utils"))]
+pub mod test_helpers;
+
 #[macro_use]
 extern crate log;
 

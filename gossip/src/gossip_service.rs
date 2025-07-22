@@ -390,10 +390,7 @@ pub fn make_gossip_node(
 mod tests {
     use {
         super::*,
-        crate::{
-            cluster_info::{ClusterInfo, Node},
-            contact_info::ContactInfo,
-        },
+        crate::{cluster_info::ClusterInfo, contact_info::ContactInfo},
         std::sync::{atomic::AtomicBool, Arc},
     };
 
@@ -402,7 +399,7 @@ mod tests {
     // test that stage will exit when flag is set
     fn test_exit() {
         let exit = Arc::new(AtomicBool::new(false));
-        let tn = Node::new_localhost();
+        let tn = crate::test_helpers::new_localhost();
         let cluster_info = ClusterInfo::new(
             tn.info.clone(),
             Arc::new(Keypair::new()),

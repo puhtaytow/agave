@@ -56,8 +56,7 @@ use {
         sockets::{
             bind_gossip_port_in_range, bind_in_range_with_config, bind_more_with_config,
             bind_to_with_config, bind_two_in_range_with_offset_and_config,
-            localhost_port_range_for_tests, multi_bind_in_range_with_config,
-            SocketConfiguration as SocketConfig,
+            multi_bind_in_range_with_config, SocketConfiguration as SocketConfig,
         },
         PortRange, VALIDATOR_PORT_RANGE,
     },
@@ -2436,40 +2435,40 @@ pub struct Node {
 }
 
 impl Node {
-    /// create localhost node for tests
-    pub fn new_localhost() -> Self {
-        let pubkey = solana_pubkey::new_rand();
-        Self::new_localhost_with_pubkey(&pubkey)
-    }
+    // /// create localhost node for tests
+    // pub fn new_localhost() -> Self {
+    //     let pubkey = solana_pubkey::new_rand();
+    //     Self::new_localhost_with_pubkey(&pubkey)
+    // }
 
-    /// create localhost node for tests with provided pubkey
-    /// unlike the [new_with_external_ip], this will also bind RPC sockets.
-    pub fn new_localhost_with_pubkey(pubkey: &Pubkey) -> Self {
-        let port_range = localhost_port_range_for_tests();
-        let bind_ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let config = NodeConfig {
-            bind_ip_addrs: BindIpAddrs {
-                addrs: vec![bind_ip_addr],
-            },
-            gossip_port: port_range.0,
-            port_range,
-            advertised_ip: bind_ip_addr,
-            public_tpu_addr: None,
-            public_tpu_forwards_addr: None,
-            num_tvu_receive_sockets: NonZero::new(1).unwrap(),
-            num_tvu_retransmit_sockets: NonZero::new(1).unwrap(),
-            num_quic_endpoints: NonZero::new(DEFAULT_QUIC_ENDPOINTS)
-                .expect("Number of QUIC endpoints can not be zero"),
-            vortexor_receiver_addr: None,
-        };
-        let mut node = Self::new_with_external_ip(pubkey, config);
-        let rpc_ports: [u16; 2] = find_available_ports_in_range(bind_ip_addr, port_range).unwrap();
-        let rpc_addr = SocketAddr::new(bind_ip_addr, rpc_ports[0]);
-        let rpc_pubsub_addr = SocketAddr::new(bind_ip_addr, rpc_ports[1]);
-        node.info.set_rpc(rpc_addr).unwrap();
-        node.info.set_rpc_pubsub(rpc_pubsub_addr).unwrap();
-        node
-    }
+    // /// create localhost node for tests with provided pubkey
+    // /// unlike the [new_with_external_ip], this will also bind RPC sockets.
+    // pub fn new_localhost_with_pubkey(pubkey: &Pubkey) -> Self {
+    //     let port_range = localhost_port_range_for_tests();
+    //     let bind_ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+    //     let config = NodeConfig {
+    //         bind_ip_addrs: BindIpAddrs {
+    //             addrs: vec![bind_ip_addr],
+    //         },
+    //         gossip_port: port_range.0,
+    //         port_range,
+    //         advertised_ip: bind_ip_addr,
+    //         public_tpu_addr: None,
+    //         public_tpu_forwards_addr: None,
+    //         num_tvu_receive_sockets: NonZero::new(1).unwrap(),
+    //         num_tvu_retransmit_sockets: NonZero::new(1).unwrap(),
+    //         num_quic_endpoints: NonZero::new(DEFAULT_QUIC_ENDPOINTS)
+    //             .expect("Number of QUIC endpoints can not be zero"),
+    //         vortexor_receiver_addr: None,
+    //     };
+    //     let mut node = Self::new_with_external_ip(pubkey, config);
+    //     let rpc_ports: [u16; 2] = find_available_ports_in_range(bind_ip_addr, port_range).unwrap();
+    //     let rpc_addr = SocketAddr::new(bind_ip_addr, rpc_ports[0]);
+    //     let rpc_pubsub_addr = SocketAddr::new(bind_ip_addr, rpc_ports[1]);
+    //     node.info.set_rpc(rpc_addr).unwrap();
+    //     node.info.set_rpc_pubsub(rpc_pubsub_addr).unwrap();
+    //     node
+    // }
 
     #[deprecated(since = "3.0.0", note = "use new_with_external_ip")]
     pub fn new_single_bind(
@@ -2876,6 +2875,7 @@ mod tests {
         itertools::izip,
         solana_keypair::Keypair,
         solana_ledger::shred::Shredder,
+        solana_net_utils::sockets::localhost_port_range_for_tests,
         solana_signer::Signer,
         solana_vote_program::{
             vote_instruction,
@@ -2936,7 +2936,7 @@ mod tests {
         solana_logger::setup();
         let cluster_info = Arc::new({
             let keypair = Arc::new(Keypair::new());
-            let node = Node::new_localhost_with_pubkey(&keypair.pubkey());
+            let node = crate::test_helpers::new_localhost_with_pubkey(&keypair.pubkey());
             ClusterInfo::new(node.info, keypair, SocketAddrSpace::Unspecified)
         });
         let entrypoint_pubkey = solana_pubkey::new_rand();
@@ -3072,7 +3072,7 @@ mod tests {
         let (spy, _, _) = ClusterInfo::spy_node(solana_pubkey::new_rand(), 0);
         let cluster_info = Arc::new({
             let keypair = Arc::new(Keypair::new());
-            let node = Node::new_localhost_with_pubkey(&keypair.pubkey());
+            let node = crate::test_helpers::new_localhost_with_pubkey(&keypair.pubkey());
             ClusterInfo::new(node.info, keypair, SocketAddrSpace::Unspecified)
         });
         cluster_info.insert_info(spy);
@@ -3810,7 +3810,7 @@ mod tests {
     #[test]
     #[ignore] // TODO: debug why this is flaky on buildkite!
     fn test_pull_request_time_pruning() {
-        let node = Node::new_localhost();
+        let node = crate::test_helpers::new_localhost();
         let cluster_info = Arc::new(ClusterInfo::new(
             node.info,
             Arc::new(Keypair::new()),
@@ -3851,7 +3851,7 @@ mod tests {
     #[test]
     fn test_get_duplicate_shreds() {
         let host1_key = Arc::new(Keypair::new());
-        let node = Node::new_localhost_with_pubkey(&host1_key.pubkey());
+        let node = crate::test_helpers::new_localhost_with_pubkey(&host1_key.pubkey());
         let cluster_info = Arc::new(ClusterInfo::new(
             node.info,
             host1_key.clone(),
@@ -4065,12 +4065,12 @@ mod tests {
         );
 
         let cluster_info44 = Arc::new({
-            let node = Node::new_localhost_with_pubkey(&keypair44.pubkey());
+            let node = crate::test_helpers::new_localhost_with_pubkey(&keypair44.pubkey());
             info!("{node:?}");
             ClusterInfo::new(node.info, keypair44.clone(), SocketAddrSpace::Unspecified)
         });
         let cluster_info43 = Arc::new({
-            let node = Node::new_localhost_with_pubkey(&keypair43.pubkey());
+            let node = crate::test_helpers::new_localhost_with_pubkey(&keypair43.pubkey());
             ClusterInfo::new(node.info, keypair43.clone(), SocketAddrSpace::Unspecified)
         });
 

@@ -69,7 +69,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            cluster_info::Node, duplicate_shred::tests::new_rand_shred,
+            duplicate_shred::tests::new_rand_shred,
             duplicate_shred_listener::DuplicateShredHandlerTrait,
         },
         solana_keypair::Keypair,
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_listener_get_entries() {
         let host1_key = Arc::new(Keypair::new());
-        let node = Node::new_localhost_with_pubkey(&host1_key.pubkey());
+        let node = crate::test_helpers::new_localhost_with_pubkey(&host1_key.pubkey());
         let cluster_info = Arc::new(ClusterInfo::new(
             node.info,
             host1_key,

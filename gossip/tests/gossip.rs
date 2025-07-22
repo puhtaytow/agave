@@ -5,10 +5,11 @@ extern crate log;
 use {
     rayon::iter::*,
     solana_gossip::{
-        cluster_info::{ClusterInfo, Node},
+        cluster_info::ClusterInfo,
         contact_info::{ContactInfo, Protocol},
         crds::Cursor,
         gossip_service::GossipService,
+        test_helpers::new_localhost_with_pubkey,
     },
     solana_hash::Hash,
     solana_keypair::Keypair,
@@ -36,7 +37,7 @@ use {
 
 fn test_node(exit: Arc<AtomicBool>) -> (Arc<ClusterInfo>, GossipService, UdpSocket) {
     let keypair = Arc::new(Keypair::new());
-    let mut test_node = Node::new_localhost_with_pubkey(&keypair.pubkey());
+    let mut test_node = new_localhost_with_pubkey(&keypair.pubkey());
     let cluster_info = Arc::new(ClusterInfo::new(
         test_node.info.clone(),
         keypair,
@@ -64,7 +65,7 @@ fn test_node_with_bank(
     exit: Arc<AtomicBool>,
     bank_forks: Arc<RwLock<BankForks>>,
 ) -> (Arc<ClusterInfo>, GossipService, UdpSocket) {
-    let mut test_node = Node::new_localhost_with_pubkey(&node_keypair.pubkey());
+    let mut test_node = new_localhost_with_pubkey(&node_keypair.pubkey());
     let cluster_info = Arc::new(ClusterInfo::new(
         test_node.info.clone(),
         node_keypair,

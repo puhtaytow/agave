@@ -532,7 +532,8 @@ mod test {
         );
         let leader_keypair = Arc::new(Keypair::new());
         let leader_pubkey = leader_keypair.pubkey();
-        let leader_info = Node::new_localhost_with_pubkey(&leader_pubkey);
+        let leader_info =
+            crate::solana_gossip::test_helpers::new_localhost_with_pubkey(&leader_pubkey);
         let cluster_info = Arc::new(ClusterInfo::new(
             leader_info.info,
             leader_keypair.clone(),
