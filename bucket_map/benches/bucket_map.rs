@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-// #![feature(test)]
+#![allow(dead_code)] // TODO: remove me
 
 // macro_rules! DEFINE_NxM_BENCH {
 //     ($i:ident, $n:literal, $m:literal) => {
@@ -19,26 +18,16 @@
 //     };
 // }
 
-// extern crate test;
 use {
-    bencher::{benchmark_main, Bencher},
+    bencher::{benchmark_main, Bencher, TestDesc, TestDescAndFn, TestFn},
     rayon::prelude::*,
     solana_bucket_map::bucket_map::{BucketMap, BucketMapConfig},
     solana_pubkey::Pubkey,
-    std::{collections::hash_map::HashMap, sync::RwLock, vec},
-    // test::Bencher,
+    std::{borrow::Cow, collections::hash_map::HashMap, sync::RwLock, vec},
 };
-
 type IndexValue = u64;
 
-static BENCH_CASES: &[(usize, usize)] = &[
-    (1, 2),
-    // (2, 4),
-    // (4, 8),
-    // (8, 16),
-    // (16, 32),
-    // (32, 64)
-];
+static BENCH_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
 
 // DEFINE_NxM_BENCH!(dim_01x02, BENCH_CASES.0);
 // DEFINE_NxM_BENCH!(dim_02x04, 2, 4);
@@ -100,10 +89,6 @@ fn bench_insert_bucket_map(bencher: &mut Bencher) {
 }
 
 pub fn benches() -> ::std::vec::Vec<::bencher::TestDescAndFn> {
-    use {
-        ::bencher::{TestDesc, TestDescAndFn, TestFn},
-        std::borrow::Cow,
-    };
     let mut benches = ::std::vec::Vec::new();
     benches.push(TestDescAndFn {
         desc: TestDesc {
