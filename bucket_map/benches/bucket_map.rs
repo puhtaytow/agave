@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![feature(test)]
+// #![feature(test)]
 
 // macro_rules! DEFINE_NxM_BENCH {
 //     ($i:ident, $n:literal, $m:literal) => {
@@ -19,7 +19,7 @@
 //     };
 // }
 
-extern crate test;
+// extern crate test;
 use {
     bencher::{benchmark_main, Bencher},
     rayon::prelude::*,
@@ -94,18 +94,10 @@ fn bench_insert_baseline_hashmap(bencher: &mut Bencher) {
 }
 
 // #[bench]
-// fn bench_insert_bucket_map(bencher: &mut Bencher) {
-//     do_bench_insert_bucket_map(bencher, $n, $m);
-// }
-
-fn a(bench: &mut Bencher) {
-    bench.iter(|| (0..1000).fold(0, |x, y| x + y))
+fn bench_insert_bucket_map(bencher: &mut Bencher) {
+    let (dim_a, dim_b) = BENCH_CASES[0];
+    do_bench_insert_bucket_map(bencher, dim_a, dim_b);
 }
-// fn b(bench: &mut Bencher) {
-//     const N: usize = 1024;
-//     bench.iter(|| ::alloc::vec::from_elem(0u8, N));
-//     bench.bytes = N as u64;
-// }
 
 pub fn benches() -> ::std::vec::Vec<::bencher::TestDescAndFn> {
     use {
@@ -115,18 +107,18 @@ pub fn benches() -> ::std::vec::Vec<::bencher::TestDescAndFn> {
     let mut benches = ::std::vec::Vec::new();
     benches.push(TestDescAndFn {
         desc: TestDesc {
-            name: Cow::from("a"),
+            name: Cow::from("bench_insert_baseline_hashmap[0]"),
             ignore: false,
         },
         testfn: TestFn::StaticBenchFn(bench_insert_baseline_hashmap),
     });
-    // benches.push(TestDescAndFn {
-    //     desc: TestDesc {
-    //         name: Cow::from("b"),
-    //         ignore: false,
-    //     },
-    //     testfn: TestFn::StaticBenchFn(b),
-    // });
+    benches.push(TestDescAndFn {
+        desc: TestDesc {
+            name: Cow::from("bench_insert_bucket_map[0]"),
+            ignore: false,
+        },
+        testfn: TestFn::StaticBenchFn(bench_insert_bucket_map),
+    });
     benches
 }
 
