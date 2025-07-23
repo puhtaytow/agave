@@ -1,23 +1,5 @@
 #![allow(dead_code)] // TODO: remove me
 
-// macro_rules! DEFINE_NxM_BENCH {
-//     ($i:ident, $n:literal, $m:literal) => {
-//         mod $i {
-//             use super::*;
-
-//             #[bench]
-//             fn bench_insert_baseline_hashmap(bencher: &mut Bencher) {
-//                 do_bench_insert_baseline_hashmap(bencher, $n, $m);
-//             }
-
-//             #[bench]
-//             fn bench_insert_bucket_map(bencher: &mut Bencher) {
-//                 do_bench_insert_bucket_map(bencher, $n, $m);
-//             }
-//         }
-//     };
-// }
-
 use {
     bencher::{benchmark_main, Bencher, TestDesc, TestDescAndFn, TestFn},
     rayon::prelude::*,
@@ -26,15 +8,6 @@ use {
     std::{borrow::Cow, collections::hash_map::HashMap, sync::RwLock, vec},
 };
 type IndexValue = u64;
-
-static BENCH_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
-
-// DEFINE_NxM_BENCH!(dim_01x02, BENCH_CASES.0);
-// DEFINE_NxM_BENCH!(dim_02x04, 2, 4);
-// DEFINE_NxM_BENCH!(dim_04x08, 4, 8);
-// DEFINE_NxM_BENCH!(dim_08x16, 8, 16);
-// DEFINE_NxM_BENCH!(dim_16x32, 16, 32);
-// DEFINE_NxM_BENCH!(dim_32x64, 32, 64);
 
 /// Benchmark insert with Hashmap as baseline for N threads inserting M keys each
 fn do_bench_insert_baseline_hashmap(bencher: &mut Bencher, n: usize, m: usize) {
@@ -78,20 +51,22 @@ fn do_bench_insert_bucket_map(bencher: &mut Bencher, n: usize, m: usize) {
 
 // #[bench]
 fn bench_insert_baseline_hashmap(bencher: &mut Bencher) {
-    let (dim_a, dim_b) = BENCH_CASES[0];
+    let (dim_a, dim_b) = BENCHMARK_CASES[0];
     do_bench_insert_baseline_hashmap(bencher, dim_a, dim_b);
 }
 
 // #[bench]
 fn bench_insert_bucket_map(bencher: &mut Bencher) {
-    let (dim_a, dim_b) = BENCH_CASES[0];
+    let (dim_a, dim_b) = BENCHMARK_CASES[0];
     do_bench_insert_bucket_map(bencher, dim_a, dim_b);
 }
+
+static BENCHMARK_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
 
 pub fn benches() -> Vec<::bencher::TestDescAndFn> {
     let mut benches = Vec::new();
 
-    BENCH_CASES.iter().enumerate().for_each(|(i, c)| {
+    BENCHMARK_CASES.iter().enumerate().for_each(|(i, c)| {
         let case_name = format!("{:?}-bench_insert_baseline_hashmap[{:?}", i, c);
         benches.push(TestDescAndFn {
             desc: TestDesc {
@@ -102,7 +77,7 @@ pub fn benches() -> Vec<::bencher::TestDescAndFn> {
         });
     });
 
-    BENCH_CASES.iter().enumerate().for_each(|(i, c)| {
+    BENCHMARK_CASES.iter().enumerate().for_each(|(i, c)| {
         let case_name = format!("{:?}-bench_insert_bucket_map[{:?}", i, c);
         benches.push(TestDescAndFn {
             desc: TestDesc {
