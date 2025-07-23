@@ -1,40 +1,51 @@
+#![allow(dead_code)]
 #![feature(test)]
 
-macro_rules! DEFINE_NxM_BENCH {
-    ($i:ident, $n:literal, $m:literal) => {
-        mod $i {
-            use super::*;
+// macro_rules! DEFINE_NxM_BENCH {
+//     ($i:ident, $n:literal, $m:literal) => {
+//         mod $i {
+//             use super::*;
 
-            #[bench]
-            fn bench_insert_baseline_hashmap(bencher: &mut Bencher) {
-                do_bench_insert_baseline_hashmap(bencher, $n, $m);
-            }
+//             #[bench]
+//             fn bench_insert_baseline_hashmap(bencher: &mut Bencher) {
+//                 do_bench_insert_baseline_hashmap(bencher, $n, $m);
+//             }
 
-            #[bench]
-            fn bench_insert_bucket_map(bencher: &mut Bencher) {
-                do_bench_insert_bucket_map(bencher, $n, $m);
-            }
-        }
-    };
-}
+//             #[bench]
+//             fn bench_insert_bucket_map(bencher: &mut Bencher) {
+//                 do_bench_insert_bucket_map(bencher, $n, $m);
+//             }
+//         }
+//     };
+// }
 
 extern crate test;
 use {
+    bencher::{benchmark_main, Bencher},
     rayon::prelude::*,
     solana_bucket_map::bucket_map::{BucketMap, BucketMapConfig},
     solana_pubkey::Pubkey,
-    std::{collections::hash_map::HashMap, sync::RwLock},
-    test::Bencher,
+    std::{collections::hash_map::HashMap, sync::RwLock, vec},
+    // test::Bencher,
 };
 
 type IndexValue = u64;
 
-DEFINE_NxM_BENCH!(dim_01x02, 1, 2);
-DEFINE_NxM_BENCH!(dim_02x04, 2, 4);
-DEFINE_NxM_BENCH!(dim_04x08, 4, 8);
-DEFINE_NxM_BENCH!(dim_08x16, 8, 16);
-DEFINE_NxM_BENCH!(dim_16x32, 16, 32);
-DEFINE_NxM_BENCH!(dim_32x64, 32, 64);
+static BENCH_CASES: &[(usize, usize)] = &[
+    (1, 2),
+    // (2, 4),
+    // (4, 8),
+    // (8, 16),
+    // (16, 32),
+    // (32, 64)
+];
+
+// DEFINE_NxM_BENCH!(dim_01x02, BENCH_CASES.0);
+// DEFINE_NxM_BENCH!(dim_02x04, 2, 4);
+// DEFINE_NxM_BENCH!(dim_04x08, 4, 8);
+// DEFINE_NxM_BENCH!(dim_08x16, 8, 16);
+// DEFINE_NxM_BENCH!(dim_16x32, 16, 32);
+// DEFINE_NxM_BENCH!(dim_32x64, 32, 64);
 
 /// Benchmark insert with Hashmap as baseline for N threads inserting M keys each
 fn do_bench_insert_baseline_hashmap(bencher: &mut Bencher, n: usize, m: usize) {
@@ -75,3 +86,48 @@ fn do_bench_insert_bucket_map(bencher: &mut Bencher, n: usize, m: usize) {
         })
     });
 }
+
+// #[bench]
+fn bench_insert_baseline_hashmap(bencher: &mut Bencher) {
+    let (dim_a, dim_b) = BENCH_CASES[0];
+    do_bench_insert_baseline_hashmap(bencher, dim_a, dim_b);
+}
+
+// #[bench]
+// fn bench_insert_bucket_map(bencher: &mut Bencher) {
+//     do_bench_insert_bucket_map(bencher, $n, $m);
+// }
+
+fn a(bench: &mut Bencher) {
+    bench.iter(|| (0..1000).fold(0, |x, y| x + y))
+}
+// fn b(bench: &mut Bencher) {
+//     const N: usize = 1024;
+//     bench.iter(|| ::alloc::vec::from_elem(0u8, N));
+//     bench.bytes = N as u64;
+// }
+
+pub fn benches() -> ::std::vec::Vec<::bencher::TestDescAndFn> {
+    use {
+        ::bencher::{TestDesc, TestDescAndFn, TestFn},
+        std::borrow::Cow,
+    };
+    let mut benches = ::std::vec::Vec::new();
+    benches.push(TestDescAndFn {
+        desc: TestDesc {
+            name: Cow::from("a"),
+            ignore: false,
+        },
+        testfn: TestFn::StaticBenchFn(bench_insert_baseline_hashmap),
+    });
+    // benches.push(TestDescAndFn {
+    //     desc: TestDesc {
+    //         name: Cow::from("b"),
+    //         ignore: false,
+    //     },
+    //     testfn: TestFn::StaticBenchFn(b),
+    // });
+    benches
+}
+
+benchmark_main!(benches);
