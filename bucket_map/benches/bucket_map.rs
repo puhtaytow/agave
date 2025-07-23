@@ -89,14 +89,19 @@ fn bench_insert_bucket_map(bencher: &mut Bencher) {
 }
 
 pub fn benches() -> ::std::vec::Vec<::bencher::TestDescAndFn> {
-    let mut benches = ::std::vec::Vec::new();
-    benches.push(TestDescAndFn {
-        desc: TestDesc {
-            name: Cow::from("bench_insert_baseline_hashmap[0]"),
-            ignore: false,
-        },
-        testfn: TestFn::StaticBenchFn(bench_insert_baseline_hashmap),
+    let mut benches = Vec::new();
+
+    BENCH_CASES.iter().enumerate().for_each(|(i, c)| {
+        let test_case_name = format!("{:?}-bench_insert_baseline_hashmap[{:?}", i, c);
+        benches.push(TestDescAndFn {
+            desc: TestDesc {
+                name: Cow::from(test_case_name),
+                ignore: false,
+            },
+            testfn: TestFn::StaticBenchFn(bench_insert_baseline_hashmap),
+        });
     });
+
     benches.push(TestDescAndFn {
         desc: TestDesc {
             name: Cow::from("bench_insert_bucket_map[0]"),
