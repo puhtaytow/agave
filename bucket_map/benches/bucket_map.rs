@@ -88,27 +88,31 @@ fn bench_insert_bucket_map(bencher: &mut Bencher) {
     do_bench_insert_bucket_map(bencher, dim_a, dim_b);
 }
 
-pub fn benches() -> ::std::vec::Vec<::bencher::TestDescAndFn> {
+pub fn benches() -> Vec<::bencher::TestDescAndFn> {
     let mut benches = Vec::new();
 
     BENCH_CASES.iter().enumerate().for_each(|(i, c)| {
-        let test_case_name = format!("{:?}-bench_insert_baseline_hashmap[{:?}", i, c);
+        let case_name = format!("{:?}-bench_insert_baseline_hashmap[{:?}", i, c);
         benches.push(TestDescAndFn {
             desc: TestDesc {
-                name: Cow::from(test_case_name),
+                name: Cow::from(case_name),
                 ignore: false,
             },
             testfn: TestFn::StaticBenchFn(bench_insert_baseline_hashmap),
         });
     });
 
-    benches.push(TestDescAndFn {
-        desc: TestDesc {
-            name: Cow::from("bench_insert_bucket_map[0]"),
-            ignore: false,
-        },
-        testfn: TestFn::StaticBenchFn(bench_insert_bucket_map),
+    BENCH_CASES.iter().enumerate().for_each(|(i, c)| {
+        let case_name = format!("{:?}-bench_insert_bucket_map[{:?}", i, c);
+        benches.push(TestDescAndFn {
+            desc: TestDesc {
+                name: Cow::from(case_name),
+                ignore: false,
+            },
+            testfn: TestFn::StaticBenchFn(bench_insert_bucket_map),
+        });
     });
+
     benches
 }
 
