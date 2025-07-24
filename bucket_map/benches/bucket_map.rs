@@ -1,5 +1,3 @@
-#![allow(dead_code)] // TODO: remove me
-
 use {
     bencher::{benchmark_main, Bencher, TDynBenchFn, TestDesc, TestDescAndFn, TestFn},
     rayon::prelude::*,
@@ -81,7 +79,7 @@ pub fn benches() -> Vec<TestDescAndFn> {
     });
 
     BENCH_CASES.iter().enumerate().for_each(|(i, &(n, m))| {
-        let name = format!("{:?}-bench_insert_bucket_map[{:?}, {:?}", i, n, m);
+        let name = format!("{:?}-bench_insert_bucket_map[{:?}, {:?}]", i, n, m);
         benches.push(TestDescAndFn {
             desc: TestDesc {
                 name: Cow::from(name),
