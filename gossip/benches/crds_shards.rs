@@ -37,31 +37,31 @@ fn bench_crds_shards_find(b: &mut Bencher, num_values: usize, mask_bits: u32) {
 }
 
 fn bench_crds_shards_find_0(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 0);
+    bench_crds_shards_find(bencher, 20_000, 0);
 }
 
 fn bench_crds_shards_find_1(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 1);
+    bench_crds_shards_find(bencher, 20_000, 1);
 }
 
 fn bench_crds_shards_find_3(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 3);
+    bench_crds_shards_find(bencher, 20_000, 3);
 }
 
 fn bench_crds_shards_find_5(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 5);
+    bench_crds_shards_find(bencher, 20_000, 5);
 }
 
 fn bench_crds_shards_find_7(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 7);
+    bench_crds_shards_find(bencher, 20_000, 7);
 }
 
 fn bench_crds_shards_find_8(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 8);
+    bench_crds_shards_find(bencher, 20_000, 8);
 }
 
 fn bench_crds_shards_find_9(bencher: &mut Bencher) {
-    bench_crds_shards_find(bencher, 100_000, 9);
+    bench_crds_shards_find(bencher, 20_000, 9);
 }
 
 benchmark_group!(
