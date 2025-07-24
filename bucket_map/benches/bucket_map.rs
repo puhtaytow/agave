@@ -60,7 +60,8 @@ fn do_bench_insert_bucket_map(b: &mut Bencher, n: usize, m: usize) {
     });
 }
 
-static BENCH_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
+/// Benchmark cases represented as tuple (N, M), where N represents number of threads and M number of keys
+const BENCH_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
 
 pub fn benches() -> Vec<TestDescAndFn> {
     let mut benches = vec![];
