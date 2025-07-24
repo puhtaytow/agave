@@ -63,6 +63,8 @@ fn do_bench_insert_bucket_map(b: &mut Bencher, n: usize, m: usize) {
 /// Benchmark cases represented as tuple (N, M), where N represents number of threads and M number of keys
 const BENCH_CASES: &[(usize, usize)] = &[(1, 2), (2, 4), (4, 8), (8, 16), (16, 32), (32, 64)];
 
+/// Logic in this function in big chunk comes from the expanded `bencher::benchmarks_group!` macro
+/// This implementation brings clarity, without the need for separate functions per bench case
 pub fn benches() -> Vec<TestDescAndFn> {
     let mut benches = vec![];
 
