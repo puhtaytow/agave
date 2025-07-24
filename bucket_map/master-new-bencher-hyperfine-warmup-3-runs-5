@@ -1,0 +1,64 @@
+
+running 38 tests
+test bucket::tests::batch_insert_after_delete - should panic ... ignored
+test bucket::tests::batch_insert_duplicates_internal_simple ... ignored
+test bucket::tests::batch_insert_non_duplicates_internal_same_ix_exceeds_max_search ... ignored
+test bucket::tests::batch_insert_non_duplicates_internal_simple ... ignored
+test bucket::tests::test_batch_insert_non_duplicates_reusing_file_blank_file ... ignored
+test bucket::tests::test_batch_insert_non_duplicates_reusing_file_existing_zero - should panic ... ignored
+test bucket::tests::test_batch_insert_non_duplicates_reusing_file_insert_duplicate ... ignored
+test bucket::tests::test_batch_insert_non_duplicates_reusing_file_insert_twice - should panic ... ignored
+test bucket::tests::test_batch_insert_non_duplicates_reusing_file_many_entries ... ignored
+test bucket::tests::test_batch_insert_non_duplicates_reusing_file_skip_one ... ignored
+test bucket::tests::test_index_entries ... ignored
+test bucket::tests::test_occupy_if_matches ... ignored
+test bucket::tests::test_occupy_if_matches_panic - should panic ... ignored
+test bucket_map::tests::bucket_map_test_delete ... ignored
+test bucket_map::tests::bucket_map_test_delete_2 ... ignored
+test bucket_map::tests::bucket_map_test_grow_read ... ignored
+test bucket_map::tests::bucket_map_test_insert ... ignored
+test bucket_map::tests::bucket_map_test_insert2 ... ignored
+test bucket_map::tests::bucket_map_test_n_delete ... ignored
+test bucket_map::tests::bucket_map_test_n_drives ... ignored
+test bucket_map::tests::bucket_map_test_update ... ignored
+test bucket_map::tests::bucket_map_test_update2 ... ignored
+test bucket_map::tests::bucket_map_test_update_to_0_len ... ignored
+test bucket_map::tests::hashmap_compare ... ignored
+test bucket_storage::test::test_bucket_storage_index_bucket ... ignored
+test bucket_storage::test::test_bucket_storage_using_header ... ignored
+test bucket_storage::test::test_header_bad_size - should panic ... ignored
+test bucket_storage::test::test_load_on_restart ... ignored
+test bucket_storage::test::test_load_on_restart_failures ... ignored
+test index_entry::tests::test_api ... ignored
+test index_entry::tests::test_data_bucket_from_num_slots ... ignored
+test index_entry::tests::test_set_storage_offset_value_too_large - should panic ... ignored
+test index_entry::tests::test_size ... ignored
+test restart::test::test_get_all_possible_index_files_in_drives ... ignored
+test restart::test::test_get_restartable_buckets ... ignored
+test restart::test::test_header_alignment ... ignored
+test restart::test::test_restartable_bucket ... ignored
+test restart::test::test_restartable_bucket_load ... ignored
+
+test result: ok. 0 passed; 0 failed; 38 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test 0-bench_insert_baseline_hashmap[1, 2]   ... bench:         356 ns/iter (+/- 106)
+test 0-bench_insert_bucket_map[1, 2]         ... bench:       4,089 ns/iter (+/- 536)
+test 1-bench_insert_baseline_hashmap[2, 4]   ... bench:      10,330 ns/iter (+/- 410)
+test 1-bench_insert_bucket_map[2, 4]         ... bench:      27,088 ns/iter (+/- 2,584)
+test 2-bench_insert_baseline_hashmap[4, 8]   ... bench:      20,123 ns/iter (+/- 1,177)
+test 2-bench_insert_bucket_map[4, 8]         ... bench:      91,164 ns/iter (+/- 9,542)
+test 3-bench_insert_baseline_hashmap[8, 16]  ... bench:      46,661 ns/iter (+/- 4,082)
+test 3-bench_insert_bucket_map[8, 16]        ... bench:     362,318 ns/iter (+/- 47,108)
+test 4-bench_insert_baseline_hashmap[16, 32] ... bench:     156,700 ns/iter (+/- 18,423)
+test 4-bench_insert_bucket_map[16, 32]       ... bench:   1,394,947 ns/iter (+/- 168,287)
+test 5-bench_insert_baseline_hashmap[32, 64] ... bench:     557,021 ns/iter (+/- 29,691)
+test 5-bench_insert_bucket_map[32, 64]       ... bench:   5,321,840 ns/iter (+/- 698,868)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 12 measured
+
+redrum@redrum-nvbox:~/Projects/puhtaytow/agave/bucket_map$ hyperfine --runs 5 --warmup 3 --output ./master-new-bencher-hyperfine-warmup-3-runs-5 'cargo bench'
+Benchmark 1: cargo bench
+  Time (mean ± σ):     50.843 s ±  4.061 s    [User: 96.122 s, System: 258.438 s]
+  Range (min … max):   46.144 s … 57.205 s    5 runs
