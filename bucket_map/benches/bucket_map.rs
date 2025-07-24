@@ -13,7 +13,7 @@ struct Bench<T>(T);
 
 impl<T> TDynBenchFn for Bench<T>
 where
-    T: Fn(&mut Bencher) + Send + 'static,
+    T: Fn(&mut Bencher) + Send,
 {
     fn run(&self, harness: &mut Bencher) {
         (self.0)(harness)
