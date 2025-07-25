@@ -3,9 +3,8 @@
 use {
     clap::{crate_description, crate_name, value_t_or_exit, Arg, Command},
     crossbeam_channel::unbounded,
-    solana_net_utils::{
-        bind_to_unspecified,
-        sockets::{multi_bind_in_range_with_config, SocketConfiguration},
+    solana_net_utils::sockets::{
+        bind_to_localhost_unique, multi_bind_in_range_with_config, SocketConfiguration,
     },
     solana_streamer::{
         packet::{Packet, PacketBatchRecycler, PinnedPacketBatch, PACKET_DATA_SIZE},
@@ -28,7 +27,7 @@ use {
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn producer(dest_addr: &SocketAddr, exit: Arc<AtomicBool>) -> JoinHandle<usize> {
-    let send = bind_to_unspecified().unwrap();
+    let send = bind_to_localhost_unique().expect("should bind");
 
     let batch_size = 1024;
     let payload = [0u8; PACKET_DATA_SIZE];
