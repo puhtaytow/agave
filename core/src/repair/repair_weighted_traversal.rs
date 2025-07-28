@@ -225,6 +225,7 @@ pub mod test {
         let mut repairs = vec![];
         let mut outstanding_repairs = HashMap::new();
         let mut slot_meta_cache = HashMap::default();
+
         let last_shred = blockstore.meta(0).unwrap().unwrap().received;
 
         sleep_shred_deferment_period();
@@ -236,6 +237,7 @@ pub mod test {
             6,
             &mut outstanding_repairs,
         );
+        // FIXME: WHY ITS 4, 3, 5?
         assert_eq!(
             repairs,
             [0, 1, 2, 4, 3, 5]
@@ -245,21 +247,28 @@ pub mod test {
         );
         assert_eq!(repairs.len(), outstanding_repairs.len());
 
+        // FIXME: SECOND SESSION
+        //
         // Add some leaves to blockstore, attached to the current best leaf, should prioritize
         // repairing those new leaves before trying other branches
+        //
         repairs = vec![];
         outstanding_repairs = HashMap::new();
         slot_meta_cache = HashMap::default();
+
+        // FIXME: WHAT DOES MEAN BEST SLOT?
         let best_overall_slot = heaviest_subtree_fork_choice.best_overall_slot().0;
-        assert_eq!(best_overall_slot, 4);
+        assert_eq!(best_overall_slot, 4); // FIXME: WHY ITS 4?
+
+        // FIXME: ADD TO THE SIGNIFICANT SLOT THE TWO NEW LEAVES 6, 7
         blockstore.add_tree(
             tr(best_overall_slot) / (tr(6) / tr(7)),
             true,
             false,
             2,
-            Hash::default(),
+            Hash::default(), // FIXME: SHOULDNT IT BE A REAL HASH?
         );
-        sleep_shred_deferment_period();
+        sleep_shred_deferment_period(); // FIXME: I THINK ITS GOOD TO CHECK WITH DIFFERENT SLEEP VALUES
         get_best_repair_shreds(
             &heaviest_subtree_fork_choice,
             &blockstore,
@@ -277,10 +286,13 @@ pub mod test {
         );
         assert_eq!(repairs.len(), outstanding_repairs.len());
 
+        // FIXME: 3RD SESSION
         // Completing slots should remove them from the repair list
         repairs = vec![];
         outstanding_repairs = HashMap::new();
         slot_meta_cache = HashMap::default();
+
+        ////////////////////////////////////////////////////////
         let completed_shreds: Vec<Shred> = [0, 2, 4, 6]
             .iter()
             .map(|slot| {
@@ -299,10 +311,12 @@ pub mod test {
                 shred
             })
             .collect();
+
         blockstore
             .insert_shreds(completed_shreds, None, false)
             .unwrap();
         sleep_shred_deferment_period();
+
         get_best_repair_shreds(
             &heaviest_subtree_fork_choice,
             &blockstore,
@@ -311,6 +325,7 @@ pub mod test {
             4,
             &mut outstanding_repairs,
         );
+
         assert_eq!(
             repairs,
             [1, 7, 3, 5]
@@ -320,12 +335,16 @@ pub mod test {
         );
         assert_eq!(repairs.len(), outstanding_repairs.len());
 
+        // FIXME: 4TH SESSION
+        //
         // Adding incomplete children with higher weighted parents, even if
         // the parents are complete should still be repaired
         repairs = vec![];
         outstanding_repairs = HashMap::new();
         slot_meta_cache = HashMap::default();
+        ///
         blockstore.add_tree(tr(2) / (tr(8)), true, false, 2, Hash::default());
+        ///
         sleep_shred_deferment_period();
         get_best_repair_shreds(
             &heaviest_subtree_fork_choice,
