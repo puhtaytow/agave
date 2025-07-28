@@ -217,7 +217,7 @@ pub mod test {
     }
 
     #[test]
-    fn test_get_best_repair_shreds() {
+    fn test_get_best_repair_shreds_case_one() {
         let (blockstore, heaviest_subtree_fork_choice) = setup_forks();
 
         // `blockstore` and `heaviest_subtree_fork_choice` match exactly, so should
@@ -244,12 +244,21 @@ pub mod test {
                 .collect::<Vec<_>>()
         );
         assert_eq!(repairs.len(), outstanding_repairs.len());
+    }
+
+    #[test]
+    fn test_get_best_repair_shreds_case_two() {
+        let (blockstore, heaviest_subtree_fork_choice) = setup_forks();
+
+        // `blockstore` and `heaviest_subtree_fork_choice` match exactly, so should
+        // return repairs for all slots (none are completed) in order of traversal
+        let mut repairs = vec![];
+        let mut outstanding_repairs = HashMap::new();
+        let mut slot_meta_cache = HashMap::default();
+        let last_shred = blockstore.meta(0).unwrap().unwrap().received;
 
         // Add some leaves to blockstore, attached to the current best leaf, should prioritize
         // repairing those new leaves before trying other branches
-        repairs = vec![];
-        outstanding_repairs = HashMap::new();
-        slot_meta_cache = HashMap::default();
         let best_overall_slot = heaviest_subtree_fork_choice.best_overall_slot().0;
         assert_eq!(best_overall_slot, 4);
         blockstore.add_tree(
@@ -276,11 +285,20 @@ pub mod test {
                 .collect::<Vec<_>>()
         );
         assert_eq!(repairs.len(), outstanding_repairs.len());
+    }
+
+    #[test]
+    fn test_get_best_repair_shreds_case_three() {
+        let (blockstore, heaviest_subtree_fork_choice) = setup_forks();
+
+        // `blockstore` and `heaviest_subtree_fork_choice` match exactly, so should
+        // return repairs for all slots (none are completed) in order of traversal
+        let mut repairs = vec![];
+        let mut outstanding_repairs = HashMap::new();
+        let mut slot_meta_cache = HashMap::default();
+        let last_shred = blockstore.meta(0).unwrap().unwrap().received;
 
         // Completing slots should remove them from the repair list
-        repairs = vec![];
-        outstanding_repairs = HashMap::new();
-        slot_meta_cache = HashMap::default();
         let completed_shreds: Vec<Shred> = [0, 2, 4, 6]
             .iter()
             .map(|slot| {
@@ -319,12 +337,48 @@ pub mod test {
                 .collect::<Vec<_>>()
         );
         assert_eq!(repairs.len(), outstanding_repairs.len());
+    }
+
+    #[test]
+    fn test_get_best_repair_shreds_case_four() {
+        let (blockstore, heaviest_subtree_fork_choice) = setup_forks();
+
+        // `blockstore` and `heaviest_subtree_fork_choice` match exactly, so should
+        // return repairs for all slots (none are completed) in order of traversal
+        let mut repairs = vec![];
+        let mut outstanding_repairs = HashMap::new();
+        let mut slot_meta_cache = HashMap::default();
+        let last_shred = blockstore.meta(0).unwrap().unwrap().received;
+        let expected_repairs = [1, 7, 8, 3, 5]
+            .iter()
+            .map(|slot| ShredRepairType::HighestShred(*slot, last_shred))
+            .collect::<Vec<_>>();
+        // Ensure redundant repairs are not generated.
+        get_best_repair_shreds(
+            &heaviest_subtree_fork_choice,
+            &blockstore,
+            &mut slot_meta_cache,
+            &mut repairs,
+            1,
+            &mut outstanding_repairs,
+        );
+        assert_eq!(repairs, expected_repairs);
+        assert_eq!(repairs.len(), outstanding_repairs.len());
+    }
+
+    #[test]
+    fn test_get_best_repair_shreds_case_five() {
+        let (blockstore, heaviest_subtree_fork_choice) = setup_forks();
+
+        // `blockstore` and `heaviest_subtree_fork_choice` match exactly, so should
+        // return repairs for all slots (none are completed) in order of traversal
+        let mut repairs = vec![];
+        let mut outstanding_repairs = HashMap::new();
+        let mut slot_meta_cache = HashMap::default();
+        let last_shred = blockstore.meta(0).unwrap().unwrap().received;
 
         // Adding incomplete children with higher weighted parents, even if
         // the parents are complete should still be repaired
-        repairs = vec![];
-        outstanding_repairs = HashMap::new();
-        slot_meta_cache = HashMap::default();
         blockstore.add_tree(tr(2) / (tr(8)), true, false, 2, Hash::default());
         sleep_shred_deferment_period();
         get_best_repair_shreds(
@@ -339,18 +393,6 @@ pub mod test {
             .iter()
             .map(|slot| ShredRepairType::HighestShred(*slot, last_shred))
             .collect::<Vec<_>>();
-        assert_eq!(repairs, expected_repairs);
-        assert_eq!(repairs.len(), outstanding_repairs.len());
-
-        // Ensure redundant repairs are not generated.
-        get_best_repair_shreds(
-            &heaviest_subtree_fork_choice,
-            &blockstore,
-            &mut slot_meta_cache,
-            &mut repairs,
-            1,
-            &mut outstanding_repairs,
-        );
         assert_eq!(repairs, expected_repairs);
         assert_eq!(repairs.len(), outstanding_repairs.len());
     }
