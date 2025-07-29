@@ -13,6 +13,7 @@
 //!
 //! Bank needs to provide an interface for us to query the stake weight
 
+pub use crate::node::Node;
 use {
     crate::{
         cluster_info_metrics::{Counter, GossipStats, ScopedTimer, TimedGuard},
