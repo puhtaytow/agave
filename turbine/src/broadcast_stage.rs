@@ -740,11 +740,11 @@ pub mod test {
 
         // Fill the cluster_info with the buddy's info
         let cluster_info = ClusterInfo::new(
-            leader_info.info.clone(),
+            leader_info.contact_info().clone(),
             leader_keypair,
             SocketAddrSpace::Unspecified,
         );
-        cluster_info.insert_info(broadcast_buddy.info);
+        cluster_info.insert_info(broadcast_buddy.contact_info().to_owned());
         let cluster_info = Arc::new(cluster_info);
 
         let exit_sender = Arc::new(AtomicBool::new(false));
@@ -756,7 +756,7 @@ pub mod test {
 
         // Start up the broadcast stage
         let broadcast_service = BroadcastStage::new(
-            leader_info.sockets.broadcast,
+            leader_info.sockets().clone().broadcast,
             cluster_info,
             entry_receiver,
             retransmit_slots_receiver,

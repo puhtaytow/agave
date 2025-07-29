@@ -28,11 +28,21 @@ use {
 
 #[derive(Debug)]
 pub struct Node {
-    pub info: ContactInfo,
-    pub sockets: Sockets,
+    info: ContactInfo,
+    sockets: Sockets,
 }
 
 impl Node {
+    /// returns node contact info
+    pub fn contact_info(&self) -> &ContactInfo {
+        &self.info
+    }
+
+    /// returns node sockets
+    pub fn sockets(&self) -> &Sockets {
+        &self.sockets
+    }
+
     /// create localhost node for tests
     pub fn new_localhost() -> Self {
         let pubkey = solana_pubkey::new_rand();

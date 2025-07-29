@@ -103,7 +103,7 @@ mod tests {
         let host1_key = Arc::new(Keypair::new());
         let node = Node::new_localhost_with_pubkey(&host1_key.pubkey());
         let cluster_info = Arc::new(ClusterInfo::new(
-            node.info,
+            node.contact_info().clone(),
             host1_key,
             SocketAddrSpace::Unspecified,
         ));

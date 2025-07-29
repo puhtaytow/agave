@@ -599,7 +599,7 @@ impl Validator {
         }
 
         let id = identity_keypair.pubkey();
-        assert_eq!(&id, node.info.pubkey());
+        assert_eq!(&id, node.contact_info().pubkey());
 
         info!("identity pubkey: {id}");
         info!("vote account pubkey: {vote_account}");
@@ -814,12 +814,12 @@ impl Validator {
             info!("Skipping the blockstore check for shreds with incorrect version");
         }
 
-        node.info.set_shred_version(shred_version);
-        node.info.set_wallclock(timestamp());
+        node.contact_info().set_shred_version(shred_version);
+        node.contact_info().set_wallclock(timestamp());
         Self::print_node_info(&node);
 
         let mut cluster_info = ClusterInfo::new(
-            node.info.clone(),
+            node.contact_info().clone(),
             identity_keypair.clone(),
             socket_addr_space,
         );
@@ -1023,7 +1023,7 @@ impl Validator {
         let staked_nodes = Arc::new(RwLock::new(StakedNodes::default()));
 
         let mut tpu_transactions_forwards_client =
-            Some(node.sockets.tpu_transaction_forwarding_client);
+            Some(node.sockets().tpu_transaction_forwarding_client);
 
         let connection_cache = match (config.use_tpu_client_next, use_quic) {
             (false, true) => Some(Arc::new(ConnectionCache::new_with_client_options(
@@ -1036,7 +1036,7 @@ impl Validator {
                 ),
                 Some((
                     &identity_keypair,
-                    node.info
+                    node.contact_info()
                         .tpu(Protocol::UDP)
                         .ok_or_else(|| {
                             ValidatorError::Other(String::from("Invalid UDP address for TPU"))
@@ -1056,10 +1056,10 @@ impl Validator {
             let vote_connection_cache = ConnectionCache::new_with_client_options(
                 "connection_cache_vote_quic",
                 tpu_connection_pool_size,
-                Some(node.sockets.quic_vote_client),
+                Some(node.sockets().quic_vote_client),
                 Some((
                     &identity_keypair,
-                    node.info
+                    node.contact_info()
                         .tpu_vote(Protocol::QUIC)
                         .ok_or_else(|| {
                             ValidatorError::Other(String::from("Invalid QUIC address for TPU Vote"))
@@ -1105,8 +1105,10 @@ impl Validator {
             bank_notification_sender,
         ) = if let Some((rpc_addr, rpc_pubsub_addr)) = config.rpc_addrs {
             assert_eq!(
-                node.info.rpc().map(|addr| socket_addr_space.check(&addr)),
-                node.info
+                node.contact_info()
+                    .rpc()
+                    .map(|addr| socket_addr_space.check(&addr)),
+                node.contact_info()
                     .rpc_pubsub()
                     .map(|addr| socket_addr_space.check(&addr))
             );
@@ -1124,7 +1126,7 @@ impl Validator {
                     .unwrap_or_else(|| current_runtime_handle.as_ref().unwrap());
                 ClientOption::TpuClientNext(
                     Arc::as_ref(&identity_keypair),
-                    node.sockets.rpc_sts_client,
+                    node.sockets().rpc_sts_client,
                     runtime_handle.clone(),
                     cancel_tpu_client_next.clone(),
                 )
@@ -1262,12 +1264,12 @@ impl Validator {
             *start_progress.write().unwrap() = ValidatorStartProgress::Halted;
             std::thread::park();
         }
-        let ip_echo_server = match node.sockets.ip_echo {
+        let ip_echo_server = match node.sockets().ip_echo {
             None => None,
             Some(tcp_listener) => Some(solana_net_utils::ip_echo_server(
                 tcp_listener,
                 config.ip_echo_server_threads,
-                Some(node.info.shred_version()),
+                Some(node.contact_info().shred_version()),
             )),
         };
 
@@ -1279,7 +1281,7 @@ impl Validator {
         let gossip_service = GossipService::new(
             &cluster_info,
             Some(bank_forks.clone()),
-            node.sockets.gossip.clone(),
+            node.sockets().gossip.clone(),
             config.gossip_validators.clone(),
             should_check_duplicate_instance,
             Some(stats_reporter_sender.clone()),
@@ -1361,7 +1363,7 @@ impl Validator {
                     .map(TokioRuntime::handle)
                     .unwrap_or_else(|| current_runtime_handle.as_ref().unwrap()),
                 &identity_keypair,
-                node.sockets.tvu_quic,
+                node.sockets().tvu_quic,
                 turbine_quic_endpoint_sender,
                 bank_forks.clone(),
             )
@@ -1384,9 +1386,9 @@ impl Validator {
                 (None, RepairQuicAsyncSenders::new_dummy(), None)
             } else {
                 let repair_quic_sockets = RepairQuicSockets {
-                    repair_server_quic_socket: node.sockets.serve_repair_quic,
-                    repair_client_quic_socket: node.sockets.repair_quic,
-                    ancestor_hashes_quic_socket: node.sockets.ancestor_hashes_requests_quic,
+                    repair_server_quic_socket: node.sockets().serve_repair_quic,
+                    repair_client_quic_socket: node.sockets().repair_quic,
+                    ancestor_hashes_quic_socket: node.sockets().ancestor_hashes_requests_quic,
                 };
                 let repair_quic_senders = RepairQuicSenders {
                     repair_request_quic_sender: repair_request_quic_sender.clone(),
@@ -1415,7 +1417,7 @@ impl Validator {
             repair_request_quic_sender,
             repair_request_quic_receiver,
             repair_quic_async_senders.repair_response_quic_sender,
-            node.sockets.serve_repair,
+            node.sockets().serve_repair,
             socket_addr_space,
             stats_reporter_sender,
             exit.clone(),
@@ -1453,7 +1455,7 @@ impl Validator {
             };
         let (xdp_retransmitter, xdp_sender) =
             if let Some(xdp_config) = config.retransmit_xdp.clone() {
-                let src_port = node.sockets.retransmit_sockets[0]
+                let src_port = node.sockets().retransmit_sockets[0]
                     .local_addr()
                     .expect("failed to get local address")
                     .port();
@@ -1470,10 +1472,10 @@ impl Validator {
             &bank_forks,
             &cluster_info,
             TvuSockets {
-                repair: node.sockets.repair.try_clone().unwrap(),
-                retransmit: node.sockets.retransmit_sockets,
-                fetch: node.sockets.tvu,
-                ancestor_hashes_requests: node.sockets.ancestor_hashes_requests,
+                repair: node.sockets().repair.try_clone().unwrap(),
+                retransmit: node.sockets().retransmit_sockets,
+                fetch: node.sockets().tvu,
+                ancestor_hashes_requests: node.sockets().ancestor_hashes_requests,
             },
             blockstore.clone(),
             ledger_signal_receiver,
@@ -1497,7 +1499,7 @@ impl Validator {
             duplicate_confirmed_slots_receiver,
             TvuConfig {
                 max_ledger_shreds: config.max_ledger_shreds,
-                shred_version: node.info.shred_version(),
+                shred_version: node.contact_info().shred_version(),
                 repair_validators: config.repair_validators.clone(),
                 repair_whitelist: config.repair_whitelist.clone(),
                 wait_for_vote_to_start_leader,
@@ -1572,15 +1574,15 @@ impl Validator {
             entry_receiver,
             retransmit_slots_receiver,
             TpuSockets {
-                transactions: node.sockets.tpu,
-                transaction_forwards: node.sockets.tpu_forwards,
-                vote: node.sockets.tpu_vote,
-                broadcast: node.sockets.broadcast,
-                transactions_quic: node.sockets.tpu_quic,
-                transactions_forwards_quic: node.sockets.tpu_forwards_quic,
-                vote_quic: node.sockets.tpu_vote_quic,
-                vote_forwarding_client: node.sockets.tpu_vote_forwarding_client,
-                vortexor_receivers: node.sockets.vortexor_receivers,
+                transactions: node.sockets().tpu,
+                transaction_forwards: node.sockets().tpu_forwards,
+                vote: node.sockets().tpu_vote,
+                broadcast: node.sockets().broadcast,
+                transactions_quic: node.sockets().tpu_quic,
+                transactions_forwards_quic: node.sockets().tpu_forwards_quic,
+                vote_quic: node.sockets().tpu_vote_quic,
+                vote_forwarding_client: node.sockets().tpu_vote_forwarding_client,
+                vortexor_receivers: node.sockets().vortexor_receivers,
             },
             rpc_subscriptions.clone(),
             transaction_status_sender,
@@ -1589,7 +1591,7 @@ impl Validator {
             &config.broadcast_stage_type,
             xdp_sender,
             exit,
-            node.info.shred_version(),
+            node.contact_info().shred_version(),
             vote_tracker,
             bank_forks.clone(),
             verified_vote_sender,
@@ -1647,10 +1649,10 @@ impl Validator {
             vote_account: *vote_account,
             repair_whitelist: config.repair_whitelist.clone(),
             notifies: key_notifiers,
-            repair_socket: Arc::new(node.sockets.repair),
+            repair_socket: Arc::new(node.sockets().repair),
             outstanding_repair_requests,
             cluster_slots,
-            gossip_socket: Some(node.sockets.gossip.clone()),
+            gossip_socket: Some(node.sockets().gossip.clone()),
         });
 
         Ok(Self {
@@ -1704,14 +1706,14 @@ impl Validator {
     }
 
     fn print_node_info(node: &Node) {
-        info!("{:?}", node.info);
+        info!("{:?}", node.contact_info());
         info!(
             "local gossip address: {}",
-            node.sockets.gossip.local_addr().unwrap()
+            node.sockets().gossip.local_addr().unwrap()
         );
         info!(
             "local broadcast address: {}",
-            node.sockets
+            node.sockets()
                 .broadcast
                 .first()
                 .unwrap()
@@ -1720,11 +1722,11 @@ impl Validator {
         );
         info!(
             "local repair address: {}",
-            node.sockets.repair.local_addr().unwrap()
+            node.sockets().repair.local_addr().unwrap()
         );
         info!(
             "local retransmit address: {}",
-            node.sockets.retransmit_sockets[0].local_addr().unwrap()
+            node.sockets().retransmit_sockets[0].local_addr().unwrap()
         );
     }
 

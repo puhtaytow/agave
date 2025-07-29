@@ -534,7 +534,7 @@ mod test {
         let leader_pubkey = leader_keypair.pubkey();
         let leader_info = Node::new_localhost_with_pubkey(&leader_pubkey);
         let cluster_info = Arc::new(ClusterInfo::new(
-            leader_info.info,
+            leader_info.contact_info().clone(),
             leader_keypair.clone(),
             SocketAddrSpace::Unspecified,
         ));

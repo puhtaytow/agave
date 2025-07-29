@@ -404,7 +404,7 @@ mod tests {
         let exit = Arc::new(AtomicBool::new(false));
         let tn = Node::new_localhost();
         let cluster_info = ClusterInfo::new(
-            tn.info.clone(),
+            tn.contact_info().clone(),
             Arc::new(Keypair::new()),
             SocketAddrSpace::Unspecified,
         );
@@ -412,7 +412,7 @@ mod tests {
         let d = GossipService::new(
             &c,
             None,
-            tn.sockets.gossip,
+            tn.sockets().gossip.clone(),
             None,
             true, // should_check_duplicate_instance
             None,

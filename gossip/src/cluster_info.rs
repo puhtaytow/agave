@@ -2675,7 +2675,11 @@ mod tests {
         let cluster_info = Arc::new({
             let keypair = Arc::new(Keypair::new());
             let node = Node::new_localhost_with_pubkey(&keypair.pubkey());
-            ClusterInfo::new(node.info, keypair, SocketAddrSpace::Unspecified)
+            ClusterInfo::new(
+                node.contact_info().clone(),
+                keypair,
+                SocketAddrSpace::Unspecified,
+            )
         });
         let entrypoint_pubkey = solana_pubkey::new_rand();
         let data = test_crds_values(entrypoint_pubkey);
@@ -2811,7 +2815,11 @@ mod tests {
         let cluster_info = Arc::new({
             let keypair = Arc::new(Keypair::new());
             let node = Node::new_localhost_with_pubkey(&keypair.pubkey());
-            ClusterInfo::new(node.info, keypair, SocketAddrSpace::Unspecified)
+            ClusterInfo::new(
+                node.contact_info().clone(),
+                keypair,
+                SocketAddrSpace::Unspecified,
+            )
         });
         cluster_info.insert_info(spy);
         cluster_info.gossip.refresh_push_active_set(
@@ -2876,12 +2884,12 @@ mod tests {
     }
 
     fn check_node_sockets(node: &Node, ip: IpAddr, range: (u16, u16)) {
-        check_socket(&node.sockets.gossip.load(), ip, range);
-        check_socket(&node.sockets.repair, ip, range);
-        check_socket(&node.sockets.tvu_quic, ip, range);
+        check_socket(&node.sockets().gossip.load(), ip, range);
+        check_socket(&node.sockets().repair, ip, range);
+        check_socket(&node.sockets().tvu_quic, ip, range);
 
-        check_sockets(&node.sockets.tvu, ip, range);
-        check_sockets(&node.sockets.tpu, ip, range);
+        check_sockets(&node.sockets().tvu, ip, range);
+        check_sockets(&node.sockets().tpu, ip, range);
     }
 
     #[test]
@@ -2930,7 +2938,7 @@ mod tests {
 
         check_node_sockets(&node, ip, port_range);
 
-        assert_eq!(node.sockets.gossip.local_addr().unwrap().port(), port);
+        assert_eq!(node.sockets().gossip.local_addr().unwrap().port(), port);
     }
 
     //test that all cluster_info objects only generate signed messages
@@ -3550,7 +3558,7 @@ mod tests {
     fn test_pull_request_time_pruning() {
         let node = Node::new_localhost();
         let cluster_info = Arc::new(ClusterInfo::new(
-            node.info,
+            node.contact_info().clone(),
             Arc::new(Keypair::new()),
             SocketAddrSpace::Unspecified,
         ));
@@ -3591,7 +3599,7 @@ mod tests {
         let host1_key = Arc::new(Keypair::new());
         let node = Node::new_localhost_with_pubkey(&host1_key.pubkey());
         let cluster_info = Arc::new(ClusterInfo::new(
-            node.info,
+            node.contact_info().clone(),
             host1_key.clone(),
             SocketAddrSpace::Unspecified,
         ));
@@ -3805,11 +3813,19 @@ mod tests {
         let cluster_info44 = Arc::new({
             let node = Node::new_localhost_with_pubkey(&keypair44.pubkey());
             info!("{node:?}");
-            ClusterInfo::new(node.info, keypair44.clone(), SocketAddrSpace::Unspecified)
+            ClusterInfo::new(
+                node.contact_info().clone(),
+                keypair44.clone(),
+                SocketAddrSpace::Unspecified,
+            )
         });
         let cluster_info43 = Arc::new({
             let node = Node::new_localhost_with_pubkey(&keypair43.pubkey());
-            ClusterInfo::new(node.info, keypair43.clone(), SocketAddrSpace::Unspecified)
+            ClusterInfo::new(
+                node.contact_info().clone(),
+                keypair43.clone(),
+                SocketAddrSpace::Unspecified,
+            )
         });
 
         assert_eq!(keypair43.pubkey().to_string().len(), 43);

@@ -5,7 +5,7 @@ extern crate log;
 use {
     rayon::iter::*,
     solana_gossip::{
-        cluster_info::{ClusterInfo, Node},
+        cluster_info::{ClusterInfo, Node, Sockets},
         contact_info::{ContactInfo, Protocol},
         crds::Cursor,
         gossip_service::GossipService,
@@ -36,27 +36,24 @@ use {
 
 fn test_node(exit: Arc<AtomicBool>) -> (Arc<ClusterInfo>, GossipService, UdpSocket) {
     let keypair = Arc::new(Keypair::new());
-    let mut test_node = Node::new_localhost_with_pubkey(&keypair.pubkey());
+    let test_node = Node::new_localhost_with_pubkey(&keypair.pubkey());
     let cluster_info = Arc::new(ClusterInfo::new(
-        test_node.info.clone(),
+        test_node.contact_info().clone(),
         keypair,
         SocketAddrSpace::Unspecified,
     ));
     let gossip_service = GossipService::new(
         &cluster_info,
         None,
-        test_node.sockets.gossip,
+        test_node.sockets().clone().gossip.clone(),
         None,
         true, // should_check_duplicate_instance
         None,
         exit,
     );
+    let sockets: &Sockets = test_node.sockets().to_owned();
     let _ = cluster_info.my_contact_info();
-    (
-        cluster_info,
-        gossip_service,
-        test_node.sockets.tvu.pop().unwrap(),
-    )
+    (cluster_info, gossip_service, sockets.tvu.pop().unwrap())
 }
 
 fn test_node_with_bank(
@@ -64,27 +61,24 @@ fn test_node_with_bank(
     exit: Arc<AtomicBool>,
     bank_forks: Arc<RwLock<BankForks>>,
 ) -> (Arc<ClusterInfo>, GossipService, UdpSocket) {
-    let mut test_node = Node::new_localhost_with_pubkey(&node_keypair.pubkey());
+    let test_node = Node::new_localhost_with_pubkey(&node_keypair.pubkey());
     let cluster_info = Arc::new(ClusterInfo::new(
-        test_node.info.clone(),
+        test_node.contact_info().clone(),
         node_keypair,
         SocketAddrSpace::Unspecified,
     ));
     let gossip_service = GossipService::new(
         &cluster_info,
         Some(bank_forks),
-        test_node.sockets.gossip,
+        test_node.sockets().clone().gossip.clone(),
         None,
         true, // should_check_duplicate_instance
         None,
         exit,
     );
+    let mut sockets = *test_node.sockets().clone();
     let _ = cluster_info.my_contact_info();
-    (
-        cluster_info,
-        gossip_service,
-        test_node.sockets.tvu.pop().unwrap(),
-    )
+    (cluster_info, gossip_service, sockets.tvu.pop().unwrap())
 }
 
 /// Test that the network converges.

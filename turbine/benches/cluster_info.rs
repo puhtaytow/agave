@@ -35,7 +35,7 @@ fn broadcast_shreds_bench(b: &mut Bencher) {
         tokio::sync::mpsc::channel(/*capacity:*/ 128);
     let leader_info = Node::new_localhost_with_pubkey(&leader_keypair.pubkey());
     let cluster_info = ClusterInfo::new(
-        leader_info.info,
+        leader_info.contact_info().clone(),
         leader_keypair.clone(),
         SocketAddrSpace::Unspecified,
     );
