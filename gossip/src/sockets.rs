@@ -107,64 +107,16 @@ mod tests {
 
     #[test]
     fn test_new_tpu_verify_outcome() {
-        const NUM_PORTS: usize = 3;
+        const NUM_PORTS: u16 = 3;
         const IP_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
-        let mut sockets = vec![];
-        let mut forwards = vec![];
-        let mut votes = vec![];
-
-        let port_range_sockets = unique_port_range_for_tests(NUM_PORTS as u16);
-        let port_range_forwards = unique_port_range_for_tests(NUM_PORTS as u16);
-        let port_range_votes = unique_port_range_for_tests(NUM_PORTS as u16);
-
-        port_range_sockets.clone().into_iter().for_each(|port| {
-            sockets
-                .push(bind_to(IP_ADDR, port).expect(&format!("should bind - sockets: {:?}", port)));
-        });
-        port_range_forwards.clone().into_iter().for_each(|port| {
-            forwards.push(
-                bind_to(IP_ADDR, port).expect(&format!("should bind - forwards: {:?}", port)),
-            );
-        });
-        port_range_votes.clone().into_iter().for_each(|port| {
-            votes.push(bind_to(IP_ADDR, port).expect(&format!("should bind - votes: {:?}", port)));
-        });
-
+        let sockets = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
+        let forwards = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
+        let votes = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
         let tpu_group = Tpu::new(sockets, forwards, votes);
-        assert_eq!(NUM_PORTS, tpu_group.sockets.len());
-        assert_eq!(NUM_PORTS, tpu_group.forwards.len());
-        assert_eq!(NUM_PORTS, tpu_group.votes.len());
 
-        for s in tpu_group.sockets() {
-            let addr = s.local_addr().unwrap();
-            assert_eq!(IP_ADDR, addr.ip());
-            assert!(
-                port_range_sockets.clone().contains(&addr.port()),
-                "socket port {} not in reserved range {:?}",
-                addr.port(),
-                port_range_sockets
-            );
-        }
-        for s in tpu_group.forwards() {
-            let addr = s.local_addr().unwrap();
-            assert_eq!(IP_ADDR, addr.ip());
-            assert!(
-                port_range_forwards.clone().contains(&addr.port()),
-                "socket port {} not in reserved range {:?}",
-                addr.port(),
-                port_range_forwards
-            );
-        }
-        for s in tpu_group.votes() {
-            let addr = s.local_addr().unwrap();
-            assert_eq!(IP_ADDR, addr.ip());
-            assert!(
-                port_range_votes.clone().contains(&addr.port()),
-                "socket port {} not in reserved range {:?}",
-                addr.port(),
-                port_range_votes
-            );
-        }
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.sockets());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.votes());
     }
 }
