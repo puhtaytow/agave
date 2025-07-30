@@ -29,15 +29,28 @@ pub struct Tpu {
     sockets: Vec<UdpSocket>,
     forwards: Vec<UdpSocket>,
     votes: Vec<UdpSocket>,
+    quic: Vec<UdpSocket>,
+    forwards_quic: Vec<UdpSocket>,
+    votes_quic: Vec<UdpSocket>,
 }
 
 impl Tpu {
     /// returns new tpu sockets group
-    pub fn new(sockets: Vec<UdpSocket>, forwards: Vec<UdpSocket>, votes: Vec<UdpSocket>) -> Self {
+    pub fn new(
+        sockets: Vec<UdpSocket>,
+        forwards: Vec<UdpSocket>,
+        votes: Vec<UdpSocket>,
+        quic: Vec<UdpSocket>,
+        forwards_quic: Vec<UdpSocket>,
+        votes_quic: Vec<UdpSocket>,
+    ) -> Self {
         Self {
             sockets,
             forwards,
             votes,
+            quic,
+            forwards_quic,
+            votes_quic,
         }
     }
 
@@ -54,6 +67,21 @@ impl Tpu {
     /// returns tpu votes sockets slice
     pub fn votes(&self) -> &[UdpSocket] {
         &self.votes
+    }
+
+    /// returns tpu quic sockets slice
+    pub fn quic(&self) -> &[UdpSocket] {
+        &self.quic
+    }
+
+    /// returns tpu forwards quic sockets slice
+    pub fn forwards_quic(&self) -> &[UdpSocket] {
+        &self.forwards_quic
+    }
+
+    /// returns tpu votes sockets slice
+    pub fn votes_quic(&self) -> &[UdpSocket] {
+        &self.votes_quic
     }
 }
 
@@ -113,10 +141,16 @@ mod tests {
         let sockets = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
         let forwards = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
         let votes = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
-        let tpu_group = Tpu::new(sockets, forwards, votes);
+        let quic = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
+        let forwards_quic = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
+        let votes_quic = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
+        let tpu_group = Tpu::new(sockets, forwards, votes, quic, forwards_quic, votes_quic);
 
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.sockets());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.votes());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.quic());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards_quic());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.votes_quic());
     }
 }

@@ -2322,7 +2322,9 @@ pub struct Sockets {
     pub tpu: Vec<UdpSocket>,          // TODO: RM
     pub tpu_forwards: Vec<UdpSocket>, // TODO: RM
     pub tpu_vote: Vec<UdpSocket>,     // TODO: RM
-    pub broadcast: Vec<UdpSocket>,    // TODO: Isn't it part of TPU?
+    pub broadcast: Vec<UdpSocket>, // TODO: CHECK: basically TPU has quic sockets to ingest transactions, and then spits out shreds via Broadcast Stage
+    // look at how BroadcastStage is created (i.e. how the callstack gets there from validator.rs)
+
     // Socket sending out local repair requests,
     // and receiving repair responses from the cluster.
     pub repair: UdpSocket,
@@ -2336,9 +2338,9 @@ pub struct Sockets {
     // and receiving AncestorHashesResponse from the cluster.
     pub ancestor_hashes_requests: UdpSocket,
     pub ancestor_hashes_requests_quic: UdpSocket,
-    pub tpu_quic: Vec<UdpSocket>,
-    pub tpu_forwards_quic: Vec<UdpSocket>,
-    pub tpu_vote_quic: Vec<UdpSocket>,
+    pub tpu_quic: Vec<UdpSocket>,          // TODO: RM
+    pub tpu_forwards_quic: Vec<UdpSocket>, // TODO: RM
+    pub tpu_vote_quic: Vec<UdpSocket>,     // TODO: RM
 
     /// Client-side socket for ForwardingStage vote transactions
     pub tpu_vote_forwarding_client: UdpSocket,
