@@ -2351,6 +2351,8 @@ pub struct Sockets {
     /// Client-side socket for RPC/SendTransactionService.
     pub rpc_sts_client: UdpSocket,
     pub vortexor_receivers: Option<Vec<UdpSocket>>,
+    // FIXME: news
+    // pub tpu_group: crate::sockets::Tpu,
 }
 
 pub struct NodeConfig {

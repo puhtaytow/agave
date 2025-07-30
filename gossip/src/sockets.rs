@@ -3,16 +3,13 @@ use std::net::UdpSocket;
 #[derive(Debug)]
 pub struct Tvu {
     sockets: Vec<UdpSocket>,
-    quic_socket: UdpSocket,
+    quic: UdpSocket,
 }
 
 impl Tvu {
     /// returns new tvu sockets group
-    pub fn new(sockets: Vec<UdpSocket>, quic_socket: UdpSocket) -> Self {
-        Self {
-            sockets,
-            quic_socket,
-        }
+    pub fn new(sockets: Vec<UdpSocket>, quic: UdpSocket) -> Self {
+        Self { sockets, quic }
     }
 
     /// returns tvu sockets slice
@@ -22,7 +19,7 @@ impl Tvu {
 
     /// returns tvu quic socket ref
     pub fn quic_socket(&self) -> &UdpSocket {
-        &self.quic_socket
+        &self.quic
     }
 }
 
@@ -30,10 +27,10 @@ impl Tvu {
 pub struct Tpu {
     sockets: Vec<UdpSocket>,
     forwards: Vec<UdpSocket>,
-    votes: Vec<UdpSocket>,
+    vote: Vec<UdpSocket>,
     quic: Vec<UdpSocket>,
     forwards_quic: Vec<UdpSocket>,
-    votes_quic: Vec<UdpSocket>,
+    vote_quic: Vec<UdpSocket>,
 }
 
 impl Tpu {
@@ -41,18 +38,18 @@ impl Tpu {
     pub fn new(
         sockets: Vec<UdpSocket>,
         forwards: Vec<UdpSocket>,
-        votes: Vec<UdpSocket>,
+        vote: Vec<UdpSocket>,
         quic: Vec<UdpSocket>,
         forwards_quic: Vec<UdpSocket>,
-        votes_quic: Vec<UdpSocket>,
+        vote_quic: Vec<UdpSocket>,
     ) -> Self {
         Self {
             sockets,
             forwards,
-            votes,
+            vote,
             quic,
             forwards_quic,
-            votes_quic,
+            vote_quic,
         }
     }
 
@@ -66,9 +63,9 @@ impl Tpu {
         &self.forwards
     }
 
-    /// returns tpu votes sockets slice
-    pub fn votes(&self) -> &[UdpSocket] {
-        &self.votes
+    /// returns tpu vote sockets slice
+    pub fn vote(&self) -> &[UdpSocket] {
+        &self.vote
     }
 
     /// returns tpu quic sockets slice
@@ -82,8 +79,8 @@ impl Tpu {
     }
 
     /// returns tpu votes sockets slice
-    pub fn votes_quic(&self) -> &[UdpSocket] {
-        &self.votes_quic
+    pub fn vote_quic(&self) -> &[UdpSocket] {
+        &self.vote_quic
     }
 }
 
@@ -150,9 +147,9 @@ mod tests {
         const NUM_PORTS: u16 = 3;
         const IP_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
-        let quic_socket = bind_to_localhost_unique().expect("should bind - quic port");
+        let quic = bind_to_localhost_unique().expect("should bind - quic port");
         let sockets = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
-        let tvu_group = Tvu::new(sockets, quic_socket);
+        let tvu_group = Tvu::new(sockets, quic);
 
         assert_eq!(IP_ADDR, tvu_group.quic_socket().local_addr().unwrap().ip());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tvu_group.sockets());
@@ -173,10 +170,10 @@ mod tests {
 
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.sockets());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards());
-        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.votes());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.vote());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.quic());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards_quic());
-        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.votes_quic());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.vote_quic());
     }
 
     #[test]
