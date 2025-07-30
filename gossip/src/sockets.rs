@@ -85,10 +85,34 @@ impl Tpu {
     }
 }
 
+pub struct Repair {
+    // Socket sending out local repair requests,
+    // and receiving repair responses from the cluster.
+    socket: UdpSocket,
+    quic: UdpSocket,
+}
+
+impl Repair {
+    /// returns repair sockets group
+    pub fn new(socket: UdpSocket, quic: UdpSocket) -> Self {
+        Self { socket, quic }
+    }
+
+    /// returns repair socket ref
+    pub fn socket(&self) -> &UdpSocket {
+        &self.socket
+    }
+
+    /// returns repair quic socket ref
+    pub fn quic(&self) -> &UdpSocket {
+        &self.quic
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
-        crate::sockets::{Tpu, Tvu},
+        crate::sockets::{Repair, Tpu, Tvu},
         solana_net_utils::sockets::{
             bind_to, bind_to_localhost_unique, unique_port_range_for_tests,
         },
@@ -152,5 +176,17 @@ mod tests {
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.quic());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards_quic());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.votes_quic());
+    }
+
+    #[test]
+    fn test_new_repair_verify_outcome() {
+        const IP_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
+
+        let socket = bind_to_localhost_unique().expect("should bind - repair port");
+        let quic = bind_to_localhost_unique().expect("should bind - quic port");
+        let repair_group = Repair::new(socket, quic);
+
+        assert_eq!(IP_ADDR, repair_group.socket().local_addr().unwrap().ip());
+        assert_eq!(IP_ADDR, repair_group.quic().local_addr().unwrap().ip());
     }
 }

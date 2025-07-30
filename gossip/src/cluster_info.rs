@@ -2329,7 +2329,7 @@ pub struct Sockets {
     // and receiving repair responses from the cluster.
     pub repair: UdpSocket,
     pub repair_quic: UdpSocket,
-    pub retransmit_sockets: Vec<UdpSocket>,
+    pub retransmit_sockets: Vec<UdpSocket>, // TODO: part of repair?
     // Socket receiving remote repair requests from the cluster,
     // and sending back repair responses.
     pub serve_repair: UdpSocket,
