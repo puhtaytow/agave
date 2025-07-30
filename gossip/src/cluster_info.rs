@@ -13,7 +13,7 @@
 //!
 //! Bank needs to provide an interface for us to query the stake weight
 
-pub use crate::node::Node;
+pub use crate::{node::Node, sockets};
 use {
     crate::{
         cluster_info_metrics::{Counter, GossipStats, ScopedTimer, TimedGuard},
@@ -2317,12 +2317,12 @@ impl ClusterInfo {
 pub struct Sockets {
     pub gossip: AtomicUdpSocket,
     pub ip_echo: Option<TcpListener>,
-    pub tvu: Vec<UdpSocket>,
-    pub tvu_quic: UdpSocket,
-    pub tpu: Vec<UdpSocket>,
-    pub tpu_forwards: Vec<UdpSocket>,
-    pub tpu_vote: Vec<UdpSocket>,
-    pub broadcast: Vec<UdpSocket>,
+    pub tvu: Vec<UdpSocket>,          // TODO: RM
+    pub tvu_quic: UdpSocket,          // TODO: RM
+    pub tpu: Vec<UdpSocket>,          // TODO: RM
+    pub tpu_forwards: Vec<UdpSocket>, // TODO: RM
+    pub tpu_vote: Vec<UdpSocket>,     // TODO: RM
+    pub broadcast: Vec<UdpSocket>,    // TODO: Isn't it part of TPU?
     // Socket sending out local repair requests,
     // and receiving repair responses from the cluster.
     pub repair: UdpSocket,

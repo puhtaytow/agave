@@ -32,6 +32,7 @@ pub mod epoch_specs;
 pub mod gossip_error;
 pub mod gossip_service;
 pub mod node;
+pub mod sockets;
 #[macro_use]
 mod tlv;
 #[macro_use]
