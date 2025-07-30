@@ -2343,16 +2343,14 @@ pub struct Sockets {
     pub tpu_vote_quic: Vec<UdpSocket>,     // TODO: RM
 
     /// Client-side socket for ForwardingStage vote transactions
-    pub tpu_vote_forwarding_client: UdpSocket,
+    pub tpu_vote_forwarding_client: UdpSocket, // TODO: RM
     /// Client-side socket for ForwardingStage non-vote transactions
-    pub tpu_transaction_forwarding_client: UdpSocket,
+    pub tpu_transaction_forwarding_client: UdpSocket, // TODO: RM
     /// Connection cache endpoint for QUIC-based Vote
     pub quic_vote_client: UdpSocket,
     /// Client-side socket for RPC/SendTransactionService.
     pub rpc_sts_client: UdpSocket,
     pub vortexor_receivers: Option<Vec<UdpSocket>>,
-    // FIXME: news
-    // pub tpu_group: crate::sockets::Tpu,
 }
 
 pub struct NodeConfig {

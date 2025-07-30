@@ -31,6 +31,10 @@ pub struct Tpu {
     quic: Vec<UdpSocket>,
     forwards_quic: Vec<UdpSocket>,
     vote_quic: Vec<UdpSocket>,
+    // Client-side socket for ForwardingStage vote transactions
+    vote_forwarding_client: UdpSocket,
+    // Client-side socket for ForwardingStage non-vote transactions
+    transaction_forwarding_client: UdpSocket,
 }
 
 impl Tpu {
@@ -42,6 +46,8 @@ impl Tpu {
         quic: Vec<UdpSocket>,
         forwards_quic: Vec<UdpSocket>,
         vote_quic: Vec<UdpSocket>,
+        vote_forwarding_client: UdpSocket,
+        transaction_forwarding_client: UdpSocket,
     ) -> Self {
         Self {
             sockets,
@@ -50,6 +56,8 @@ impl Tpu {
             quic,
             forwards_quic,
             vote_quic,
+            vote_forwarding_client,
+            transaction_forwarding_client,
         }
     }
 
@@ -81,6 +89,16 @@ impl Tpu {
     /// returns tpu votes sockets slice
     pub fn vote_quic(&self) -> &[UdpSocket] {
         &self.vote_quic
+    }
+
+    /// returns tpu vote forwarding client socket ref
+    pub fn vote_forwarding_client(&self) -> &UdpSocket {
+        &self.vote_forwarding_client
+    }
+
+    /// returns tpu transaction forwarding client socket ref
+    pub fn transaction_forwarding_client(&self) -> &UdpSocket {
+        &self.transaction_forwarding_client
     }
 }
 
@@ -166,7 +184,22 @@ mod tests {
         let quic = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
         let forwards_quic = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
         let votes_quic = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
-        let tpu_group = Tpu::new(sockets, forwards, votes, quic, forwards_quic, votes_quic);
+
+        let vote_forwarding_client =
+            bind_to_localhost_unique().expect("should bind - vote_forwarding_client port");
+        let transaction_forwarding_client =
+            bind_to_localhost_unique().expect("should bind - transaction_forwarding_client port");
+
+        let tpu_group = Tpu::new(
+            sockets,
+            forwards,
+            votes,
+            quic,
+            forwards_quic,
+            votes_quic,
+            vote_forwarding_client,
+            transaction_forwarding_client,
+        );
 
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.sockets());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards());
@@ -174,6 +207,23 @@ mod tests {
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.quic());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.forwards_quic());
         assert_sockets_range(NUM_PORTS, IP_ADDR, tpu_group.vote_quic());
+
+        assert_eq!(
+            IP_ADDR,
+            tpu_group
+                .vote_forwarding_client()
+                .local_addr()
+                .unwrap()
+                .ip()
+        );
+        assert_eq!(
+            IP_ADDR,
+            tpu_group
+                .transaction_forwarding_client()
+                .local_addr()
+                .unwrap()
+                .ip()
+        );
     }
 
     #[test]
