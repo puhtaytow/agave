@@ -136,14 +136,10 @@ mod tests {
 
     fn vec_sockets_from_size_and_addr(size: u16, ip_addr: IpAddr) -> Vec<UdpSocket> {
         let mut sockets = vec![];
-        unique_port_range_for_tests(size)
-            .clone()
-            .into_iter()
-            .for_each(|port| {
-                sockets.push(
-                    bind_to(ip_addr, port).expect(&format!("should bind - sockets: {:?}", port)),
-                );
-            });
+        unique_port_range_for_tests(size).for_each(|port| {
+            sockets
+                .push(bind_to(ip_addr, port).expect(&format!("should bind - sockets: {:?}", port)));
+        });
         sockets
     }
 
