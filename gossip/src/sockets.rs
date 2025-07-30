@@ -94,32 +94,15 @@ mod tests {
 
     #[test]
     fn test_new_tvu_verify_outcome() {
-        const NUM_PORTS: usize = 3;
+        const NUM_PORTS: u16 = 3;
         const IP_ADDR: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
-        let mut sockets = vec![];
         let quic_socket = bind_to_localhost_unique().expect("should bind - quic port");
-        let port_range = unique_port_range_for_tests(NUM_PORTS as u16);
-
-        port_range.clone().into_iter().for_each(|port| {
-            sockets
-                .push(bind_to(IP_ADDR, port).expect(&format!("should bind - sockets: {:?}", port)));
-        });
-
+        let sockets = vec_sockets_from_size_and_addr(NUM_PORTS, IP_ADDR);
         let tvu_group = Tvu::new(sockets, quic_socket);
-        assert_eq!(NUM_PORTS, tvu_group.sockets.len());
-        assert_eq!(IP_ADDR, tvu_group.quic_socket().local_addr().unwrap().ip());
 
-        for socket in tvu_group.sockets() {
-            let addr = socket.local_addr().unwrap();
-            assert_eq!(IP_ADDR, addr.ip());
-            assert!(
-                port_range.clone().contains(&addr.port()),
-                "socket port {} not in reserved range {:?}",
-                addr.port(),
-                port_range
-            );
-        }
+        assert_eq!(IP_ADDR, tvu_group.quic_socket().local_addr().unwrap().ip());
+        assert_sockets_range(NUM_PORTS, IP_ADDR, tvu_group.sockets());
     }
 
     #[test]
