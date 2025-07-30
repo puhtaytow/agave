@@ -1,5 +1,6 @@
 use std::net::UdpSocket;
 
+#[derive(Debug)]
 pub struct Tvu {
     sockets: Vec<UdpSocket>,
     quic_socket: UdpSocket,
@@ -25,6 +26,7 @@ impl Tvu {
     }
 }
 
+#[derive(Debug)]
 pub struct Tpu {
     sockets: Vec<UdpSocket>,
     forwards: Vec<UdpSocket>,
@@ -85,6 +87,7 @@ impl Tpu {
     }
 }
 
+#[derive(Debug)]
 pub struct Repair {
     // Socket sending out local repair requests,
     // and receiving repair responses from the cluster.
