@@ -2868,7 +2868,7 @@ mod tests {
 
         check_sockets(&node.sockets.gossip, ip, range);
         check_sockets(&node.sockets.tvu, ip, range);
-        check_sockets(&node.sockets.tpu, ip, range);
+        check_sockets(&node.sockets.tpu.transactions, ip, range);
     }
 
     #[test]
