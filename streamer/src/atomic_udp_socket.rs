@@ -3,10 +3,7 @@ use {
     std::{
         cell::RefCell,
         net::{SocketAddr, UdpSocket},
-        sync::{
-            Arc,
-            atomic::{AtomicBool, Ordering},
-        },
+        sync::Arc,
     },
 };
 

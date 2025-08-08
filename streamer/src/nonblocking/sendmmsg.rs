@@ -263,8 +263,7 @@ mod tests {
             &ipv4local,
             &ipv4broadcast,
         ];
-        let send_result: Result<(), SendPktsError> =
-            multi_target_send(&sender, &packets[0], &dest_refs).await;
+        let send_result = multi_target_send(&sender, &packets[0], &dest_refs).await;
         match send_result {
             Ok(()) => panic!(),
             Err(SendPktsError::IoError(ioerror, num_failed)) => {
