@@ -552,7 +552,7 @@ fn handle_and_cache_new_connection(
             remote_addr,
         );
 
-        if let Some((last_update, cancel_connection, stream_counter)) = connection_table_l
+        match connection_table_l
             .try_add_connection(
                 ConnectionTableKey::new(remote_addr.ip(), params.remote_pubkey),
                 remote_addr.port(),
@@ -562,7 +562,7 @@ fn handle_and_cache_new_connection(
                 timing::timestamp(),
                 params.max_connections_per_peer,
             )
-        {
+        { Some((last_update, cancel_connection, stream_counter)) => {
             drop(connection_table_l);
 
             if let Ok(receive_window) = receive_window {
@@ -582,13 +582,13 @@ fn handle_and_cache_new_connection(
                 stream_counter,
             ));
             Ok(())
-        } else {
+        } _ => {
             params
                 .stats
                 .connection_add_failed
                 .fetch_add(1, Ordering::Relaxed);
             Err(ConnectionHandlerError::ConnectionAddError)
-        }
+        }}
     } else {
         connection.close(
             CONNECTION_CLOSE_CODE_EXCEED_MAX_STREAM_COUNT.into(),
@@ -922,7 +922,7 @@ fn packet_batch_sender(
                 let len = packet_batch.len();
                 track_streamer_fetch_packet_performance(&packet_perf_measure, &stats);
 
-                if let Err(e) = packet_sender.try_send(packet_batch.into()) {
+                match packet_sender.try_send(packet_batch.into()) { Err(e) => {
                     stats
                         .total_packet_batch_send_err
                         .fetch_add(1, Ordering::Relaxed);
@@ -933,7 +933,7 @@ fn packet_batch_sender(
                         exit.store(true, Ordering::Relaxed);
                         return;
                     }
-                } else {
+                } _ => {
                     stats
                         .total_packet_batches_sent
                         .fetch_add(1, Ordering::Relaxed);
@@ -947,7 +947,7 @@ fn packet_batch_sender(
                         .fetch_add(total_bytes, Ordering::Relaxed);
 
                     trace!("Sent {len} packet batch");
-                }
+                }}
                 break;
             }
 
@@ -1277,7 +1277,7 @@ async fn handle_chunks(
     let bytes_sent = accum.meta.size;
     let chunks_sent = accum.chunks.len();
 
-    if let Err(err) = packet_sender.try_send(accum.clone()) {
+    match packet_sender.try_send(accum.clone()) { Err(err) => {
         stats
             .total_handle_chunk_to_packet_batcher_send_err
             .fetch_add(1, Ordering::Relaxed);
@@ -1294,7 +1294,7 @@ async fn handle_chunks(
             }
         }
         trace!("packet batch send error {err:?}");
-    } else {
+    } _ => {
         stats
             .total_packets_sent_for_batching
             .fetch_add(1, Ordering::Relaxed);
@@ -1319,7 +1319,7 @@ async fn handle_chunks(
         }
 
         trace!("sent {bytes_sent} byte packet for batching");
-    }
+    }}
 
     Ok(StreamState::Finished)
 }
@@ -1591,12 +1591,12 @@ pub mod test {
         }
         let mut received = 0;
         loop {
-            if let Ok(_x) = receiver.try_recv() {
+            match receiver.try_recv() { Ok(_x) => {
                 received += 1;
                 info!("got {received}");
-            } else {
+            } _ => {
                 sleep(Duration::from_millis(500)).await;
-            }
+            }}
             if received >= total {
                 break;
             }
@@ -1648,12 +1648,12 @@ pub mod test {
         while now.elapsed().as_secs() < 5 {
             // We're running in an async environment, we (almost) never
             // want to block
-            if let Ok(packets) = receiver.try_recv() {
+            match receiver.try_recv() { Ok(packets) => {
                 total_packets += packets.len();
                 all_packets.push(packets)
-            } else {
+            } _ => {
                 sleep(Duration::from_secs(1)).await;
-            }
+            }}
             if total_packets >= num_expected_packets {
                 break;
             }
@@ -1747,11 +1747,11 @@ pub mod test {
         let mut i = 0;
         let start = Instant::now();
         while i < num_packets && start.elapsed().as_secs() < 2 {
-            if let Ok(batch) = pkt_batch_receiver.try_recv() {
+            match pkt_batch_receiver.try_recv() { Ok(batch) => {
                 i += batch.len();
-            } else {
+            } _ => {
                 sleep(Duration::from_millis(1)).await;
-            }
+            }}
         }
         assert_eq!(i, num_packets);
         exit.store(true, Ordering::Relaxed);
@@ -2416,11 +2416,11 @@ pub mod test {
         let start_time = tokio::time::Instant::now();
         let mut num_txs_received = 0;
         while num_txs_received < expected_num_txs && start_time.elapsed() < Duration::from_secs(2) {
-            if let Ok(packets) = receiver.try_recv() {
+            match receiver.try_recv() { Ok(packets) => {
                 num_txs_received += packets.len();
-            } else {
+            } _ => {
                 sleep(Duration::from_millis(100)).await;
-            }
+            }}
         }
         assert_eq!(expected_num_txs, num_txs_received);
 
