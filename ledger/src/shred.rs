@@ -1170,14 +1170,10 @@ mod tests {
         solana_logger::setup();
         let mut rng = rand::thread_rng();
         let slot = 18_291;
-        let shreds = make_merkle_shreds_for_tests(
-            &mut rng,
-            slot,
-            1200 * 5, // data_size
-            true,     // chained
-            is_last_in_slot,
-        )
-        .unwrap();
+        let shreds = TestShredBuilder::new(slot, 1200 * 5, is_last_in_slot)
+            .with_rng(&mut rng)
+            .build()
+            .unwrap();
         let shreds: Vec<_> = shreds.into_iter().map(Shred::from).collect();
         assert_eq!(shreds.iter().map(Shred::fec_set_index).dedup().count(), 1);
 
