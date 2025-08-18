@@ -218,7 +218,6 @@ fn run_shred_sigverify<const K: usize>(
         shred_buffer
             .par_iter_mut()
             .flatten()
-            .filter(|packet| !packet.meta().discard())
             .for_each(|mut packet| {
                 if maybe_verify_and_resign_packet(
                     &mut packet,
@@ -241,7 +240,6 @@ fn run_shred_sigverify<const K: usize>(
     let (shreds, repairs): (Vec<_>, Vec<_>) = shred_buffer
         .iter()
         .flat_map(|batch| batch.iter())
-        .filter(|packet| !packet.meta().discard())
         .filter_map(|packet| {
             let shred = shred::layout::get_shred(packet)?.to_vec();
             Some((shred, packet.meta().repair()))
