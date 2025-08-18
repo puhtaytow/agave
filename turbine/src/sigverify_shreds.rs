@@ -154,8 +154,7 @@ fn run_shred_sigverify<const K: usize>(
     stats: &mut ShredSigVerifyStats,
     shred_buffer: &mut Vec<PacketBatch>,
 ) -> Result<(), ShredSigverifyError> {
-    const RECV_TIMEOUT: Duration = Duration::from_secs(1);
-    let packets = shred_fetch_receiver.recv_timeout(RECV_TIMEOUT)?;
+    let packets = shred_fetch_receiver.recv_timeout(Duration::from_secs(1))?;
     stats.num_packets += packets.len();
     shred_buffer.push(packets);
     for packets in shred_fetch_receiver
