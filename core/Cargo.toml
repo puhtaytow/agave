@@ -213,6 +213,7 @@ solana-vote = { workspace = true, features = ["dev-context-only-utils"] }
 spl-memo-interface = { workspace = true }
 static_assertions = { workspace = true }
 test-case = { workspace = true }
+bencher = { workspace = true }
 
 [badges]
 codecov = { repository = "solana-labs/solana", branch = "master", service = "github" }
@@ -225,6 +226,11 @@ name = "gen_keys"
 
 [[bench]]
 name = "sigverify_stage"
+harness = false
+
+[[bench]]
+name = "shredder"
+harness = false
 
 [[bench]]
 name = "receive_and_buffer"
