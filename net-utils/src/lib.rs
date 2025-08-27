@@ -557,6 +557,9 @@ pub fn find_available_ports_in_range<const N: usize>(
 ) -> io::Result<[u16; N]> {
     let mut result = [0u16; N];
     let range = range.0..range.1;
+    
+    eprintln!("DEBUG: find_available_ports_in_range called with range {:?}", range);
+
     let mut next_port_to_try = range
         .clone()
         .cycle() // loop over the end of the range
@@ -567,9 +570,14 @@ pub fn find_available_ports_in_range<const N: usize>(
     let config = sockets::SocketConfiguration::default();
     while num < N {
         let port_to_try = next_port_to_try.next().unwrap(); // this unwrap never fails since we exit earlier
+
+        eprintln!("DEBUG: trying to bind port {}", port_to_try);
+
         let bind = sockets::bind_common_with_config(ip_addr, port_to_try, config);
         match bind {
             Ok(_) => {
+                eprintln!("DEBUG: successfully bound port {}", port_to_try);
+
                 result[num] = port_to_try;
                 num = num.saturating_add(1);
             }

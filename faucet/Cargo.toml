@@ -46,3 +46,5 @@ solana-version = { workspace = true }
 spl-memo-interface = { version = "=2.0.0" }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+
+solana-net-utils.workspace = true

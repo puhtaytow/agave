@@ -23,6 +23,27 @@ const SLICE_PER_PROCESS: u16 = (u16::MAX - UNIQUE_ALLOC_BASE_PORT) / 64;
 ///
 /// When running without nextest, this will only bump an atomic and eventually
 /// panic when it runs out of port numbers to assign.
+// #[allow(clippy::arithmetic_side_effects)]
+// pub fn unique_port_range_for_tests(size: u16) -> Range<u16> {
+//     static SLICE: AtomicU16 = AtomicU16::new(0);
+//     let offset = SLICE.fetch_add(size, Ordering::SeqCst);
+    
+//     let start = match std::env::var("NEXTEST_TEST_GLOBAL_SLOT") {
+//         Ok(slot) => {
+//             let slot: u16 = slot.parse().unwrap();
+//             assert!(
+//                 offset + size < SLICE_PER_PROCESS,
+//                 "Overrunning into the port range of another test! Consider using fewer ports \
+//                  per test."
+//             );
+//             UNIQUE_ALLOC_BASE_PORT + slot * SLICE_PER_PROCESS + offset
+//         }
+//         Err(_) => UNIQUE_ALLOC_BASE_PORT + offset,
+//     };
+    
+//     assert!(start < u16::MAX - size, "Ran out of port numbers!");
+//     start..start + size
+// }
 #[allow(clippy::arithmetic_side_effects)]
 pub fn unique_port_range_for_tests(size: u16) -> Range<u16> {
     static SLICE: AtomicU16 = AtomicU16::new(0);
@@ -43,6 +64,7 @@ pub fn unique_port_range_for_tests(size: u16) -> Range<u16> {
     assert!(start < u16::MAX - size, "Ran out of port numbers!");
     start..start + size
 }
+
 
 /// Retrieve a free 25-port slice for unit tests
 ///
@@ -297,6 +319,15 @@ pub fn bind_common_with_config(
     port: u16,
     config: SocketConfiguration,
 ) -> io::Result<(UdpSocket, TcpListener)> {
+    if port < 2000 || (port > 1480 && port < 1500) || (port > 2480 && port < 2500) {
+        eprintln!("DEBUG bind_common_with_config: binding to {}:{}", ip_addr, port);
+        eprintln!("DEBUG bind_common_with_config: backtrace:");
+
+        let bt = std::backtrace::Backtrace::force_capture();
+        eprintln!("{}", bt);
+    }
+
+
     let sock = udp_socket_with_config(config)?;
 
     let addr = SocketAddr::new(ip_addr, port);
@@ -369,6 +400,41 @@ mod tests {
         crate::{bind_in_range, sockets::localhost_port_range_for_tests},
         std::net::Ipv4Addr,
     };
+
+
+    #[test]
+    fn test_unique_port_range_large_scale() {
+        std::env::set_var("NEXTEST_TEST_GLOBAL_SLOT", "0");
+        
+        let mut all_ranges = Vec::new();
+        
+        // Symuluj wiele wywołań jak w prawdziwych testach
+        for i in 0..100 {
+            let range = unique_port_range_for_tests(25);
+            eprintln!("Call {}: range {:?}", i, range);
+            
+            // Sprawdź czy port nie spadł poniżej BASE_PORT
+            if range.start < UNIQUE_ALLOC_BASE_PORT {
+                panic!("Call {}: Port {} is below BASE_PORT {}", 
+                    i, range.start, UNIQUE_ALLOC_BASE_PORT);
+            }
+            
+            all_ranges.push(range);
+            
+            // Sprawdź czy nie ma nakładania z poprzednimi
+            for (j, prev_range) in all_ranges.iter().enumerate().take(all_ranges.len() - 1) {
+                let current = &all_ranges.last().unwrap();
+                if ranges_overlap(prev_range, current) {
+                    panic!("Overlap between call {} and {}: {:?} vs {:?}", 
+                        j, i, prev_range, current);
+                }
+            }
+        }
+    }
+
+    fn ranges_overlap(a: &std::ops::Range<u16>, b: &std::ops::Range<u16>) -> bool {
+        a.start < b.end && b.start < a.end
+    }
 
     #[test]
     fn test_bind() {

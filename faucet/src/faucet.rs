@@ -15,6 +15,7 @@ use {
     solana_keypair::Keypair,
     solana_message::Message,
     solana_metrics::datapoint_info,
+    solana_net_utils::sockets::{bind_to_localhost_unique, unique_port_range_for_tests},
     solana_packet::PACKET_DATA_SIZE,
     solana_pubkey::Pubkey,
     solana_signer::Signer,
@@ -328,10 +329,12 @@ pub fn run_local_faucet_with_port(
     time_input: Option<u64>,
     per_time_cap: Option<u64>,
     per_request_cap: Option<u64>,
-    port: u16, // 0 => auto assign
+    port: u16, // 0 => auto assign // FIXME: this is ignored coz port_range in use
 ) {
     thread::spawn(move || {
-        let faucet_addr = socketaddr!(Ipv4Addr::UNSPECIFIED, port);
+        let port_range = unique_port_range_for_tests(1);
+
+        let faucet_addr = socketaddr!(Ipv4Addr::UNSPECIFIED, port_range.start);
         let faucet = Arc::new(Mutex::new(Faucet::new(
             faucet_keypair,
             time_input,
@@ -343,8 +346,10 @@ pub fn run_local_faucet_with_port(
     });
 }
 
-// For integration tests. Listens on random open port and reports port to Sender.
+// For integration tests. Listens on random open port and reports port to Sender. // FIXME: why random port?
 pub fn run_local_faucet(faucet_keypair: Keypair, per_time_cap: Option<u64>) -> SocketAddr {
+    // let port_range = unique_ports_
+
     let (sender, receiver) = unbounded();
     run_local_faucet_with_port(faucet_keypair, sender, None, per_time_cap, None, 0);
     receiver
