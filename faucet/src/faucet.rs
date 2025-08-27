@@ -15,7 +15,7 @@ use {
     solana_keypair::Keypair,
     solana_message::Message,
     solana_metrics::datapoint_info,
-    solana_net_utils::sockets::{bind_to_localhost_unique, unique_port_range_for_tests},
+    solana_net_utils::sockets::unique_port_range_for_tests,
     solana_packet::PACKET_DATA_SIZE,
     solana_pubkey::Pubkey,
     solana_signer::Signer,
@@ -329,7 +329,7 @@ pub fn run_local_faucet_with_port(
     time_input: Option<u64>,
     per_time_cap: Option<u64>,
     per_request_cap: Option<u64>,
-    port: u16, // 0 => auto assign // FIXME: this is ignored coz port_range in use
+    _port: u16, // 0 => auto assign // FIXME: this is ignored coz port_range in use
 ) {
     thread::spawn(move || {
         let port_range = unique_port_range_for_tests(1);

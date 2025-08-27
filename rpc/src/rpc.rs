@@ -47,6 +47,7 @@ use {
     },
     solana_message::{AddressLoader, SanitizedMessage},
     solana_metrics::inc_new_counter_info,
+    solana_net_utils::sockets::unique_port_range_for_tests,
     solana_perf::packet::PACKET_DATA_SIZE,
     solana_program_pack::Pack,
     solana_pubkey::{Pubkey, PUBKEY_BYTES},
@@ -203,7 +204,13 @@ impl Default for JsonRpcConfig {
 
 impl JsonRpcConfig {
     pub fn default_for_test() -> Self {
+        use std::net::{IpAddr, Ipv4Addr};
+
+        let pr = unique_port_range_for_tests(1).start;
+        let faucet_addr_hax =
+            std::net::SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), pr);
         Self {
+            faucet_addr: Some(faucet_addr_hax), // FIXME: probably better way to hack it
             full_api: true,
             disable_health_check: true,
             ..Self::default()
