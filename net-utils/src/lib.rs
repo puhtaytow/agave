@@ -748,10 +748,8 @@ mod tests {
 
     #[test]
     fn test_bind_with_any_port() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-        let config = SocketConfig::default();
-        let x = bind_with_any_port_with_config(ip_addr, config).unwrap();
-        let y = bind_with_any_port_with_config(ip_addr, config).unwrap();
+        let x = sockets::bind_to_localhost_unique().unwrap();
+        let y = sockets::bind_to_localhost_unique().unwrap();
         assert_ne!(
             x.local_addr().unwrap().port(),
             y.local_addr().unwrap().port()
