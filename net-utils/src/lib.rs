@@ -800,11 +800,12 @@ mod tests {
     fn test_bind_common_in_range() {
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let range = sockets::unique_port_range_for_tests(5);
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let (port, _sockets) =
-            bind_common_in_range_with_config(ip_addr, (range.start, range.end), config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_addr, (range.start, range.end), config)
+                .unwrap();
         assert!(range.contains(&port));
-        bind_common_in_range_with_config(ip_addr, (port, port + 1), config).unwrap_err();
+        sockets::bind_common_in_range_with_config(ip_addr, (port, port + 1), config).unwrap_err();
     }
 
     #[test]
@@ -812,9 +813,9 @@ mod tests {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let (pr_s, pr_e) = sockets::localhost_port_range_for_tests();
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let (_server_port, (server_udp_socket, server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, (pr_s, pr_e), config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_addr, (pr_s, pr_e), config).unwrap();
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -841,11 +842,11 @@ mod tests {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let port_range = sockets::localhost_port_range_for_tests();
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let (_server_port, (server_udp_socket, server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
         let (_client_port, (client_udp_socket, client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
 
         let _runtime = ip_echo_server(
             server_tcp_listener,
@@ -881,15 +882,15 @@ mod tests {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let port_range = sockets::localhost_port_range_for_tests();
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let (_server_port, (server_udp_socket, _server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
 
         // make the socket unreachable by not running the ip echo server!
         let server_ip_echo_addr = server_udp_socket.local_addr().unwrap();
 
         let (_, (_client_udp_socket, client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_addr, port_range, config).unwrap();
 
         let rt = runtime();
         assert!(!rt.block_on(ip_echo_client::verify_all_reachable_tcp(
@@ -904,17 +905,25 @@ mod tests {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let port_range = unique_port_range_for_tests(2);
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let (_server_port, (server_udp_socket, _server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, (port_range.start, port_range.end), config)
-                .unwrap();
+            sockets::bind_common_in_range_with_config(
+                ip_addr,
+                (port_range.start, port_range.end),
+                config,
+            )
+            .unwrap();
 
         // make the socket unreachable by not running the ip echo server!
         let server_ip_echo_addr = server_udp_socket.local_addr().unwrap();
 
         let (_correct_client_port, (client_udp_socket, _client_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, (port_range.start, port_range.end), config)
-                .unwrap();
+            sockets::bind_common_in_range_with_config(
+                ip_addr,
+                (port_range.start, port_range.end),
+                config,
+            )
+            .unwrap();
 
         let rt = runtime();
         assert!(!rt.block_on(ip_echo_client::verify_all_reachable_udp(
@@ -929,18 +938,21 @@ mod tests {
     fn test_verify_many_ports_reachable() {
         solana_logger::setup();
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let mut tcp_listeners = vec![];
         let mut udp_sockets = vec![];
 
         let port_range = unique_port_range_for_tests(1);
-        let (_server_port, (_, server_tcp_listener)) =
-            bind_common_in_range_with_config(ip_addr, (port_range.start, port_range.end), config)
-                .unwrap();
+        let (_server_port, (_, server_tcp_listener)) = sockets::bind_common_in_range_with_config(
+            ip_addr,
+            (port_range.start, port_range.end),
+            config,
+        )
+        .unwrap();
         for _ in 0..MAX_PORT_VERIFY_THREADS * 2 {
             let port_range = unique_port_range_for_tests(1);
             let (_client_port, (client_udp_socket, client_tcp_listener)) =
-                bind_common_in_range_with_config(
+                sockets::bind_common_in_range_with_config(
                     ip_addr,
                     (port_range.start, port_range.end),
                     config,
@@ -1018,14 +1030,14 @@ mod tests {
     #[test]
     fn test_verify_udp_multiple_ips_reachable() {
         solana_logger::setup();
-        let config = SocketConfig::default();
+        let config = sockets::SocketConfiguration::default();
         let ip_a = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let ip_b = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 2));
 
         let port_range = sockets::localhost_port_range_for_tests();
 
         let (_srv_udp_port, (srv_udp_sock, srv_tcp_listener)) =
-            bind_common_in_range_with_config(ip_a, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_a, port_range, config).unwrap();
 
         let ip_echo_server_addr = srv_udp_sock.local_addr().unwrap();
         let _runtime = ip_echo_server(
@@ -1036,9 +1048,9 @@ mod tests {
 
         let mut udp_sockets = Vec::new();
         let (_p1, (sock_a, _tl_a)) =
-            bind_common_in_range_with_config(ip_a, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_a, port_range, config).unwrap();
         let (_p2, (sock_b, _tl_b)) =
-            bind_common_in_range_with_config(ip_b, port_range, config).unwrap();
+            sockets::bind_common_in_range_with_config(ip_b, port_range, config).unwrap();
 
         udp_sockets.push(sock_a);
         udp_sockets.push(sock_b);
