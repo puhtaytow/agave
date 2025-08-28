@@ -362,7 +362,6 @@ pub fn bind_more_with_config(
 }
 
 #[cfg(test)]
-#[allow(deprecated)]
 mod tests {
     use {
         super::*,
@@ -373,11 +372,11 @@ mod tests {
     #[test]
     fn test_bind() {
         let (pr_s, pr_e) = localhost_port_range_for_tests();
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let config = SocketConfiguration::default();
         let s = bind_in_range(ip_addr, (pr_s, pr_e)).unwrap();
         assert_eq!(s.0, pr_s, "bind_in_range should use first available port");
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let x = bind_to_with_config(ip_addr, pr_s + 1, config).unwrap();
         let y = bind_more_with_config(x, 2, config).unwrap();
         assert_eq!(
@@ -396,10 +395,8 @@ mod tests {
 
     #[test]
     fn test_bind_with_any_port() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-        let config = SocketConfiguration::default();
-        let x = bind_with_any_port_with_config(ip_addr, config).unwrap();
-        let y = bind_with_any_port_with_config(ip_addr, config).unwrap();
+        let x = bind_to_localhost_unique().unwrap();
+        let y = bind_to_localhost_unique().unwrap();
         assert_ne!(
             x.local_addr().unwrap().port(),
             y.local_addr().unwrap().port()
@@ -408,9 +405,10 @@ mod tests {
 
     #[test]
     fn test_bind_in_range_nil() {
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
-        bind_in_range(ip_addr, (2000, 2000)).unwrap_err();
-        bind_in_range(ip_addr, (2000, 1999)).unwrap_err();
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+        let range = unique_port_range_for_tests(2);
+        bind_in_range(ip_addr, (range.end, range.end)).unwrap_err();
+        bind_in_range(ip_addr, (range.end, range.start)).unwrap_err();
     }
 
     #[test]
@@ -427,12 +425,11 @@ mod tests {
     #[test]
     fn test_bind_common_in_range() {
         let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-        let (pr_s, pr_e) = localhost_port_range_for_tests();
+        let range = unique_port_range_for_tests(5);
         let config = SocketConfiguration::default();
         let (port, _sockets) =
-            bind_common_in_range_with_config(ip_addr, (pr_s, pr_e), config).unwrap();
-        assert!((pr_s..pr_e).contains(&port));
-
+            bind_common_in_range_with_config(ip_addr, (range.start, range.end), config).unwrap();
+        assert!(range.contains(&port));
         bind_common_in_range_with_config(ip_addr, (port, port + 1), config).unwrap_err();
     }
 
@@ -440,22 +437,31 @@ mod tests {
     fn test_bind_two_in_range_with_offset() {
         solana_logger::setup();
         let config = SocketConfiguration::default();
-        let ip_addr = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+        let ip_addr = IpAddr::V4(Ipv4Addr::LOCALHOST);
         let offset = 6;
-        if let Ok(((port1, _), (port2, _))) =
-            bind_two_in_range_with_offset_and_config(ip_addr, (1024, 65535), offset, config, config)
-        {
+        let port_range = unique_port_range_for_tests(10);
+        if let Ok(((port1, _), (port2, _))) = bind_two_in_range_with_offset_and_config(
+            ip_addr,
+            (port_range.start, port_range.end),
+            offset,
+            config,
+            config,
+        ) {
             assert!(port2 == port1 + offset);
         }
         let offset = 42;
-        if let Ok(((port1, _), (port2, _))) =
-            bind_two_in_range_with_offset_and_config(ip_addr, (1024, 65535), offset, config, config)
-        {
+        if let Ok(((port1, _), (port2, _))) = bind_two_in_range_with_offset_and_config(
+            ip_addr,
+            (port_range.start, port_range.end),
+            offset,
+            config,
+            config,
+        ) {
             assert!(port2 == port1 + offset);
         }
         assert!(bind_two_in_range_with_offset_and_config(
             ip_addr,
-            (1024, 1044),
+            (port_range.start, port_range.start + 5),
             offset,
             config,
             config
