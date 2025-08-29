@@ -17,9 +17,20 @@ cargo +nightly-2025-02-16 nextest run --workspace --test-threads 1 \
   --exclude agave-validator \
   --exclude solana-runtime
 
+###########################################################
+
+cargo +nightly-2025-02-16 nextest run --test-threads 1
 
 
+###########################################################
+# HAS CONNECTIONS // PROBLEMS
+###########################################################
 
-# probably not networking
-
-  --exclude solana-ledger
+solana-accounts-cluster-bench
+solana-accounts-db +++
+solana-bench-tps +++
+solana-cli ++
+solana-cli-output +
+solana-client-test ++
+solana-core
+solana-curves

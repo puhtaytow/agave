@@ -24,18 +24,12 @@ CMD = ["ss", "-O", "-H", "-p", "-n", "-u", "-a"]
 PORT_REGEX = re.compile(r":(\d+)$")
 
 IGNORE_PORTS = [
-    1489,    # rpc?
+    1489,    # rpc +1
     1488,    # base port -512,
-    5353,   #mdns
-    6220,
-    ##
-    46681,
-    34398,
-    46681,
-    34398,
-    53588,
-    43749,
-    43874,
+    34259, # docker
+    ###
+    
+
 ]
 # IGNORE_PORTS = []
 
@@ -67,13 +61,13 @@ def main():
         ports = get_udp_ports()
         for port in ports:
             # ignore below 1024
-            if port<(2000-512):
+            if port<(1024):
                 continue
             # ignore from list
             if port in IGNORE_PORTS:
                 continue
             # #
-            if port > MAX_PORT:
+            if port < MIN_PORT or port > MAX_PORT:
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 print(f"[{timestamp}] ERROR: Detected disallowed UDP port {port}")
                 subprocess.call("killall cargo-nextest", shell= True)
