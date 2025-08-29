@@ -1,0 +1,59 @@
+ Nextest run ID 98406d35-b33f-4733-99fd-97aea87e4d68 with nextest profile: default
+    Starting 13 tests across 2 binaries (1 test skipped)
+        PASS [   0.002s] solana-tpu-client-next logging::tests::test_logging_macros_available
+        PASS [   2.008s] solana-tpu-client-next workers_cache::tests::test_worker_removed_after_exit
+        PASS [   0.004s] solana-tpu-client-next workers_cache::tests::test_worker_shutdown
+        PASS [   2.006s] solana-tpu-client-next workers_cache::tests::test_worker_stopped_after_failed_connect
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.021s] solana-tpu-client-next::connection_workers_scheduler_test test_basic_transactions_sending
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [   4.042s] 5/13 tests run: 4 passed, 1 failed, 1 skipped
+     SIGTERM [   0.021s] solana-tpu-client-next::connection_workers_scheduler_test test_basic_transactions_sending
+warning: 8/13 tests were not run due to signal
+error: test run failed
+
+ Nextest run ID 90fd7cf3-a3ae-4c25-982d-8041efca48e8 with nextest profile: default
+    Starting 13 tests across 2 binaries (1 test skipped)
+        PASS [   0.002s] solana-tpu-client-next logging::tests::test_logging_macros_available
+        PASS [   2.008s] solana-tpu-client-next workers_cache::tests::test_worker_removed_after_exit
+        PASS [   0.005s] solana-tpu-client-next workers_cache::tests::test_worker_shutdown
+        PASS [   2.006s] solana-tpu-client-next workers_cache::tests::test_worker_stopped_after_failed_connect
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.022s] solana-tpu-client-next::connection_workers_scheduler_test test_basic_transactions_sending
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [   4.044s] 5/13 tests run: 4 passed, 1 failed, 1 skipped
+     SIGTERM [   0.022s] solana-tpu-client-next::connection_workers_scheduler_test test_basic_transactions_sending
+warning: 8/13 tests were not run due to signal
+error: test run failed
+
+ Nextest run ID 83a4f782-b349-4627-9a98-abca8245c5c5 with nextest profile: default
+    Starting 13 tests across 2 binaries (1 test skipped)
+        PASS [   0.003s] solana-tpu-client-next logging::tests::test_logging_macros_available
+        PASS [   2.008s] solana-tpu-client-next workers_cache::tests::test_worker_removed_after_exit
+        PASS [   0.004s] solana-tpu-client-next workers_cache::tests::test_worker_shutdown
+        PASS [   2.005s] solana-tpu-client-next workers_cache::tests::test_worker_stopped_after_failed_connect
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.024s] solana-tpu-client-next::connection_workers_scheduler_test test_basic_transactions_sending
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [   4.045s] 5/13 tests run: 4 passed, 1 failed, 1 skipped
+     SIGTERM [   0.024s] solana-tpu-client-next::connection_workers_scheduler_test test_basic_transactions_sending
+warning: 8/13 tests were not run due to signal
+error: test run failed

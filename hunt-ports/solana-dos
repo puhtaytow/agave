@@ -1,0 +1,34 @@
+ Nextest run ID fdb41c93-80e6-484d-9f5b-17b9b77221a9 with nextest profile: default
+    Starting 11 tests across 2 binaries
+        PASS [   0.004s] solana-dos cli::tests::test_cli_parse_dos_conflicting_sign_instruction
+        PASS [   0.003s] solana-dos cli::tests::test_cli_parse_dos_create_account
+        PASS [   0.003s] solana-dos cli::tests::test_cli_parse_dos_transfer
+        PASS [   0.003s] solana-dos cli::tests::test_cli_parse_dos_valid_signatures
+        PASS [   0.003s] solana-dos cli::tests::test_cli_parse_rpc_data_input
+        PASS [   0.003s] solana-dos cli::tests::test_cli_parse_rpc_no_data_input
+        PASS [   0.009s] solana-dos::bin/solana-dos test::test_dos
+        PASS [   6.919s] solana-dos::bin/solana-dos test::test_dos_random
+  Cancelling due to signal: 1 test still running
+     Killing due to second signal: 1 test still running
+     Killing [ 00:00:18] █████████████████████████████████████████████████████████████▏                        8/11: 1 running, 8 passed, 0 skipped     The application panicked (crashed).
+Message:  Signaled 3 times, exiting immediately
+Location: /home/redrum/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/nextest-runner-0.83.0/src/runner/dispatcher.rs:774
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+────────────
+     Summary [  18.999s] 8/11 tests run: 8 passed, 0 skipped
+warning: 3/11 tests were not run due to second signal
+error: errors joining tasks: task 33 panicked with message "Signaled 3 times, exiting immediately"
+
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+[2025-08-29 14:20:09] ERROR: Detected disallowed UDP port 1490
+
+---

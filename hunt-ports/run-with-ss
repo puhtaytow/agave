@@ -1,0 +1,47 @@
+cargo +nightly-2025-02-16 nextest run test_set_identity_with_validator --test-threads 1 --no-capture &
+sleep 2
+ss -tulpn | grep -E "(148[0-9]|149[0-9])
+
+
+----
+redrum@redrum-nvbox:~/Projects/puhtaytow/agave$ cargo +nightly-2025-02-16 nextest run test_set_identity_with_validator --test-threads 1 --no-capture &
+sleep 2
+ss -tulpn | grep -E "(148[0-9]|149[0-9])"
+[1] 825928
+warning: ignoring --test-threads because --no-capture is specified
+warning: gen-syscall-list@3.1.0: (not a warning) Generating ../../platform-tools-sdk/sbf/syscalls.txt from ../src/lib.rs
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.49s
+────────────
+ Nextest run ID 38cd1009-3bc6-4c86-a5fb-81722790350a with nextest profile: default
+    Starting 1 test across 202 binaries (4621 tests skipped)
+       START             agave-validator admin_rpc_service::tests::test_set_identity_with_validator
+
+running 1 test
+DEBUG: find_available_ports_in_range called with range 2000..2025
+DEBUG: trying to bind port 2023
+DEBUG: successfully bound port 2023
+DEBUG: trying to bind port 2024
+DEBUG: successfully bound port 2024
+DEBUG: find_available_ports_in_range called with range 2025..2050
+DEBUG: trying to bind port 2037
+DEBUG: trying to bind port 2038
+DEBUG: trying to bind port 2039
+DEBUG: trying to bind port 2040
+DEBUG: trying to bind port 2041
+DEBUG: trying to bind port 2042
+DEBUG: trying to bind port 2043
+DEBUG: trying to bind port 2044
+DEBUG: trying to bind port 2045
+DEBUG: trying to bind port 2046
+DEBUG: trying to bind port 2047
+DEBUG: successfully bound port 2047
+DEBUG: trying to bind port 2048
+DEBUG: successfully bound port 2048
+udp   UNCONN 0      0          127.0.0.1:1488       0.0.0.0:*    users:(("agave_validator",pid=826438,fd=143))
+redrum@redrum-nvbox:~/Projects/puhtaytow/agave$ test admin_rpc_service::tests::test_set_identity_with_validator ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 110 filtered out; finished in 2.78s
+
+        PASS [   2.886s] agave-validator admin_rpc_service::tests::test_set_identity_with_validator
+────────────
+     Summary [   2.889s] 1 test run: 1 passed, 4621 skipped

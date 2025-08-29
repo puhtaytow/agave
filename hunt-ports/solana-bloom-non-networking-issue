@@ -1,0 +1,30 @@
+redrum@redrum-nvbox:~/Projects/puhtaytow/agave/bloom$ cargo +nightly-2025-02-16 nextest run --test-threads 1
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+────────────
+ Nextest run ID 6113fe0a-0e2f-44a8-bb07-afbc0be122f7 with nextest profile: default
+    Starting 7 tests across 1 binary
+        FAIL [   0.003s] solana-bloom bloom::test::test_add_contains
+  stdout ───
+
+    running 1 test
+    test bloom::test::test_add_contains ... FAILED
+
+    failures:
+
+    failures:
+        bloom::test::test_add_contains
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+    
+  stderr ───
+
+    thread 'bloom::test::test_add_contains' panicked at /home/redrum/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-sha256-hasher-3.0.0/src/lib.rs:46:13:
+    hashv is only available on target `solana` or with the `sha2` feature enabled on this crate
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [   0.003s] 1/7 tests run: 0 passed, 1 failed, 0 skipped
+        FAIL [   0.003s] solana-bloom bloom::test::test_add_contains
+warning: 6/7 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed

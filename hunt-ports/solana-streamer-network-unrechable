@@ -1,0 +1,24 @@
+  stdout ───
+
+    running 1 test
+    test nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address ... FAILED
+
+    failures:
+
+    failures:
+        nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 60 filtered out; finished in 0.00s
+    
+  stderr ───
+
+    thread 'nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address' panicked at streamer/src/nonblocking/sendmmsg.rs:205:17:
+    assertion failed: `NetworkUnreachable` does not match `ErrorKind::PermissionDenied`
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [  50.653s] 30/62 tests run: 29 passed, 1 failed, 0 skipped
+        FAIL [   0.004s] solana-streamer nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address
+warning: 32/62 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed

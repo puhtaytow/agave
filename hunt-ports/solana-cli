@@ -1,0 +1,74 @@
+Cancelling due to signal: 16 tests still running
+     SIGTERM [   1.160s] solana-cli program::tests::test_cli_keypair_file
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+     SIGTERM [   1.123s] solana-cli program_v4::tests::test_deploy
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+     SIGTERM [   0.948s] solana-cli::program test_cli_program_deploy_feature::feature_enabled_skip_preflight
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+     SIGTERM [   1.017s] solana-cli::program test_cli_program_deploy_feature::feature_enabled_don_t_skip_preflight
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+     Killing due to second signal: 12 tests still running
+     SIGTERM [   1.101s] solana-cli::nonce test_create_account_with_seed
+     SIGTERM [   1.101s] solana-cli::nonce test_nonce::base
+     SIGTERM [   1.091s] solana-cli::program test_cli_program_deploy_feature::feature_disabled_don_t_skip_preflight
+     SIGTERM [   1.083s] solana-cli::program test_cli_program_deploy_feature::feature_disabled_skip_preflight
+     SIGTERM [   1.100s] solana-cli::nonce test_nonce::with_authority
+     SIGTERM [   1.099s] solana-cli::program test_cli_program_close_program
+     SIGTERM [   1.100s] solana-cli::nonce test_nonce::with_compute_unit_price
+     SIGTERM [   1.105s] solana-cli::cluster_query test_ping::base
+     SIGTERM [   1.105s] solana-cli::address_lookup_table test_cli_create_extend_and_freeze_address_lookup_table
+     SIGTERM [   1.106s] solana-cli::cluster_query test_ping::with_compute_unit_price
+     SIGTERM [   1.101s] solana-cli::nonce test_nonce::with_seed
+     SIGTERM [   1.106s] solana-cli::address_lookup_table test_cli_create_and_deactivate_address_lookup_table
+────────────
+     Summary [   1.167s] 61/119 tests run: 45 passed, 16 failed, 0 skipped
+warning: 58/119 tests were not run due to second signal
+error: test run failed
+
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  11.045s] solana-cli::stake test_nonced_stake_delegation_and_deactivation::with_compute_unit_price
+  stdout ───
+
+    running 1 test
+    Waiting for fees to stabilize 1...
+    Waiting for fees to stabilize 2...
+    Waiting for fees to stabilize 3...
+    Waiting for fees to stabilize 4...
+    Waiting for fees to stabilize 5...
+    Waiting for fees to stabilize 6...
+    Waiting for fees to stabilize 7...
+    Waiting for fees to stabilize 8...
+    Waiting for fees to stabilize 9...
+    Waiting for fees to stabilize 10...
+  stderr ───
+    [2025-08-29T11:09:27.160464231Z ERROR solana_core::validator] Rebuilding a new tower from the latest vote account due to failed tower restore: IO Error: NullTowerStorage::load() not available
+    [2025-08-29T11:09:27.160475893Z ERROR solana_metrics::metrics] datapoint: tower_error error="Unable to restore tower: IO Error: NullTowerStorage::load() not available"
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 537.335s] 86/119 tests run: 85 passed, 1 failed, 0 skipped
+     SIGTERM [  11.045s] solana-cli::stake test_nonced_stake_delegation_and_deactivation::with_compute_unit_price
+warning: 33/119 tests were not run due to signal
+error: test run failed

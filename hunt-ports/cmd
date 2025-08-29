@@ -26,11 +26,22 @@ cargo +nightly-2025-02-16 nextest run --test-threads 1
 # HAS CONNECTIONS // PROBLEMS
 ###########################################################
 
-solana-accounts-cluster-bench
 solana-accounts-db +++
 solana-bench-tps +++
 solana-cli ++
 solana-cli-output +
 solana-client-test ++
-solana-core
-solana-curves
+solana-rpc-test ++
+solana-streamer +
+solana-tpu-client-next +++
+solana-vortexor +
+
+
+###########################################################
+# Omitted // PROBLEMS
+###########################################################
+
+solana-local-cluster ++++++++++++++++++++++++++++++++++++++++
+solana-platform-tools-sdk
+solana-programs
+

@@ -1,0 +1,161 @@
+  Cancelling due to signal: 3 tests still running
+     SIGTERM [  33.128s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_8_expects
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+---
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.005s] solana-accounts-db accounts_db::tests::test_scan_flush_accounts_cache_then_clean_drop
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  61.544s] 201/556 tests run: 200 passed, 1 failed, 2 skipped
+     SIGTERM [   0.005s] solana-accounts-db accounts_db::tests::test_scan_flush_accounts_cache_then_clean_drop
+warning: 355/556 tests were not run due to signal
+error: test run failed
+
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  21.039s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_10_expects
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 234.666s] 551/556 tests run: 550 passed, 1 failed, 2 skipped
+     SIGTERM [  21.039s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_10_expects
+warning: 5/556 tests were not run 
+
+---
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   7.427s] solana-accounts-db storable_accounts::tests::test_storable_accounts_by_slot
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 197.473s] 487/556 tests run: 486 passed, 1 failed, 2 skipped
+     SIGTERM [   7.427s] solana-accounts-db storable_accounts::tests::test_storable_accounts_by_slot
+warning: 69/556 tests were not run due to signal
+error: test run failed
+
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.324s] solana-accounts-db accounts_db::tests::test_many_unrefs::hot_storage
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  56.825s] 180/556 tests run: 179 passed, 1 failed, 2 skipped
+     SIGTERM [   0.324s] solana-accounts-db accounts_db::tests::test_many_unrefs::hot_storage
+warning: 376/556 tests were not run due to signal
+error: test run failed
+---
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.188s] solana-accounts-db accounts_db::tests::test_load_account_and_shrink_race_without_retry
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  51.281s] 177/556 tests run: 176 passed, 1 failed, 2 skipped
+     SIGTERM [   1.188s] solana-accounts-db accounts_db::tests::test_load_account_and_shrink_race_without_retry
+warning: 379/556 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.094s] solana-accounts-db accounts_db::tests::test_wrapping_storage_id
+  stdout ───
+
+    running 1 test
+  stderr ───
+
+    thread 'accounts_db::tests::test_wrapping_storage_id' panicked at accounts-db/src/accounts_db.rs:1620:9:
+    We've run out of storage ids!
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  78.241s] 236/556 tests run: 235 passed, 1 failed, 2 skipped
+     SIGTERM [   0.094s] solana-accounts-db accounts_db::tests::test_wrapping_storage_id
+warning: 320/556 tests were not run due to signal
+error: test run failed
+---
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  10.776s] solana-accounts-db accounts_index::tests::test_new_entry_and_update_code_paths::true_none_false_expects
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 101.954s] 285/556 tests run: 284 passed, 1 failed, 2 skipped
+     SIGTERM [  10.776s] solana-accounts-db accounts_index::tests::test_new_entry_and_update_code_paths::true_none_false_expects
+warning: 271/556 tests were not run due to signal
+error: test run failed
+
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.923s] solana-accounts-db bucket_map_holder::tests::test_age_time
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 182.221s] 404/556 tests run: 403 passed, 1 failed, 2 skipped
+     SIGTERM [   1.923s] solana-accounts-db bucket_map_holder::tests::test_age_time
+warning: 152/556 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.586s] solana-accounts-db accounts_db::tests::test_calculate_storage_count_and_alive_bytes_2_accounts::append_vec
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  21.879s] 119/556 tests run: 118 passed, 1 failed, 2 skipped
+     SIGTERM [   1.586s] solana-accounts-db accounts_db::tests::test_calculate_storage_count_and_alive_bytes_2_accounts::append_vec
+warning: 437/556 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.358s] solana-accounts-db ancestors::tests::test_ancestors_permutations
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 117.972s] 310/556 tests run: 309 passed, 1 failed, 2 skipped
+     SIGTERM [   0.358s] solana-accounts-db ancestors::tests::test_ancestors_permutations
+warning: 246/556 tests were not run due to signal
+error: test run failed
+---

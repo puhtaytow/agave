@@ -1,0 +1,28 @@
+ Nextest run ID a5791e15-a28e-481a-9915-f7eeb78a4463 with nextest profile: default
+    Starting 12 tests across 1 binary
+        PASS [   0.010s] solana-merkle-tree merkle_tree::tests::test_nodes_capacity_compute
+        FAIL [   0.002s] solana-merkle-tree merkle_tree::tests::test_path_creation
+  stdout ───
+
+    running 1 test
+    test merkle_tree::tests::test_path_creation ... FAILED
+
+    failures:
+
+    failures:
+        merkle_tree::tests::test_path_creation
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.00s
+    
+  stderr ───
+
+    thread 'merkle_tree::tests::test_path_creation' panicked at /home/redrum/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-sha256-hasher-3.0.0/src/lib.rs:46:13:
+    hashv is only available on target `solana` or with the `sha2` feature enabled on this crate
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [   0.013s] 2/12 tests run: 1 passed, 1 failed, 0 skipped
+        FAIL [   0.002s] solana-merkle-tree merkle_tree::tests::test_path_creation
+warning: 10/12 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed

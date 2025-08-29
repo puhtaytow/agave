@@ -1,0 +1,271 @@
+    test test_send_and_confirm_transactions_in_parallel_with_tpu_client has been running for over 60 seconds
+    test test_send_and_confirm_transactions_in_parallel_with_tpu_client ... FAILED
+
+    failures:
+
+    failures:
+        test_send_and_confirm_transactions_in_parallel_with_tpu_client
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 102.65s
+    
+  stderr ───
+    [2025-08-28T10:59:32.430448269Z ERROR solana_core::validator] Rebuilding a new tower from the latest vote account due to failed tower restore: IO Error: NullTowerStorage::load() not available
+    [2025-08-28T10:59:32.430458939Z ERROR solana_metrics::metrics] datapoint: tower_error error="Unable to restore tower: IO Error: NullTowerStorage::load() not available"
+
+    thread 'test_send_and_confirm_transactions_in_parallel_with_tpu_client' panicked at client-test/tests/send_and_confirm_transactions_in_parallel.rs:143:5:
+    assertion `left == right` failed
+      left: 501531000000000
+     right: 499500000000000
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [ 523.279s] 1291/4435 tests run: 1290 passed, 1 failed, 39 skipped
+        FAIL [ 102.674s] solana-client-test::send_and_confirm_transactions_in_parallel test_send_and_confirm_transactions_in_parallel_with_tpu_client
+
+
+NO PORT PROBLEM ^ ITS FLAKY OTHERWISE
+
+----
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   3.744s] solana-dos::bin/solana-dos test::test_dos_random
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 651.982s] 1942/4426 tests run: 1941 passed, 1 failed, 39 skipped
+     SIGTERM [   3.744s] solana-dos::bin/solana-dos test::test_dos_random
+warning: 2484/4426 tests were not run due to signal
+error: test run failed
+
+[2025-08-28 13:17:34] ERROR: Detected disallowed UDP port 44886
+
+---
+        PASS [   0.112s] solana-core replay_stage::tests::test_update_propagation_status
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.375s] solana-core replay_stage::tests::test_update_slot_propagated_threshold_from_votes
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 523.681s] 1844/4415 tests run: 1843 passed, 1 failed, 39 skipped
+     SIGTERM [   0.375s] solana-core replay_stage::tests::test_update_slot_propagated_threshold_from_votes
+warning: 2571/4415 tests were not run due to signal
+error: test run failed
+---
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  24.718s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_16_expects
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 333.663s] 1116/4415 tests run: 1115 passed, 1 failed, 39 skipped
+     SIGTERM [  24.718s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_16_expects
+warning: 3299/4415 tests were not run due to signal
+error: test run failed
+
+[2025-08-28 13:33:57] ERROR: Detected disallowed UDP port 26184
+---
+
+    thread 'test_leader_failure_4' panicked at local-cluster/src/cluster_tests.rs:498:77:
+    called `Option::unwrap()` on a `None` value
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [1949.288s] 1672/3488 tests run: 1671 passed (9 slow), 1 failed, 32 skipped
+        FAIL [  38.533s] solana-local-cluster::local_cluster test_leader_failure_4
+warning: 1816/3488 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed
+
+NO PORT / MAYBE COZ THERE IS NO ENABLED INTERFACE
+
+---
+        PASS [   0.007s] solana-core forwarding_stage::packet_container::tests::test_packet_container_status
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.009s] solana-core forwarding_stage::tests::test_forwarding
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+     Killing due to second signal
+     Killing [ 00:01:21] ████████████████████▊                                               1081/3488: 0 running, 1080 passed, 1 failed, 4 skipped     The application panicked (crashed).
+Message:  Signaled 3 times, exiting immediately
+
+[2025-08-28 14:33:40] ERROR: Detected disallowed UDP port 27087
+[2025-08-28 14:33:40] ERROR: Detected disallowed UDP port 4516
+[2025-08-28 14:33:40] ERROR: Detected disallowed UDP port 45605
+
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   2.461s] solana-rpc-test::rpc test_rpc_send_tx
+  stdout ───
+
+    running 1 test
+    Waiting for fees to stabilize 1...
+  stderr ───
+    [2025-08-28T12:57:04.356400884Z ERROR solana_core::validator] Rebuilding a new tower from the latest vote account due to failed tower restore: IO Error: NullTowerStorage::load() not available
+    [2025-08-28T12:57:04.356411123Z ERROR solana_metrics::metrics] datapoint: tower_error error="Unable to restore tower: IO Error: NullTowerStorage::load() not available"
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 461.370s] 1503/2852 tests run: 1502 passed, 1 failed, 19 skipped
+     SIGTERM [   2.461s] solana-rpc-test::rpc test_rpc_send_tx
+warning: 1349/2852 tests were not run due to signal
+error: test run failed
+
+[2025-08-28 14:57:04] ERROR: Detected disallowed UDP port 40312
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   6.507s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  45.283s] 565/2842 tests run: 564 passed, 1 failed, 19 skipped
+     SIGTERM [   6.507s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+warning: 2277/2842 tests were not run due to signal
+error: test run failed
+
+[2025-08-28 14:57:04] ERROR: Detected disallowed UDP port 40312
+[2025-08-28 14:58:40] ERROR: Detected disallowed UDP port 50290
+---
+    running 1 test
+    test nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address ... FAILED
+
+    failures:
+
+    failures:
+        nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 60 filtered out; finished in 0.00s
+    
+  stderr ───
+
+    thread 'nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address' panicked at streamer/src/nonblocking/sendmmsg.rs:205:17:
+    assertion failed: `NetworkUnreachable` does not match `ErrorKind::PermissionDenied`
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [1028.025s] 2092/2839 tests run: 2091 passed (2 slow), 1 failed, 19 skipped
+        FAIL [   0.006s] solana-streamer nonblocking::sendmmsg::tests::test_intermediate_failures_unreachable_address
+warning: 747/2839 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed
+
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.060s] solana-net-utils tests::test_verify_many_ports_reachable
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 170.946s] 1124/2839 tests run: 1123 passed, 1 failed, 19 skipped
+     SIGTERM [   0.060s] solana-net-utils tests::test_verify_many_ports_reachable
+warning: 1715/2839 tests were not run due to signal
+error: test run failed
+--exclude: command not found
+
+[2025-08-28 15:21:51] ERROR: Detected disallowed UDP port 43110
+---
+        FAIL [   0.008s] solana-gossip cluster_info::tests::test_push_epoch_slots
+  stdout ───
+
+    running 1 test
+    test cluster_info::tests::test_push_epoch_slots ... FAILED
+
+    failures:
+
+    failures:
+        cluster_info::tests::test_push_epoch_slots
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 207 filtered out; finished in 0.00s
+    
+  stderr ───
+
+    thread 'cluster_info::tests::test_push_epoch_slots' panicked at gossip/src/cluster_info.rs:3301:9:
+    assertion `left == right` failed
+      left: 1
+     right: 2
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [  14.281s] 839/2839 tests run: 838 passed, 1 failed, 19 skipped
+        FAIL [   0.008s] solana-gossip cluster_info::tests::test_push_epoch_slots
+warning: 2000/2839 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed
+--exclude: command not found
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.455s] agave-validator admin_rpc_service::tests::test_set_identity_with_validator
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [   6.954s] 427/2839 tests run: 426 passed, 1 failed, 19 skipped
+     SIGTERM [   1.455s] agave-validator admin_rpc_service::tests::test_set_identity_with_validator
+warning: 2412/2839 tests were not run due to signal
+error: test run failed
+
+[2025-08-28 15:25:50] ERROR: Detected disallowed UDP port 43055
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  63.217s] solana-runtime bank_forks::tests::test_bank_forks_new_rw_arc_memory_leak
+  stdout ───
+
+    running 1 test
+    test bank_forks::tests::test_bank_forks_new_rw_arc_memory_leak has been running for over 60 seconds
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 711.144s] 1844/2839 tests run: 1843 passed (1 slow), 1 failed, 19 skipped
+     SIGTERM [  63.217s] solana-runtime bank_forks::tests::test_bank_forks_new_rw_arc_memory_leak
+warning: 995/2839 tests were not run due to signal
+error: test run failed
+--exclude: command not found
+
+[2025-08-28 15:38:40] ERROR: Detected disallowed UDP port 55665
+---
+        PASS [   1.020s] solana-streamer nonblocking::quic::test::test_quic_server_multiple_connections_on_single_client_endpoint
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.010s] solana-streamer nonblocking::quic::test::test_quic_server_multiple_streams
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [ 956.361s] 2077/2839 tests run: 2076 passed (2 slow), 1 failed, 19 skipped
+     SIGTERM [   0.010s] solana-streamer nonblocking::quic::test::test_quic_server_multiple_streams
+warning: 762/2839 tests were not run due to signal
+error: test run failed
+--exclude: command not found
+
+[2025-08-28 15:55:40] ERROR: Detected disallowed UDP port 48992
+---

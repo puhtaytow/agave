@@ -1,0 +1,16 @@
+ Nextest run ID e29434ca-48a3-4b50-8716-72afe3d42a00 with nextest profile: default
+    Starting 2 tests across 3 binaries
+        PASS [  24.749s] solana-vortexor::vortexor test_stake_update
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   2.054s] solana-vortexor::vortexor test_vortexor
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  26.803s] 2 tests run: 1 passed, 1 failed, 0 skipped
+     SIGTERM [   2.054s] solana-vortexor::vortexor test_vortexor
+error: test run failed
+redrum@redrum-nvbox:~/Projects/puhtaytow/agave/vortexor$ 

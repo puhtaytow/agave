@@ -1,0 +1,25 @@
+  stdout ───
+
+    running 1 test
+    test tests::test_testable_prototypes ... FAILED
+
+    failures:
+
+    failures:
+        tests::test_testable_prototypes
+
+    test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 28 filtered out; finished in 0.00s
+    
+  stderr ───
+
+    thread 'tests::test_testable_prototypes' panicked at builtins/src/lib.rs:348:9:
+    assertion `left == right` failed
+      left: None
+     right: Some(CoreBpfMigrationConfig { source_buffer_address: EDEhzg1Jk79Wrk4mwpRa7txjgRxcE6igXwd6egFDVhuz, upgrade_authority_address: Some(4d14UK2o1FKKoecEBWhVDZrBBbRuhug75G1j9XYCawC2), feature_id: AnjsdWg7LXFbjDdy78wncCJs9PyTdWpKkFmHAwQU1mQ6, migration_target: Builtin, verified_build_hash: None, datapoint_name: "migrate_builtin_to_core_bpf_system_program" })
+    note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+  Cancelling due to test failure
+────────────
+     Summary [   0.008s] 29 tests run: 28 passed, 1 failed, 0 skipped
+        FAIL [   0.003s] solana-builtins tests::test_testable_prototypes
+error: test run failed

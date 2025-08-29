@@ -1,0 +1,19 @@
+  Cancelling due to signal: 2 tests still running
+     SIGTERM [   0.325s] solana-client-test::client test_slot_subscription
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+     SIGTERM [   0.425s] solana-client-test::client test_rpc_client
+  stdout ───
+
+    running 1 test
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [   1.451s] 6/9 tests run: 4 passed, 2 failed, 0 skipped
+     SIGTERM [   0.425s] solana-client-test::client test_rpc_client
+     SIGTERM [   0.325s] solana-client-test::client test_slot_subscription

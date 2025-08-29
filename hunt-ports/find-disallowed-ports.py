@@ -28,7 +28,9 @@ IGNORE_PORTS = [
     1488,    # base port -512,
     34259, # docker
     ###
-    
+    1490, # for test solana-dos / vortextor
+    1491, # vortextor
+    1492,
 
 ]
 # IGNORE_PORTS = []
