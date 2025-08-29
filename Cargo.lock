@@ -8521,6 +8521,7 @@ dependencies = [
  "solana-logger",
  "solana-message",
  "solana-metrics",
+ "solana-net-utils",
  "solana-packet",
  "solana-pubkey",
  "solana-signer",
