@@ -1,0 +1,215 @@
+test_halt_accounts_creation_at_max  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.854s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+────────────
+     Summary [  40.562s] 566/4583 tests run: 565 passed, 1 failed, 39 skipped
+     SIGTERM [   1.854s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+warning: 4017/4583 tests were not run due to signal
+error: test run failed
+
+----
+thread 'route::tests::test_router' panicked at xdp/src/route.rs:249:65:
+called `Result::unwrap()` on an `Err` value: NoRouteFound(1.1.1.1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test route::tests::test_router ... FAILED
+
+failures:
+
+failures:
+    route::tests::test_router
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+        FAIL [   0.003s] agave-xdp route::tests::test_router
+  Cancelling due to test failure
+────────────
+     Summary [   9.284s] 543/4583 tests run: 542 passed, 1 failed, 39 skipped
+        FAIL [   0.003s] agave-xdp route::tests::test_router
+warning: 4040/4583 tests were not run due to test failure (run with --no-fail-fast to run all tests, or run with --max-fail)
+error: test run failed
+
+---
+
+[2025-08-27T04:15:14.127478600Z ERROR solana_bench_tps::bench] funder has ◎0.000000000, needed ◎0.001539720
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  22.378s] solana-bench-tps::bench_tps test_bench_tps_tpu_client_with_padding
+────────────
+     Summary [ 602.160s] 1138/4582 tests run: 1137 passed, 1 failed, 39 skipped
+     SIGTERM [  22.378s] solana-bench-tps::bench_tps test_bench_tps_tpu_client_with_padding
+warning: 3444/4582 tests were not run due to signal
+error: test run failed
+
+---
+
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   3.158s] solana-accounts-db ancient_append_vecs::tests::test_write_ancient_accounts
+────────────
+     Summary [ 227.115s] 908/4582 tests run: 907 passed, 1 failed, 39 skipped
+     SIGTERM [   3.158s] solana-accounts-db ancient_append_vecs::tests::test_write_ancient_accounts
+warning: 3674/4582 tests were not run due to signal
+error: test run failed
+
+---
+running 1 test
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   3.954s] solana-accounts-db accounts_db::tests::test_obsolete_accounts_empty_default_duplicate_hash::markobsoleteaccounts_disabled_expects
+────────────
+     Summary [ 121.471s] 752/4582 tests run: 751 passed, 1 failed, 39 skipped
+     SIGTERM [   3.954s] solana-accounts-db accounts_db::tests::test_obsolete_accounts_empty_default_duplicate_hash::markobsoleteaccounts_disabled_expects
+warning: 3830/4582 tests were not run due to signal
+error: test run failed
+
+---
+
+running 1 test
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.839s] solana-accounts-db accounts_db::tests::test_shrink_collect_simple
+────────────
+     Summary [ 125.025s] 778/4582 tests run: 777 passed, 1 failed, 39 skipped
+     SIGTERM [   0.839s] solana-accounts-db accounts_db::tests::test_shrink_collect_simple
+warning: 3804/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  11.324s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_create_then_reclaim_spl_token_accounts
+────────────
+     Summary [  33.423s] 564/4582 tests run: 563 passed, 1 failed, 39 skipped
+     SIGTERM [  11.324s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_create_then_reclaim_spl_token_accounts
+warning: 4018/4582 tests were not run due to signal
+error: test run failed
+---
+running 1 test
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   4.808s] solana-accounts-db accounts_index::tests::test_new_entry_and_update_code_paths::true_none_false_expects
+────────────
+     Summary [ 157.569s] 851/4582 tests run: 850 passed, 1 failed, 39 skipped
+     SIGTERM [   4.808s] solana-accounts-db accounts_index::tests::test_new_entry_and_update_code_paths::true_none_false_expects
+warning: 3731/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.846s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+────────────
+     Summary [  40.470s] 565/4582 tests run: 564 passed, 1 failed, 39 skipped
+     SIGTERM [   0.846s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+warning: 4017/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   0.055s] solana-accounts-db accounts_db::tests::test_calculate_storage_count_and_alive_bytes_2_accounts::append_vec
+────────────
+     Summary [  71.918s] 683/4582 tests run: 682 passed, 1 failed, 39 skipped
+     SIGTERM [   0.055s] solana-accounts-db accounts_db::tests::test_calculate_storage_count_and_alive_bytes_2_accounts::append_vec
+warning: 3899/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.998s] agave-validator admin_rpc_service::tests::test_set_identity_with_validator
+────────────
+     Summary [   8.001s] 427/4582 tests run: 426 passed, 1 failed, 39 skipped
+     SIGTERM [   1.998s] agave-validator admin_rpc_service::tests::test_set_identity_with_validator
+warning: 4155/4582 tests were not run due to signal
+error: test run failed
+---
+running 1 test
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   7.330s] solana-accounts-db accounts_index::tests::test_new_entry_and_update_code_paths::true_none_false_expects
+────────────
+     Summary [ 156.505s] 851/4582 tests run: 850 passed, 1 failed, 39 skipped
+     SIGTERM [   7.330s] solana-accounts-db accounts_index::tests::test_new_entry_and_update_code_paths::true_none_false_expects
+warning: 3731/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  13.808s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_create_then_reclaim_spl_token_accounts
+────────────
+     Summary [  35.660s] 564/4582 tests run: 563 passed, 1 failed, 39 skipped
+     SIGTERM [  13.808s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_create_then_reclaim_spl_token_accounts
+warning: 4018/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.962s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_accounts_cluster_bench
+────────────
+     Summary [  11.285s] 563/4582 tests run: 562 passed, 1 failed, 39 skipped
+     SIGTERM [   1.962s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_accounts_cluster_bench
+warning: 4019/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.526s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_accounts_cluster_bench
+────────────
+     Summary [  10.903s] 563/4582 tests run: 562 passed, 1 failed, 39 skipped
+     SIGTERM [   1.526s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_accounts_cluster_bench
+warning: 4019/4582 tests were not run due to signal
+error: test run failed
+---
+--------------------------------------------------------
+--------------------------------------------------------
+--------------------------------------------------------
+--------------------------------------------------------
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   2.625s] solana-bench-tps::bench_tps test_bench_tps_tpu_client_nonce
+────────────
+     Summary [ 558.254s] 1137/4582 tests run: 1136 passed, 1 failed, 39 skipped
+     SIGTERM [   2.625s] solana-bench-tps::bench_tps test_bench_tps_tpu_client_nonce
+warning: 3445/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   2.209s] solana-accounts-db accounts_db::tests::test_calculate_storage_count_and_alive_bytes::append_vec
+────────────
+     Summary [  64.986s] 679/4582 tests run: 678 passed, 1 failed, 39 skipped
+     SIGTERM [   2.209s] solana-accounts-db accounts_db::tests::test_calculate_storage_count_and_alive_bytes::append_vec
+warning: 3903/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  18.229s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_16_expects
+────────────
+     Summary [ 341.086s] 1118/4582 tests run: 1117 passed, 1 failed, 39 skipped
+     SIGTERM [  18.229s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_16_expects
+warning: 3464/4582 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [  24.679s] solana-accounts-db::read_only_accounts_cache test_read_only_accounts_cache_eviction::_50_000_49_000_16_expects
+     Killing due to second signal
+────────────
+     Summary [ 371.856s] 1118/4582 tests run: 1117 passed, 1 failed, 39 skipped
+warning: 3464/4582 tests were not run due to second signal
+error: test run failed
+---
+     Summary [ 756.402s] 1346/4565 tests run: 1345 passed, 1 failed, 39 skipped
+     SIGTERM [   2.183s] solana-cli::program test_cli_program_deploy_feature::feature_disabled_skip_preflight
+warning: 3219/4565 tests were not run due to signal
+error: test run failed
+---
+  Cancelling due to signal: 1 test still running
+     SIGTERM [   1.761s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+  stdout ───
+
+    running 1 test
+  stderr ───
+    DEBUG: find_available_ports_in_range called with range 2001..2026
+    DEBUG: trying to bind port 2013
+    DEBUG: trying to bind port 2014
+    DEBUG: trying to bind port 2015
+    DEBUG: trying to bind port 2016
+    DEBUG: trying to bind port 2017
+    DEBUG: trying to bind port 2018
+    DEBUG: trying to bind port 2019
+    DEBUG: trying to bind port 2020
+    DEBUG: trying to bind port 2021
+    DEBUG: trying to bind port 2022
+    DEBUG: trying to bind port 2023
+    DEBUG: successfully bound port 2023
+    DEBUG: trying to bind port 2024
+    DEBUG: successfully bound port 2024
+
+    (test aborted with signal 15: SIGTERM)
+
+────────────
+     Summary [  40.399s] 565/4446 tests run: 564 passed, 1 failed, 39 skipped
+     SIGTERM [   1.761s] solana-accounts-cluster-bench::bin/solana-accounts-cluster-bench test::test_halt_accounts_creation_at_max
+warning: 3881/4446 tests were not run due to signal
+error: test run failed

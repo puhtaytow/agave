@@ -1,0 +1,25 @@
+cargo +nightly-2025-02-16 nextest run --workspace --test-threads 1 \
+  --exclude solana-cargo-build-sbf \
+  --exclude solana-cli \
+  --exclude solana-bench-tps \
+  --exclude solana-client-test \
+  --exclude solana-dos \
+  --exclude replay_stage \
+  --exclude solana-accounts-db \
+  --exclude solana-ledger \
+  --exclude solana-local-cluster \
+  --exclude solana-core \
+  --exclude solana-rpc-test \
+  --exclude solana-accounts-cluster-bench
+  --exclude solana-streamer \
+  --exclude solana-net-utils \
+  --exclude solana-gossip \
+  --exclude agave-validator \
+  --exclude solana-runtime
+
+
+
+
+# probably not networking
+
+  --exclude solana-ledger
