@@ -456,8 +456,7 @@ pub(crate) mod tests {
             keypair,
             &entries,
             is_last_in_slot,
-            // chained_merkle_root
-            Some(Hash::new_from_array(rng.gen())),
+            Hash::new_from_array(rng.gen()), // chained_merkle_root
             next_shred_index,
             next_code_index, // next_code_index
             &ReedSolomonCache::default(),
