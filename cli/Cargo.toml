@@ -12,11 +12,17 @@ edition = { workspace = true }
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
+[features]
+default = ["dev-context-only-utils"]
+dev-context-only-utils = ["dep:solana-faucet"]
+dev-context-only-utils = []
+
 [[bin]]
 name = "solana"
 path = "src/main.rs"
 
 [dependencies]
+solana-faucet = { workspace = true, optional = true }
 agave-feature-set = { workspace = true }
 agave-syscalls = { workspace = true }
 bincode = { workspace = true }
@@ -52,7 +58,6 @@ solana-compute-budget-interface = { version = "=3.0.0", features = ["borsh"] }
 solana-config-interface = "=2.0.0"
 solana-connection-cache = { workspace = true }
 solana-epoch-schedule = "=3.0.0"
-solana-faucet = { workspace = true, features = ["dev-context-only-utils"] }
 solana-feature-gate-interface = { version = "=3.0.0", features = ["bincode"] }
 solana-fee-calculator = "=3.0.0"
 solana-fee-structure = "=3.0.0"
@@ -101,6 +106,7 @@ thiserror = { workspace = true }
 tiny-bip39 = { workspace = true }
 
 [dev-dependencies]
+solana-faucet = { workspace = true, features = ["dev-context-only-utils"] }
 assert_matches = { workspace = true }
 solana-nonce-account = { workspace = true }
 solana-presigner = { workspace = true }
