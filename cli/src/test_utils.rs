@@ -1,8 +1,11 @@
 use {
     solana_clock::{Epoch, DEFAULT_MS_PER_SLOT},
     solana_commitment_config::CommitmentConfig,
+    solana_faucet::faucet::run_local_faucet_for_tests,
+    solana_keypair::Keypair,
+    solana_net_utils::sockets::unique_port_range_for_tests,
     solana_rpc_client::rpc_client::RpcClient,
-    std::{thread::sleep, time::Duration},
+    std::{net::SocketAddr, thread::sleep, time::Duration},
 };
 
 #[macro_export]
@@ -61,4 +64,13 @@ pub fn wait_for_next_epoch_plus_n_slots(rpc_client: &RpcClient, n: u64) -> (Epoc
             return (next_epoch, new_slot);
         }
     }
+}
+
+/// Runs local faucet for tests, with non-overlapping ports.
+pub fn run_local_faucet(keypair: Keypair) -> SocketAddr {
+    run_local_faucet_for_tests(
+        keypair,
+        None, /* per_time_cap */
+        unique_port_range_for_tests(1).start,
+    )
 }

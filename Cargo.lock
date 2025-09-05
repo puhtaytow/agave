@@ -7758,6 +7758,7 @@ dependencies = [
  "solana-logger",
  "solana-message",
  "solana-native-token",
+ "solana-net-utils",
  "solana-nonce",
  "solana-nonce-account",
  "solana-offchain-message",
