@@ -1,3 +1,4 @@
+#![allow(unused, dead_code)]
 #[cfg(test)]
 use crate::shred::ShredType;
 use {
@@ -21,8 +22,10 @@ use {
     },
     assert_matches::debug_assert_matches,
     itertools::{Either, Itertools},
+    rand::Rng,
     rayon::{prelude::*, ThreadPool},
     reed_solomon_erasure::Error::{InvalidIndex, TooFewParityShards},
+    sha2::digest::Key,
     solana_clock::Slot,
     solana_hash::Hash,
     solana_keypair::Keypair,
@@ -35,10 +38,297 @@ use {
     std::{
         cmp::Ordering,
         io::{Cursor, Write},
+        marker::PhantomData,
         ops::Range,
         time::Instant,
     },
 };
+
+// TODO: maybe not here?
+static PAR_THREAD_POOL: std::sync::LazyLock<ThreadPool> = std::sync::LazyLock::new(|| {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(solana_rayon_threadlimit::get_thread_count())
+        .thread_name(|i| format!("solShredder{i:02}"))
+        .build()
+        .unwrap()
+});
+
+pub struct ShredBuilderInit;
+pub struct ShredBuilderZero;
+pub struct ShredBuilderRandom;
+pub struct ShredBuilderEntries;
+
+pub struct ShredBuilder<S> {
+    state: S,
+    data: Option<Vec<u8>>,
+    invalid_index: Option<u32>,
+
+    slot: Slot,
+    chained_merkle_root: Hash,
+
+    parent_slot: Option<Slot>,
+    version: Option<u16>,
+    reference_tick: Option<u8>,
+    start_index: Option<u32>,
+    is_last_in_slot: bool,
+}
+
+impl ShredBuilder<ShredBuilderInit> {
+    pub fn new(slot: Slot, hash: Hash) -> Self {
+        Self {
+            state: ShredBuilderInit,
+            data: None,
+            invalid_index: None,
+
+            slot,
+            chained_merkle_root: hash,
+            parent_slot: None,
+            version: None,
+            reference_tick: None,
+            start_index: None,
+            is_last_in_slot: false,
+        }
+    }
+
+    pub fn with_zeros(self) -> ShredBuilder<ShredBuilderZero> {
+        ShredBuilder {
+            state: ShredBuilderZero,
+            data: None,
+            invalid_index: self.invalid_index,
+
+            slot: self.slot,
+            chained_merkle_root: self.chained_merkle_root,
+            parent_slot: self.parent_slot,
+            version: self.version,
+            reference_tick: self.reference_tick,
+            start_index: self.start_index,
+            is_last_in_slot: self.is_last_in_slot,
+        }
+    }
+
+    pub fn with_random(self) -> ShredBuilder<ShredBuilderRandom> {
+        ShredBuilder {
+            state: ShredBuilderRandom,
+            data: None,
+            invalid_index: self.invalid_index,
+
+            slot: self.slot,
+            chained_merkle_root: self.chained_merkle_root,
+            parent_slot: self.parent_slot,
+            version: self.version,
+            reference_tick: self.reference_tick,
+            start_index: self.start_index,
+            is_last_in_slot: self.is_last_in_slot,
+        }
+    }
+
+    pub fn with_entries(
+        self,
+        entries: &[crate::shred::Entry],
+    ) -> ShredBuilder<ShredBuilderEntries> {
+        let serialized_entries = bincode::serialize(entries).unwrap();
+
+        ShredBuilder {
+            state: ShredBuilderEntries,
+            data: Some(serialized_entries),
+            invalid_index: self.invalid_index,
+
+            slot: self.slot,
+            chained_merkle_root: self.chained_merkle_root,
+            parent_slot: self.parent_slot,
+            version: self.version,
+            reference_tick: self.reference_tick,
+            start_index: self.start_index,
+            is_last_in_slot: self.is_last_in_slot,
+        }
+    }
+}
+
+impl<S> ShredBuilder<S> {
+    pub fn with_parent_slot(&mut self, parent_slot: Slot) -> &mut Self {
+        self.parent_slot = Some(parent_slot);
+        self
+    }
+
+    pub fn with_version(&mut self, version: u16) -> &mut Self {
+        self.version = Some(version);
+        self
+    }
+
+    pub fn with_reference_tick(&mut self, reference_tick: u8) -> &mut Self {
+        self.reference_tick = Some(reference_tick);
+        self
+    }
+
+    pub fn with_start_index(&mut self, index: u32) -> &mut Self {
+        self.start_index = Some(index);
+        self
+    }
+
+    pub fn with_invalid_index(&mut self, index: u32) -> &mut Self {
+        self.invalid_index = Some(index);
+        self
+    }
+
+    pub fn with_last_in_slot(&mut self) -> &mut Self {
+        self.is_last_in_slot = true;
+        self
+    }
+}
+
+impl ShredBuilder<ShredBuilderZero> {
+    pub fn build(self) -> impl Iterator<Item = Shred> {
+        let keypair = Keypair::new();
+        let hash = self.chained_merkle_root;
+        let data = &[0u8];
+        let slot = self.slot;
+        let parent_slot = self.parent_slot.unwrap_or_else(|| slot.saturating_sub(1));
+        let version = self.version.unwrap_or_default(); // FIXME: might be wrong?
+        let reference_tick = self.reference_tick.unwrap_or_default(); // FIXME: might be wrong
+        let is_last_in_slot = self.is_last_in_slot;
+        let start_index = self.start_index.unwrap_or_default();
+        let next_index = self.invalid_index.unwrap_or(start_index); // invalid case handling
+
+        let reed_solomon_cache = ReedSolomonCache::default();
+        let mut stats = ProcessShredsStats::default();
+
+        let shred = make_shreds_from_data(
+            &PAR_THREAD_POOL,
+            &keypair,
+            Some(hash),
+            data,
+            slot,
+            parent_slot,
+            version,
+            reference_tick,
+            is_last_in_slot,
+            start_index,
+            next_index,
+            &reed_solomon_cache,
+            &mut stats,
+        )
+        .unwrap()
+        .last()
+        .unwrap()
+        .clone();
+
+        std::iter::repeat(shred)
+    }
+}
+
+impl ShredBuilder<ShredBuilderRandom> {
+    pub fn build(self) -> impl Iterator<Item = Shred> {
+        let keypair = Keypair::new();
+        let hash = self.chained_merkle_root;
+        let slot = self.slot;
+        let parent_slot = self.parent_slot.unwrap_or_else(|| slot.saturating_sub(1));
+        let version = self.version.unwrap_or_default(); // FIXME: might be wrong?
+        let reference_tick = self.reference_tick.unwrap_or_default(); // FIXME: might be wrong
+        let is_last_in_slot = self.is_last_in_slot;
+        let start_index = self.start_index.unwrap_or_default();
+        let next_index = self.invalid_index.unwrap_or(start_index); // invalid case handling
+
+        let reed_solomon_cache = ReedSolomonCache::default();
+        let mut stats = ProcessShredsStats::default();
+
+        std::iter::repeat_with(move || {
+            let mut data = &mut [0u8; 1024];
+            rand::thread_rng().fill(&mut data[..]);
+
+            make_shreds_from_data(
+                &PAR_THREAD_POOL,
+                &keypair,
+                Some(hash),
+                data,
+                slot,
+                parent_slot,
+                version,
+                reference_tick,
+                is_last_in_slot,
+                start_index,
+                next_index,
+                &reed_solomon_cache,
+                &mut stats,
+            )
+            .unwrap()
+            .last()
+            .unwrap()
+            .clone()
+        })
+    }
+}
+
+impl ShredBuilder<ShredBuilderEntries> {
+    pub fn build(&mut self) -> impl Iterator<Item = Shred> {
+        let keypair = Keypair::new();
+        let hash = self.chained_merkle_root;
+        let data = self.data.as_deref().unwrap();
+        let slot = self.slot;
+        let parent_slot = self.parent_slot.unwrap_or_else(|| slot.saturating_sub(1));
+        let version = self.version.unwrap_or_default(); // FIXME: might be wrong?
+        let reference_tick = self.reference_tick.unwrap_or_default(); // FIXME: might be wrong
+        let is_last_in_slot = self.is_last_in_slot;
+        let start_index = self.start_index.unwrap_or_default();
+        let next_index = self.invalid_index.unwrap_or(start_index); // invalid case handling
+
+        let reed_solomon_cache = ReedSolomonCache::default();
+        let mut stats = ProcessShredsStats::default();
+
+        make_shreds_from_data(
+            &PAR_THREAD_POOL,
+            &keypair,
+            Some(hash),
+            data,
+            slot,
+            parent_slot,
+            version,
+            reference_tick,
+            is_last_in_slot,
+            start_index,
+            next_index,
+            &reed_solomon_cache,
+            &mut stats,
+        )
+        .unwrap()
+        .into_iter()
+    }
+}
+
+// #[cfg(test)]
+// mod tests {
+//     use {super::*, crate::shred::Entry, solana_system_transaction, test_case::test_case};
+
+//     #[test]
+//     fn test_shred_builder_with_data_zero() {
+//         let builder = ShredBuilder::new(1, Hash::default()).with_zeros().build();
+//     }
+
+//     #[test]
+//     fn test_shred_builder_with_data_random() {
+//         let builder = ShredBuilder::new(1, Hash::default()).with_random().build();
+//     }
+
+//     #[test]
+//     fn test_shred_builder_with_data_entries() {
+//         let entries: Vec<_> = (0..5)
+//             .map(|_| {
+//                 let keypair0 = Keypair::new();
+//                 let keypair1 = Keypair::new();
+//                 let tx0 = solana_system_transaction::transfer(
+//                     &keypair0,
+//                     &keypair1.pubkey(),
+//                     1,
+//                     Hash::default(),
+//                 );
+//                 Entry::new(&Hash::default(), 1, vec![tx0])
+//             })
+//             .collect();
+
+//         let builder = ShredBuilder::new(1, Hash::default())
+//             .with_entries(&entries)
+//             .build();
+//     }
+// }
 
 const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 1203);
 
@@ -489,7 +779,7 @@ macro_rules! impl_merkle_shred {
     };
 }
 
-use impl_merkle_shred;
+use {impl_merkle_shred, sha2::digest::typenum::Zero};
 
 impl<'a> ShredTrait<'a> for ShredData {
     type SignedData = Hash;
