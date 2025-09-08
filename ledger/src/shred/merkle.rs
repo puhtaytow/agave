@@ -1,3 +1,4 @@
+#![allow(unused, dead_code)]
 #[cfg(test)]
 use crate::shred::ShredType;
 use {
@@ -21,8 +22,10 @@ use {
     },
     assert_matches::debug_assert_matches,
     itertools::{Either, Itertools},
+    rand::Rng,
     rayon::{prelude::*, ThreadPool},
     reed_solomon_erasure::Error::{InvalidIndex, TooFewParityShards},
+    sha2::digest::Key,
     solana_clock::Slot,
     solana_hash::Hash,
     solana_keypair::Keypair,
@@ -35,10 +38,219 @@ use {
     std::{
         cmp::Ordering,
         io::{Cursor, Write},
+        marker::PhantomData,
         ops::Range,
         time::Instant,
     },
 };
+
+// TODO: maybe not here?
+static PAR_THREAD_POOL: std::sync::LazyLock<ThreadPool> = std::sync::LazyLock::new(|| {
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(solana_rayon_threadlimit::get_thread_count())
+        .thread_name(|i| format!("solShredder{i:02}"))
+        .build()
+        .unwrap()
+});
+
+//
+pub trait ShredBuilderContent {
+    fn generate(builder: &ShredBuilder<Self>) -> Box<dyn Iterator<Item = Shred>>
+    where
+        Self: Sized;
+}
+
+/// Data Zero for tests only
+pub struct ShredBuilderZeroContent;
+impl ShredBuilderContent for ShredBuilderZeroContent {
+    fn generate(builder: &ShredBuilder<Self>) -> Box<dyn Iterator<Item = Shred>> {
+        let slot = builder.slot;
+        let chained_merkle_root = builder.chained_merkle_root;
+        // let keypair: &Keypair = builder.keypair.as_ref().unwrap_or(&Keypair::new());
+        let parent_slot = builder
+            .parent_slot
+            .unwrap_or_else(|| slot.saturating_sub(1));
+        let version = builder.version.unwrap_or(0);
+        let reference_tick = builder.reference_tick.unwrap_or(0);
+        let start_index = builder.start_index.unwrap_or(0);
+        let next_index = if builder.invalid_index {
+            start_index + 99
+        } else {
+            start_index
+        };
+        let is_last_in_slot = builder.is_last_in_slot.unwrap_or(false);
+
+        let mut stats = ProcessShredsStats::default();
+        let reed_solomon_cache = ReedSolomonCache::default();
+
+        Box::new(std::iter::repeat(
+            make_shreds_from_data(
+                &PAR_THREAD_POOL,
+                &Keypair::new(),
+                Some(chained_merkle_root),
+                &[0u8],
+                slot,
+                parent_slot,
+                version,
+                reference_tick,
+                is_last_in_slot,
+                start_index,
+                next_index, // in case of invalid_index == true this doesnt match start_index
+                &reed_solomon_cache,
+                &mut stats,
+            )
+            .unwrap()
+            .last()
+            .unwrap()
+            .clone(),
+        )) // FIXME: maybe should be reference
+    }
+}
+
+/// Data Random for tests only
+pub struct ShredBuilderRandomContent;
+impl ShredBuilderContent for ShredBuilderRandomContent {
+    fn generate(builder: &ShredBuilder<Self>) -> Box<dyn Iterator<Item = Shred>> {
+        let slot = builder.slot;
+        let chained_merkle_root = builder.chained_merkle_root;
+        // let keypair: &Keypair = builder.keypair.as_ref().unwrap_or(&Keypair::new()); // FIXME: or not to fixme
+        let parent_slot = builder
+            .parent_slot
+            .unwrap_or_else(|| slot.saturating_sub(1));
+        let version = builder.version.unwrap_or(0);
+        let reference_tick = builder.reference_tick.unwrap_or(0);
+        let start_index = builder.start_index.unwrap_or(0);
+        let next_index = if builder.invalid_index {
+            start_index + 99
+        } else {
+            start_index
+        };
+        let is_last_in_slot = builder.is_last_in_slot.unwrap_or(false);
+
+        let mut stats = ProcessShredsStats::default();
+        let reed_solomon_cache = ReedSolomonCache::default();
+
+        let keypair = Keypair::new();
+        let hash = Some(Hash::default());
+
+        Box::new(std::iter::repeat_with(move || {
+            let mut data = &mut [0u8; 1024];
+            rand::thread_rng().fill(&mut data[..]);
+
+            make_shreds_from_data(
+                &PAR_THREAD_POOL,
+                &keypair,
+                hash,
+                data,
+                slot,
+                parent_slot,
+                version,
+                reference_tick,
+                is_last_in_slot,
+                start_index,
+                next_index,
+                &reed_solomon_cache,
+                &mut stats,
+            )
+            .unwrap()
+            .last()
+            .unwrap()
+            .clone()
+        })) // FIXME: maybe should be reference}
+    }
+}
+
+pub struct ShredBuilder<SC: ShredBuilderContent> {
+    slot: Slot,
+    chained_merkle_root: Hash,
+    //
+    keypair: Option<Keypair>,
+    parent_slot: Option<Slot>,
+    version: Option<u16>,
+    reference_tick: Option<u8>,
+    start_index: Option<u32>,
+
+    invalid_index: bool,
+
+    is_last_in_slot: Option<bool>,
+
+    _phantom: PhantomData<SC>,
+}
+
+impl<SC: ShredBuilderContent> ShredBuilder<SC> {
+    pub fn new(slot: Slot, hash: Hash) -> Self {
+        Self {
+            slot,
+            chained_merkle_root: hash,
+            //
+            keypair: None,
+            parent_slot: None,
+            version: None,
+            reference_tick: None,
+            start_index: None,
+
+            invalid_index: false, // for tests only / should be gated?
+
+            is_last_in_slot: None,
+
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Set parent slot (default is slot - 1)
+    pub fn with_parent_slot(&mut self, parent_slot: Slot) -> &mut Self {
+        self.parent_slot = Some(parent_slot);
+        self
+    }
+
+    /// Returns iterator with shreds
+    pub fn build(self) -> Box<dyn Iterator<Item = Shred>> {
+        SC::generate(&self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        test_case::{test_case, test_matrix},
+    };
+
+    const HOW_MANY_SHREDS_TO_TAKE: u64 = 100;
+
+    #[test_case(None)]
+    #[test_case(Some(0))]
+    fn shred_builder_endless_stream_content_zero(with_parent_slot: Option<Slot>) {
+        let slot = 1;
+        let hash = Hash::default();
+        let mut builder = ShredBuilder::<ShredBuilderZeroContent>::new(slot, hash);
+
+        match with_parent_slot {
+            Some(parent_slot) => {
+                builder.with_parent_slot(parent_slot);
+                assert_eq!(builder.parent_slot, Some(parent_slot));
+            }
+            None => {
+                assert_eq!(builder.parent_slot, None);
+            }
+        }
+
+        let shreds = builder.build();
+        for shred in shreds.take(HOW_MANY_SHREDS_TO_TAKE.try_into().unwrap()) {
+            assert_eq!(true, true); // FIXME: check real random data
+        }
+    }
+
+    #[test]
+    fn shred_builder_endless_stream_content_random() {
+        let builder = ShredBuilder::<ShredBuilderRandomContent>::new(0, Hash::default());
+        let shreds = builder.build();
+
+        for shred in shreds.take(HOW_MANY_SHREDS_TO_TAKE.try_into().unwrap()) {
+            assert_eq!(true, true) // FIXME: check real random data
+        }
+    }
+}
 
 const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 1203);
 
@@ -489,7 +701,7 @@ macro_rules! impl_merkle_shred {
     };
 }
 
-use impl_merkle_shred;
+use {impl_merkle_shred, sha2::digest::typenum::Zero};
 
 impl<'a> ShredTrait<'a> for ShredData {
     type SignedData = Hash;
