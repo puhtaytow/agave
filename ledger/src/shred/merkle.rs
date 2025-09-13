@@ -13,10 +13,10 @@ use {
             traits::{
                 Shred as ShredTrait, ShredCode as ShredCodeTrait, ShredData as ShredDataTrait,
             },
-            CodingShredHeader, DataShredHeader, Error, ProcessShredsStats, ShredCommonHeader,
-            ShredFlags, ShredVariant, CODING_SHREDS_PER_FEC_BLOCK, DATA_SHREDS_PER_FEC_BLOCK,
-            SHREDS_PER_FEC_BLOCK, SIZE_OF_CODING_SHRED_HEADERS, SIZE_OF_DATA_SHRED_HEADERS,
-            SIZE_OF_SIGNATURE,
+            CodingShredHeader, DataShredHeader, Entry, Error, ProcessShredsStats,
+            ShredCommonHeader, ShredFlags, ShredVariant, CODING_SHREDS_PER_FEC_BLOCK,
+            DATA_SHREDS_PER_FEC_BLOCK, SHREDS_PER_FEC_BLOCK, SIZE_OF_CODING_SHRED_HEADERS,
+            SIZE_OF_DATA_SHRED_HEADERS, SIZE_OF_SIGNATURE,
         },
         shredder::ReedSolomonCache,
     },
@@ -34,6 +34,7 @@ use {
     solana_sha256_hasher::hashv,
     solana_signature::Signature,
     solana_signer::Signer,
+    solana_transaction::Transaction,
     static_assertions::const_assert_eq,
     std::{
         cmp::Ordering,
@@ -54,30 +55,55 @@ static PAR_THREAD_POOL: std::sync::LazyLock<ThreadPool> = std::sync::LazyLock::n
 });
 
 pub struct ShredBuilderInit;
-pub struct ShredBuilderZero;
-pub struct ShredBuilderRandom;
-pub struct ShredBuilderEntries;
+
+/// Generic data filler interface
+pub trait ShredBuilderDataFiller {
+    fn data(&mut self) -> Vec<u8>;
+}
+
+pub struct ShredBuilderRandomData {
+    data: Vec<u8>,
+}
+impl ShredBuilderDataFiller for ShredBuilderRandomData {
+    fn data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
+    }
+}
+
+pub struct ShredBuilderBytesData {
+    data: Vec<u8>,
+}
+impl ShredBuilderDataFiller for ShredBuilderBytesData {
+    fn data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
+    }
+}
+
+pub struct ShredBuilderTransactionsData {
+    data: Vec<u8>,
+}
+impl ShredBuilderDataFiller for ShredBuilderTransactionsData {
+    fn data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
+    }
+}
 
 pub struct ShredBuilder<S> {
     state: S,
-    data: Option<Vec<u8>>,
     invalid_index: Option<u32>,
 
     slot: Slot,
     chained_merkle_root: Hash,
-
     parent_slot: Option<Slot>,
     version: Option<u16>,
     reference_tick: Option<u8>,
     start_index: Option<u32>,
-    is_last_in_slot: bool,
 }
 
 impl ShredBuilder<ShredBuilderInit> {
     pub fn new(slot: Slot, hash: Hash) -> Self {
         Self {
             state: ShredBuilderInit,
-            data: None,
             invalid_index: None,
 
             slot,
@@ -86,14 +112,13 @@ impl ShredBuilder<ShredBuilderInit> {
             version: None,
             reference_tick: None,
             start_index: None,
-            is_last_in_slot: false,
         }
     }
 
-    pub fn with_zeros(self) -> ShredBuilder<ShredBuilderZero> {
+    /// Set state with, no data and returns specified variant
+    fn set_state<T>(&mut self, state: T) -> ShredBuilder<T> {
         ShredBuilder {
-            state: ShredBuilderZero,
-            data: None,
+            state,
             invalid_index: self.invalid_index,
 
             slot: self.slot,
@@ -102,49 +127,50 @@ impl ShredBuilder<ShredBuilderInit> {
             version: self.version,
             reference_tick: self.reference_tick,
             start_index: self.start_index,
-            is_last_in_slot: self.is_last_in_slot,
         }
     }
 
-    pub fn with_random(self) -> ShredBuilder<ShredBuilderRandom> {
-        ShredBuilder {
-            state: ShredBuilderRandom,
-            data: None,
-            invalid_index: self.invalid_index,
-
-            slot: self.slot,
-            chained_merkle_root: self.chained_merkle_root,
-            parent_slot: self.parent_slot,
-            version: self.version,
-            reference_tick: self.reference_tick,
-            start_index: self.start_index,
-            is_last_in_slot: self.is_last_in_slot,
-        }
+    /// Progress state into variant with shreds from randomly generated data
+    pub fn with_random(mut self, len: usize) -> ShredBuilder<ShredBuilderRandomData> {
+        let mut data = vec![0u8; len];
+        rand::thread_rng().fill(&mut data[..]);
+        self.set_state(ShredBuilderRandomData { data })
     }
 
-    pub fn with_entries(
-        self,
-        entries: &[crate::shred::Entry],
-    ) -> ShredBuilder<ShredBuilderEntries> {
-        let serialized_entries = bincode::serialize(entries).unwrap();
+    /// Progress state into variant with shreds from provided slice of bytes
+    pub fn with_bytes<D>(mut self, data: D) -> ShredBuilder<ShredBuilderBytesData>
+    where
+        D: AsRef<[u8]>,
+    {
+        self.set_state(ShredBuilderBytesData {
+            data: data.as_ref().to_vec(), // FIXME: maybe something more straight forward
+        })
+    }
 
-        ShredBuilder {
-            state: ShredBuilderEntries,
-            data: Some(serialized_entries),
-            invalid_index: self.invalid_index,
-
-            slot: self.slot,
-            chained_merkle_root: self.chained_merkle_root,
-            parent_slot: self.parent_slot,
-            version: self.version,
-            reference_tick: self.reference_tick,
-            start_index: self.start_index,
-            is_last_in_slot: self.is_last_in_slot,
-        }
+    /// Progress state into variant with shreds from provided transactions iterator
+    pub fn with_transactions<I>(
+        mut self,
+        transactions: I,
+    ) -> ShredBuilder<ShredBuilderTransactionsData>
+    where
+        I: IntoIterator<Item = Transaction>,
+    {
+        let transactions: Vec<Transaction> = transactions.into_iter().collect();
+        self.set_state(ShredBuilderTransactionsData {
+            data: bincode::serialize(&Entry::new(
+                &Hash::default(),
+                transactions.len().try_into().unwrap(),
+                transactions,
+            ))
+            .unwrap(),
+        })
     }
 }
 
-impl<S> ShredBuilder<S> {
+impl<S> ShredBuilder<S>
+where
+    S: ShredBuilderDataFiller,
+{
     pub fn with_parent_slot(&mut self, parent_slot: Slot) -> &mut Self {
         self.parent_slot = Some(parent_slot);
         self
@@ -170,116 +196,33 @@ impl<S> ShredBuilder<S> {
         self
     }
 
-    pub fn with_last_in_slot(&mut self) -> &mut Self {
-        self.is_last_in_slot = true;
-        self
-    }
-}
-
-impl ShredBuilder<ShredBuilderZero> {
-    pub fn build(self) -> impl Iterator<Item = Shred> {
-        let keypair = Keypair::new();
-        let hash = self.chained_merkle_root;
-        let data = &[0u8];
-        let slot = self.slot;
-        let parent_slot = self.parent_slot.unwrap_or_else(|| slot.saturating_sub(1));
-        let version = self.version.unwrap_or_default(); // FIXME: might be wrong?
-        let reference_tick = self.reference_tick.unwrap_or_default(); // FIXME: might be wrong
-        let is_last_in_slot = self.is_last_in_slot;
-        let start_index = self.start_index.unwrap_or_default();
-        let next_index = self.invalid_index.unwrap_or(start_index); // invalid case handling
-
-        let reed_solomon_cache = ReedSolomonCache::default();
+    pub fn build(mut self, fec_sets: usize, is_last_in_slot: bool) -> impl Iterator<Item = Shred> {
         let mut stats = ProcessShredsStats::default();
-
-        let shred = make_shreds_from_data(
-            &PAR_THREAD_POOL,
-            &keypair,
-            Some(hash),
-            data,
-            slot,
-            parent_slot,
-            version,
-            reference_tick,
-            is_last_in_slot,
-            start_index,
-            next_index,
-            &reed_solomon_cache,
-            &mut stats,
-        )
-        .unwrap()
-        .last()
-        .unwrap()
-        .clone();
-
-        std::iter::repeat(shred)
-    }
-}
-
-impl ShredBuilder<ShredBuilderRandom> {
-    pub fn build(self) -> impl Iterator<Item = Shred> {
-        let keypair = Keypair::new();
-        let hash = self.chained_merkle_root;
-        let slot = self.slot;
-        let parent_slot = self.parent_slot.unwrap_or_else(|| slot.saturating_sub(1));
-        let version = self.version.unwrap_or_default(); // FIXME: might be wrong?
-        let reference_tick = self.reference_tick.unwrap_or_default(); // FIXME: might be wrong
-        let is_last_in_slot = self.is_last_in_slot;
-        let start_index = self.start_index.unwrap_or_default();
-        let next_index = self.invalid_index.unwrap_or(start_index); // invalid case handling
-
         let reed_solomon_cache = ReedSolomonCache::default();
-        let mut stats = ProcessShredsStats::default();
+        let data = self.state.data();
 
-        std::iter::repeat_with(move || {
-            let mut data = &mut [0u8; 1024];
-            rand::thread_rng().fill(&mut data[..]);
+        // TODO: use fec_sets
 
-            make_shreds_from_data(
-                &PAR_THREAD_POOL,
-                &keypair,
-                Some(hash),
-                data,
-                slot,
-                parent_slot,
-                version,
-                reference_tick,
-                is_last_in_slot,
-                start_index,
-                next_index,
-                &reed_solomon_cache,
-                &mut stats,
-            )
-            .unwrap()
-            .last()
-            .unwrap()
-            .clone()
-        })
-    }
-}
+        let parent_slot = self
+            .parent_slot
+            .unwrap_or_else(|| self.slot.saturating_sub(1));
 
-impl ShredBuilder<ShredBuilderEntries> {
-    pub fn build(&mut self) -> impl Iterator<Item = Shred> {
-        let keypair = Keypair::new();
-        let hash = self.chained_merkle_root;
-        let data = self.data.as_deref().unwrap();
-        let slot = self.slot;
-        let parent_slot = self.parent_slot.unwrap_or_else(|| slot.saturating_sub(1));
-        let version = self.version.unwrap_or_default(); // FIXME: might be wrong?
-        let reference_tick = self.reference_tick.unwrap_or_default(); // FIXME: might be wrong
-        let is_last_in_slot = self.is_last_in_slot;
+        let version = self.version.unwrap_or_default();
+        let reference_tick = self.reference_tick.unwrap_or_default(); // TODO: conditional?
+
         let start_index = self.start_index.unwrap_or_default();
-        let next_index = self.invalid_index.unwrap_or(start_index); // invalid case handling
-
-        let reed_solomon_cache = ReedSolomonCache::default();
-        let mut stats = ProcessShredsStats::default();
+        let next_index = match self.invalid_index {
+            // handle invalid index
+            Some(invalid_index) => invalid_index,
+            None => start_index,
+        };
 
         make_shreds_from_data(
             &PAR_THREAD_POOL,
-            &keypair,
-            Some(hash),
-            data,
-            slot,
+            &Keypair::new(),
+            Some(self.chained_merkle_root),
+            &data,
+            self.slot,
             parent_slot,
             version,
             reference_tick,
@@ -294,41 +237,66 @@ impl ShredBuilder<ShredBuilderEntries> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use {super::*, crate::shred::Entry, solana_system_transaction, test_case::test_case};
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::shred::Entry, solana_system_transaction, test_case::test_case};
 
-//     #[test]
-//     fn test_shred_builder_with_data_zero() {
-//         let builder = ShredBuilder::new(1, Hash::default()).with_zeros().build();
-//     }
+    #[test]
+    fn test_shred_builder_random_data() {
+        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
+            .with_random(1024)
+            .build(0, false)
+            .collect();
 
-//     #[test]
-//     fn test_shred_builder_with_data_random() {
-//         let builder = ShredBuilder::new(1, Hash::default()).with_random().build();
-//     }
+        assert!(!shreds.is_empty(), "no shreds")
+    }
 
-//     #[test]
-//     fn test_shred_builder_with_data_entries() {
-//         let entries: Vec<_> = (0..5)
-//             .map(|_| {
-//                 let keypair0 = Keypair::new();
-//                 let keypair1 = Keypair::new();
-//                 let tx0 = solana_system_transaction::transfer(
-//                     &keypair0,
-//                     &keypair1.pubkey(),
-//                     1,
-//                     Hash::default(),
-//                 );
-//                 Entry::new(&Hash::default(), 1, vec![tx0])
-//             })
-//             .collect();
+    #[test]
+    fn test_shred_builder_from_bytes_data() {
+        let entries: Vec<_> = (0..1000)
+            .map(|_| {
+                let keypair0 = Keypair::new();
+                let keypair1 = Keypair::new();
+                let tx0 = solana_system_transaction::transfer(
+                    &keypair0,
+                    &keypair1.pubkey(),
+                    1,
+                    Hash::default(),
+                );
+                Entry::new(&Hash::default(), 1, vec![tx0])
+            })
+            .collect();
+        let serialized = bincode::serialize(&entries).unwrap();
 
-//         let builder = ShredBuilder::new(1, Hash::default())
-//             .with_entries(&entries)
-//             .build();
-//     }
-// }
+        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
+            .with_bytes(serialized)
+            .build(0, false)
+            .collect();
+
+        assert!(!shreds.is_empty(), "no shreds")
+    }
+
+    #[test]
+    fn test_shred_builder_from_transactions_data() {
+        let transactions: Vec<_> = (0..1000)
+            .map(|_| {
+                solana_system_transaction::transfer(
+                    &Keypair::new(),
+                    &Keypair::new().pubkey(),
+                    1,
+                    Hash::default(),
+                )
+            })
+            .collect();
+
+        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
+            .with_transactions(transactions)
+            .build(0, false)
+            .collect();
+
+        assert!(!shreds.is_empty(), "no shreds");
+    }
+}
 
 const_assert_eq!(ShredData::SIZE_OF_PAYLOAD, 1203);
 
