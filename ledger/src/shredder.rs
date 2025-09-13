@@ -1,8 +1,11 @@
+#![allow(unused, dead_code)]
+
 use {
     crate::shred::{
         self, Error, ProcessShredsStats, Shred, ShredData, ShredFlags, DATA_SHREDS_PER_FEC_BLOCK,
     },
     lazy_lru::LruCache,
+    rand::Rng,
     rayon::ThreadPool,
     reed_solomon_erasure::{galois_8::ReedSolomon, Error::TooFewDataShards},
     solana_clock::Slot,
@@ -10,6 +13,7 @@ use {
     solana_hash::Hash,
     solana_keypair::Keypair,
     solana_rayon_threadlimit::get_thread_count,
+    solana_transaction::Transaction,
     std::{
         fmt::Debug,
         sync::{Arc, OnceLock, RwLock},
@@ -24,6 +28,193 @@ static PAR_THREAD_POOL: std::sync::LazyLock<ThreadPool> = std::sync::LazyLock::n
         .build()
         .unwrap()
 });
+
+pub struct ShredBuilderInit;
+
+/// Generic data filler interface
+pub trait ShredBuilderDataFiller {
+    fn data(&mut self) -> Vec<u8>;
+}
+
+pub struct ShredBuilderRandomData {
+    data: Vec<u8>,
+}
+impl ShredBuilderDataFiller for ShredBuilderRandomData {
+    fn data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
+    }
+}
+
+pub struct ShredBuilderBytesData {
+    data: Vec<u8>,
+}
+impl ShredBuilderDataFiller for ShredBuilderBytesData {
+    fn data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
+    }
+}
+
+pub struct ShredBuilderTransactionsData {
+    data: Vec<u8>,
+}
+impl ShredBuilderDataFiller for ShredBuilderTransactionsData {
+    fn data(&mut self) -> Vec<u8> {
+        std::mem::take(&mut self.data)
+    }
+}
+
+pub struct ShredBuilder<S> {
+    state: S,
+    invalid_index: Option<u32>,
+
+    slot: Slot,
+    chained_merkle_root: Hash,
+    parent_slot: Option<Slot>,
+    version: Option<u16>,
+    reference_tick: Option<u8>,
+    start_index: Option<u32>,
+}
+
+impl ShredBuilder<ShredBuilderInit> {
+    pub fn new(slot: Slot, hash: Hash) -> Self {
+        Self {
+            state: ShredBuilderInit,
+            invalid_index: None,
+
+            slot,
+            chained_merkle_root: hash,
+            parent_slot: None,
+            version: None,
+            reference_tick: None,
+            start_index: None,
+        }
+    }
+
+    /// Set state with, no data and returns specified variant
+    fn set_state<T>(&mut self, state: T) -> ShredBuilder<T> {
+        ShredBuilder {
+            state,
+            invalid_index: self.invalid_index,
+
+            slot: self.slot,
+            chained_merkle_root: self.chained_merkle_root,
+            parent_slot: self.parent_slot,
+            version: self.version,
+            reference_tick: self.reference_tick,
+            start_index: self.start_index,
+        }
+    }
+
+    /// Progress state into variant with shreds from randomly generated data
+    pub fn with_random_bytes(mut self, len: usize) -> ShredBuilder<ShredBuilderRandomData> {
+        let mut data = vec![0u8; len];
+        rand::thread_rng().fill(&mut data[..]);
+        self.set_state(ShredBuilderRandomData { data })
+    }
+
+    /// Progress state into variant with shreds from provided slice of bytes
+    pub fn with_bytes<D>(mut self, data: D) -> ShredBuilder<ShredBuilderBytesData>
+    where
+        D: AsRef<[u8]>,
+    {
+        self.set_state(ShredBuilderBytesData {
+            data: data.as_ref().to_vec(), // FIXME: maybe something more straight forward
+        })
+    }
+
+    /// Progress state into variant with shreds from provided transactions iterator
+    pub fn with_transactions<I>(
+        mut self,
+        transactions: I,
+    ) -> ShredBuilder<ShredBuilderTransactionsData>
+    where
+        I: IntoIterator<Item = Transaction>,
+    {
+        let transactions: Vec<Transaction> = transactions.into_iter().collect();
+        self.set_state(ShredBuilderTransactionsData {
+            data: bincode::serialize(&Entry::new(
+                &Hash::default(),
+                transactions.len().try_into().unwrap(),
+                transactions,
+            ))
+            .unwrap(),
+        })
+    }
+}
+
+impl<S> ShredBuilder<S>
+where
+    S: ShredBuilderDataFiller,
+{
+    pub fn with_parent_slot(mut self, parent_slot: Slot) -> Self {
+        self.parent_slot = Some(parent_slot);
+        self
+    }
+
+    pub fn with_version(mut self, version: u16) -> Self {
+        self.version = Some(version);
+        self
+    }
+
+    pub fn with_reference_tick(mut self, reference_tick: u8) -> Self {
+        self.reference_tick = Some(reference_tick);
+        self
+    }
+
+    pub fn with_start_index(mut self, index: u32) -> Self {
+        self.start_index = Some(index);
+        self
+    }
+
+    pub fn with_invalid_index(mut self, index: u32) -> Self {
+        self.invalid_index = Some(index);
+        self
+    }
+
+    pub fn build(
+        mut self,
+        fec_sets: usize,
+        is_last_in_slot: bool,
+    ) -> impl Iterator<Item = crate::shred::merkle::Shred> {
+        let mut stats = ProcessShredsStats::default();
+        let reed_solomon_cache = ReedSolomonCache::default();
+        let data = self.state.data();
+
+        // TODO: use fec_sets
+
+        let parent_slot = self
+            .parent_slot
+            .unwrap_or_else(|| self.slot.saturating_sub(1));
+
+        let version = self.version.unwrap_or_default();
+        let reference_tick = self.reference_tick.unwrap_or_default(); // TODO: conditional?
+
+        let start_index = self.start_index.unwrap_or_default();
+        let next_index = match self.invalid_index {
+            // handle invalid index
+            Some(invalid_index) => invalid_index,
+            None => start_index,
+        };
+
+        crate::shred::merkle::make_shreds_from_data(
+            &PAR_THREAD_POOL,
+            &Keypair::new(),
+            Some(self.chained_merkle_root),
+            &data,
+            self.slot,
+            parent_slot,
+            version,
+            reference_tick,
+            is_last_in_slot,
+            start_index,
+            next_index,
+            &reed_solomon_cache,
+            &mut stats,
+        )
+        .unwrap()
+        .into_iter()
+    }
+}
 
 // Arc<...> wrapper so that cache entries can be initialized without locking
 // the entire cache.
@@ -258,6 +449,7 @@ mod tests {
         assert_matches::assert_matches,
         itertools::Itertools,
         rand::Rng,
+        solana_entry::entry::Entry,
         solana_hash::Hash,
         solana_pubkey::Pubkey,
         solana_sha256_hasher::hash,
@@ -265,8 +457,49 @@ mod tests {
         solana_signer::Signer,
         solana_system_transaction as system_transaction,
         std::{collections::HashSet, sync::Arc},
-        test_case::test_matrix,
+        test_case::{test_case, test_matrix},
     };
+
+    #[test_case(1000)]
+    fn test_shred_builder_random_data(random_bytes_len: usize) {
+        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
+            .with_random_bytes(random_bytes_len)
+            .with_parent_slot(0)
+            .build(0, false)
+            .collect();
+
+        assert!(!shreds.is_empty(), "no shreds")
+    }
+
+    #[test]
+    fn test_shred_builder_from_bytes_data() {
+        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
+            .with_bytes(bincode::serialize(&0xDEADBEEFu32).unwrap())
+            .build(0, false)
+            .collect();
+
+        assert!(!shreds.is_empty(), "no shreds")
+    }
+
+    #[test_case(1000)]
+    fn test_shred_builder_from_transactions_data(transactions_amount: usize) {
+        let transactions = vec![
+            solana_system_transaction::transfer(
+                &Keypair::new(),
+                &Keypair::new().pubkey(),
+                1,
+                Hash::default(),
+            );
+            transactions_amount
+        ];
+
+        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
+            .with_transactions(transactions)
+            .build(0, false)
+            .collect();
+
+        assert!(!shreds.is_empty(), "no shreds");
+    }
 
     fn verify_test_code_shred(shred: &Shred, index: u32, slot: Slot, pk: &Pubkey, verify: bool) {
         assert_matches!(shred.sanitize(), Ok(()));
