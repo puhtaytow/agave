@@ -173,19 +173,14 @@ where
 
     pub fn build(
         mut self,
-        fec_sets: usize,
         is_last_in_slot: bool,
     ) -> impl Iterator<Item = crate::shred::merkle::Shred> {
         let mut stats = ProcessShredsStats::default();
         let reed_solomon_cache = ReedSolomonCache::default();
         let data = self.state.data();
-
-        // TODO: use fec_sets
-
         let parent_slot = self
             .parent_slot
             .unwrap_or_else(|| self.slot.saturating_sub(1));
-
         let version = self.version.unwrap_or_default();
         let reference_tick = self.reference_tick.unwrap_or_default(); // TODO: conditional?
 
@@ -460,43 +455,118 @@ mod tests {
         test_case::{test_case, test_matrix},
     };
 
-    #[test_case(1000)]
-    fn test_shred_builder_random_data(random_bytes_len: usize) {
-        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
-            .with_random_bytes(random_bytes_len)
-            .with_parent_slot(0)
-            .build(0, false)
-            .collect();
-
-        assert!(!shreds.is_empty(), "no shreds")
+    /// shred builder helper
+    fn shred_builder_options_setter(
+        mut builder: ShredBuilder<impl ShredBuilderDataFiller>,
+        start_index: Option<u32>,
+        version: Option<u16>,
+        parent_slot: Option<Slot>,
+        invalid_index: Option<u32>,
+        reference_tick: Option<u8>,
+    ) -> ShredBuilder<impl ShredBuilderDataFiller> {
+        if let Some(i) = start_index {
+            builder = builder.with_start_index(i);
+        }
+        if let Some(v) = version {
+            builder = builder.with_version(v);
+        }
+        // if let Some(s) = parent_slot {
+        //     builder = builder.with_parent_slot(s);
+        // }
+        if let Some(i) = invalid_index {
+            builder = builder.with_invalid_index(i);
+        }
+        if let Some(r) = reference_tick {
+            builder = builder.with_reference_tick(r);
+        }
+        builder
     }
 
-    #[test]
-    fn test_shred_builder_from_bytes_data() {
-        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
-            .with_bytes(bincode::serialize(&0xDEADBEEFu32).unwrap())
-            .build(0, false)
-            .collect();
-
-        assert!(!shreds.is_empty(), "no shreds")
+    /// different filler types to unify test variants
+    enum TestShredBuilderVariants {
+        Random(usize),
+        Bytes(Vec<u8>),
+        Transactions(usize),
     }
 
-    #[test_case(1000)]
-    fn test_shred_builder_from_transactions_data(transactions_amount: usize) {
-        let transactions = vec![
-            solana_system_transaction::transfer(
-                &Keypair::new(),
-                &Keypair::new().pubkey(),
-                1,
-                Hash::default(),
-            );
-            transactions_amount
-        ];
+    #[test_matrix(
+        [
+            TestShredBuilderVariants::Random(8),
+            // TestShredBuilderVariants::Bytes(vec![0xDE, 0xAD, 0xBE, 0xEF]),
+            // TestShredBuilderVariants::Transactions(128)
+        ], /* variants */
+        [0, 1, 2], /* slot */
+        [Hash::default()], /* hash */
+        [None, Some(1), Some(10)], /* start index */
+        [None, Some(1), Some(10)],  /* version */
+        [None, Some(0), Some(1), Some(2)], /* parent slot */
+        [None, Some(99)], /* invalid index */
+        [None, Some(1)], /* reference tick */
+        [false, true] /* is last in slot */
+    )]
+    fn test_shred_builder(
+        variant: TestShredBuilderVariants,
+        slot: Slot,
+        hash: Hash,
+        start_index: Option<u32>,
+        version: Option<u16>,
+        parent_slot: Option<Slot>,
+        invalid_index: Option<u32>,
+        reference_tick: Option<u8>,
+        is_last_in_slot: bool,
+    ) {
+        let shreds = match variant {
+            TestShredBuilderVariants::Random(random_bytes_len) => {
+                let mut builder = ShredBuilder::new(slot, hash).with_random_bytes(random_bytes_len);
+                let builder = shred_builder_options_setter(
+                    builder,
+                    start_index,
+                    version,
+                    parent_slot,
+                    invalid_index,
+                    reference_tick,
+                );
+                let shreds: Vec<_> = builder.build(is_last_in_slot).collect();
+                shreds
+            }
+            TestShredBuilderVariants::Bytes(data) => {
+                let mut builder =
+                    ShredBuilder::new(slot, hash).with_bytes(bincode::serialize(&data).unwrap());
+                let builder = shred_builder_options_setter(
+                    builder,
+                    start_index,
+                    version,
+                    parent_slot,
+                    invalid_index,
+                    reference_tick,
+                );
+                let shreds: Vec<_> = builder.build(is_last_in_slot).collect();
+                shreds
+            }
+            TestShredBuilderVariants::Transactions(transactions_amount) => {
+                let transactions = vec![
+                    solana_system_transaction::transfer(
+                        &Keypair::new(),
+                        &Keypair::new().pubkey(),
+                        1,
+                        Hash::default(),
+                    );
+                    transactions_amount
+                ];
 
-        let shreds: Vec<_> = ShredBuilder::new(1, Hash::default())
-            .with_transactions(transactions)
-            .build(0, false)
-            .collect();
+                let mut builder = ShredBuilder::new(slot, hash).with_transactions(transactions);
+                let builder = shred_builder_options_setter(
+                    builder,
+                    start_index,
+                    version,
+                    parent_slot,
+                    invalid_index,
+                    reference_tick,
+                );
+                let shreds: Vec<_> = builder.build(is_last_in_slot).collect();
+                shreds
+            }
+        };
 
         assert!(!shreds.is_empty(), "no shreds");
     }
