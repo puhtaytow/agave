@@ -16,7 +16,7 @@ use {
     solana_clock::Slot,
     solana_core::consensus::tower_storage::FileTowerStorage,
     solana_epoch_schedule::EpochSchedule,
-    solana_faucet::faucet::run_local_faucet_with_port,
+    solana_faucet::faucet::{self, run_local_faucet_with_config},
     solana_inflation::Inflation,
     solana_keypair::{read_keypair_file, write_keypair_file, Keypair},
     solana_logger::redirect_stderr_to_file,
@@ -193,8 +193,7 @@ fn main() {
     };
 
     let compute_unit_limit = value_t!(matches, "compute_unit_limit", u64).ok();
-
-    let faucet_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), faucet_port);
+    let faucet_addr = Ipv4Addr::UNSPECIFIED;
 
     let parse_address = |address: &str, input_type: &str| {
         address
@@ -362,13 +361,16 @@ fn main() {
         .and_then(sol_str_to_lamports);
 
     let (sender, receiver) = unbounded();
-    run_local_faucet_with_port(
-        faucet_keypair,
+    run_local_faucet_with_config(
         sender,
-        Some(faucet_time_slice_secs),
-        faucet_per_time_cap,
-        faucet_per_request_cap,
-        faucet_addr.port(),
+        faucet::LocalFaucetConfig {
+            keypair: faucet_keypair,
+            address: faucet_addr,
+            port: faucet_port,
+            time_input: Some(faucet_time_slice_secs),
+            per_time_cap: faucet_per_time_cap,
+            per_request_cap: faucet_per_request_cap,
+        },
     );
     let _ = receiver.recv().expect("run faucet").unwrap_or_else(|err| {
         println!("Error: failed to start faucet: {err}");
@@ -491,7 +493,7 @@ fn main() {
         enable_rpc_transaction_history: true,
         enable_extended_tx_metadata_storage: true,
         rpc_bigtable_config,
-        faucet_addr: Some(faucet_addr),
+        faucet_addr: Some(SocketAddr::new(IpAddr::V4(faucet_addr), faucet_port)),
         account_indexes,
         ..JsonRpcConfig::default_for_test()
     });
