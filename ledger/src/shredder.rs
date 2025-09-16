@@ -185,7 +185,7 @@ where
     pub fn build(
         mut self,
         is_last_in_slot: bool,
-    ) -> impl Iterator<Item = crate::shred::merkle::Shred> {
+    ) -> Result<impl Iterator<Item = crate::shred::merkle::Shred>, crate::shred::Error> {
         let mut stats = ProcessShredsStats::default();
         let reed_solomon_cache = ReedSolomonCache::default();
         let data = self.state.data();
@@ -200,7 +200,7 @@ where
             None => start_index,
         };
 
-        crate::shred::merkle::make_shreds_from_data(
+        let shreds = crate::shred::merkle::make_shreds_from_data(
             &PAR_THREAD_POOL,
             &Keypair::new(),
             Some(self.chained_merkle_root),
@@ -214,9 +214,9 @@ where
             next_index,
             &reed_solomon_cache,
             &mut stats,
-        )
-        .unwrap()
-        .into_iter()
+        )?;
+
+        Ok(shreds.into_iter())
     }
 }
 
@@ -534,8 +534,11 @@ mod tests {
                     parent_slot,
                     invalid_index,
                     reference_tick,
-                );
-                let shreds: Vec<_> = builder.build(is_last_in_slot).collect();
+                )
+                .build(is_last_in_slot)
+                .unwrap();
+
+                let shreds: Vec<_> = builder.collect();
                 shreds
             }
             TestShredBuilderVariants::Bytes(data) => {
@@ -548,8 +551,11 @@ mod tests {
                     parent_slot,
                     invalid_index,
                     reference_tick,
-                );
-                let shreds: Vec<_> = builder.build(is_last_in_slot).collect();
+                )
+                .build(is_last_in_slot)
+                .unwrap();
+
+                let shreds: Vec<_> = builder.collect();
                 shreds
             }
             TestShredBuilderVariants::Transactions(transactions_amount) => {
@@ -571,8 +577,11 @@ mod tests {
                     parent_slot,
                     invalid_index,
                     reference_tick,
-                );
-                let shreds: Vec<_> = builder.build(is_last_in_slot).collect();
+                )
+                .build(is_last_in_slot)
+                .unwrap();
+
+                let shreds: Vec<_> = builder.collect();
                 shreds
             }
         };
