@@ -10155,7 +10155,7 @@ pub mod tests {
             parent_slot,
             num_entries,
             fec_set_index,
-            Some(Hash::new_from_array(rand::thread_rng().gen())),
+            Hash::new_from_array(rand::thread_rng().gen()),
         )
     }
 
@@ -10164,14 +10164,14 @@ pub mod tests {
         parent_slot: u64,
         num_entries: u64,
         fec_set_index: u32,
-        chained_merkle_root: Option<Hash>,
+        chained_merkle_root: Hash,
     ) -> (Vec<Shred>, Vec<Shred>, Arc<LeaderScheduleCache>) {
         setup_erasure_shreds_with_index_and_chained_merkle_and_last_in_slot(
             slot,
             parent_slot,
             num_entries,
             fec_set_index,
-            chained_merkle_root,
+            Some(chained_merkle_root),
             true,
         )
     }
@@ -11142,7 +11142,7 @@ pub mod tests {
             parent_slot,
             10,
             next_fec_set_index,
-            Some(merkle_root),
+            merkle_root,
         );
         let data_shred = data_shreds[0].clone();
         let coding_shred = coding_shreds[0].clone();
@@ -11175,7 +11175,7 @@ pub mod tests {
             parent_slot,
             10,
             next_fec_set_index,
-            Some(merkle_root),
+            merkle_root,
         );
         let next_coding_shred = next_coding_shreds[0].clone();
 
@@ -11214,7 +11214,7 @@ pub mod tests {
                 slot,
                 10,
                 fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let next_slot_data_shred = next_slot_data_shreds[0].clone();
         let next_slot_coding_shred = next_slot_coding_shreds[0].clone();
@@ -11247,7 +11247,7 @@ pub mod tests {
                 slot,
                 10,
                 fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let next_slot_data_shred = next_slot_data_shreds[0].clone();
 
@@ -11288,7 +11288,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 next_fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let data_shred = data_shreds[0].clone();
         let coding_shred = coding_shreds[0].clone();
@@ -11336,7 +11336,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 next_fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let data_shred = data_shreds[0].clone();
         let coding_shred = coding_shreds[0].clone();
@@ -11380,7 +11380,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 next_fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let next_data_shred = next_data_shreds[0].clone();
 
@@ -11427,7 +11427,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let data_shred = data_shreds[0].clone();
         let coding_shred = coding_shreds[0].clone();
@@ -11442,7 +11442,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 next_fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let next_data_shred = next_data_shreds[0].clone();
 
@@ -11532,7 +11532,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 next_fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let data_shred = data_shreds[0].clone();
         let coding_shred = coding_shreds[0].clone();
@@ -11567,7 +11567,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 next_fec_set_index,
-                Some(merkle_root),
+                merkle_root,
             );
         let next_data_shred = next_data_shreds[0].clone();
 
