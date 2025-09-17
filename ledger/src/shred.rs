@@ -994,7 +994,7 @@ mod tests {
         rayon::ThreadPoolBuilder,
         solana_keypair::keypair_from_seed,
         std::io::{Cursor, Seek, SeekFrom, Write},
-        test_case::{test_case, test_matrix},
+        test_case::test_case,
     };
 
     const SIZE_OF_SHRED_INDEX: usize = 4;
@@ -1937,15 +1937,12 @@ mod tests {
         assert!(flags.contains(ShredFlags::LAST_SHRED_IN_SLOT));
     }
 
-    #[test_matrix(
-        [true, false],
-        [true, false]
-    )]
-    fn test_is_shred_duplicate(chained: bool, is_last_in_slot: bool) {
+    #[test_case(true)]
+    #[test_case(false)]
+    fn test_is_shred_duplicate(is_last_in_slot: bool) {
         fn fill_retransmitter_signature<R: Rng>(
             rng: &mut R,
             shred: Shred,
-            chained: bool,
             is_last_in_slot: bool,
         ) -> Shred {
             let mut shred = shred.into_payload();
@@ -1955,26 +1952,27 @@ mod tests {
                 &mut shred.as_mut(),
                 &Signature::from(signature),
             );
-            if chained && is_last_in_slot {
+            if is_last_in_slot {
                 assert_matches!(out, Ok(()));
             } else {
                 assert_matches!(out, Err(Error::InvalidShredVariant));
             }
             Shred::new_from_serialized_shred(shred).unwrap()
         }
+
         let mut rng = rand::thread_rng();
         let slot = 285_376_049 + rng.gen_range(0..100_000);
         let shreds: Vec<_> = make_merkle_shreds_for_tests(
             &mut rng,
             slot,
             1200 * 5, // data_size
-            chained,
+            true,
             is_last_in_slot,
         )
         .unwrap()
         .into_iter()
         .map(Shred::from)
-        .map(|shred| fill_retransmitter_signature(&mut rng, shred, chained, is_last_in_slot))
+        .map(|shred| fill_retransmitter_signature(&mut rng, shred, is_last_in_slot))
         .collect();
         {
             let num_data_shreds = shreds.iter().filter(|shred| shred.is_data()).count();
@@ -1991,9 +1989,8 @@ mod tests {
         }
         // Different retransmitter signature does not make shreds duplicate.
         for shred in &shreds {
-            let other =
-                fill_retransmitter_signature(&mut rng, shred.clone(), chained, is_last_in_slot);
-            if chained && is_last_in_slot {
+            let other = fill_retransmitter_signature(&mut rng, shred.clone(), is_last_in_slot);
+            if is_last_in_slot {
                 assert_ne!(shred.payload(), other.payload());
             }
             assert!(!shred.is_shred_duplicate(&other));
