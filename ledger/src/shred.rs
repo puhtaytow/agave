@@ -64,9 +64,7 @@ pub use {
 };
 use {
     self::{shred_code::ShredCode, traits::Shred as _},
-    crate::{
-        blockstore::{self},
-    },
+    crate::blockstore::{self},
     assert_matches::debug_assert_matches,
     bitflags::bitflags,
     num_enum::{IntoPrimitive, TryFromPrimitive},
@@ -1002,13 +1000,14 @@ mod tests {
     const SIZE_OF_SHRED_INDEX: usize = 4;
     const SIZE_OF_SHRED_SLOT: usize = 8;
     const SIZE_OF_SHRED_VARIANT: usize = 1;
-    const SIZE_OF_VERSION : usize = 2;
+    const SIZE_OF_VERSION: usize = 2;
     const SIZE_OF_FEC_SET_INDEX: usize = 4;
 
     const OFFSET_OF_SHRED_VARIANT: usize = SIZE_OF_SIGNATURE;
     const OFFSET_OF_SHRED_SLOT: usize = SIZE_OF_SIGNATURE + SIZE_OF_SHRED_VARIANT;
     const OFFSET_OF_SHRED_INDEX: usize = OFFSET_OF_SHRED_SLOT + SIZE_OF_SHRED_SLOT;
-    const OFFSET_OF_FEC_SET_INDEX: usize = OFFSET_OF_SHRED_INDEX + SIZE_OF_SHRED_INDEX + SIZE_OF_VERSION;
+    const OFFSET_OF_FEC_SET_INDEX: usize =
+        OFFSET_OF_SHRED_INDEX + SIZE_OF_SHRED_INDEX + SIZE_OF_VERSION;
     const OFFSET_OF_NUM_DATA: usize = OFFSET_OF_FEC_SET_INDEX + SIZE_OF_FEC_SET_INDEX;
 
     pub(super) fn make_merkle_shreds_for_tests<R: Rng>(
@@ -1440,7 +1439,9 @@ mod tests {
             let bad_fec_set_index = 5u32;
             {
                 let mut cursor = Cursor::new(packet.buffer_mut());
-                cursor.seek(SeekFrom::Start(OFFSET_OF_FEC_SET_INDEX as u64)).unwrap();
+                cursor
+                    .seek(SeekFrom::Start(OFFSET_OF_FEC_SET_INDEX as u64))
+                    .unwrap();
                 cursor.write_all(&bad_fec_set_index.to_le_bytes()).unwrap();
             }
 
@@ -1470,7 +1471,9 @@ mod tests {
                     .seek(SeekFrom::Start(OFFSET_OF_SHRED_INDEX as u64))
                     .unwrap();
                 cursor.write_all(&bad_index.to_le_bytes()).unwrap();
-                cursor.seek(SeekFrom::Start(OFFSET_OF_FEC_SET_INDEX as u64)).unwrap();
+                cursor
+                    .seek(SeekFrom::Start(OFFSET_OF_FEC_SET_INDEX as u64))
+                    .unwrap();
                 cursor.write_all(&fec_set_index.to_le_bytes()).unwrap();
             }
 
@@ -1499,7 +1502,9 @@ mod tests {
             let bad_num_data = 16u16;
             {
                 let mut cursor = Cursor::new(packet.buffer_mut());
-                cursor.seek(SeekFrom::Start(OFFSET_OF_NUM_DATA as u64)).unwrap();
+                cursor
+                    .seek(SeekFrom::Start(OFFSET_OF_NUM_DATA as u64))
+                    .unwrap();
                 cursor.write_all(&bad_num_data.to_le_bytes()).unwrap();
             }
 
@@ -1522,7 +1527,7 @@ mod tests {
             slot,
             1200 * 5, // data_size
             true,     // chained
-            true,    // is_last_in_slot
+            true,     // is_last_in_slot
         )
         .unwrap();
         let shreds: Vec<_> = shreds.into_iter().map(Shred::from).collect();
@@ -1542,9 +1547,13 @@ mod tests {
         let fec_set_index = 0u32;
         {
             let mut cursor = Cursor::new(packet.buffer_mut());
-            cursor.seek(SeekFrom::Start(OFFSET_OF_SHRED_INDEX as u64)).unwrap();
+            cursor
+                .seek(SeekFrom::Start(OFFSET_OF_SHRED_INDEX as u64))
+                .unwrap();
             cursor.write_all(&bad_last_index.to_le_bytes()).unwrap();
-            cursor.seek(SeekFrom::Start(OFFSET_OF_FEC_SET_INDEX as u64)).unwrap();
+            cursor
+                .seek(SeekFrom::Start(OFFSET_OF_FEC_SET_INDEX as u64))
+                .unwrap();
             cursor.write_all(&fec_set_index.to_le_bytes()).unwrap();
         }
 
@@ -1653,16 +1662,15 @@ mod tests {
         }
     }
 
-    #[test_case(false, false, 0b1000_0000)]
-    #[test_case(true, false, 0b1001_0000)]
-    #[test_case(true, true, 0b1011_0000)]
-    fn test_shred_variant_compat_merkle_data(chained: bool, resigned: bool, byte: u8) {
+    #[test_case(false, 0b1001_0000)]
+    #[test_case(true, 0b1011_0000)]
+    fn test_shred_variant_compat_merkle_data(resigned: bool, byte: u8) {
         for proof_size in 0..=15u8 {
             let byte = byte | proof_size;
             assert_eq!(
                 u8::from(ShredVariant::MerkleData {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned,
                 }),
                 byte
@@ -1670,7 +1678,7 @@ mod tests {
             assert_eq!(
                 ShredType::from(ShredVariant::MerkleData {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned,
                 }),
                 ShredType::Data
@@ -1679,13 +1687,13 @@ mod tests {
                 ShredVariant::try_from(byte).unwrap(),
                 ShredVariant::MerkleData {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned
                 }
             );
             let buf = bincode::serialize(&ShredVariant::MerkleData {
                 proof_size,
-                chained,
+                chained: true,
                 resigned,
             })
             .unwrap();
@@ -1694,7 +1702,7 @@ mod tests {
                 bincode::deserialize::<ShredVariant>(&[byte]).unwrap(),
                 ShredVariant::MerkleData {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned
                 }
             );
