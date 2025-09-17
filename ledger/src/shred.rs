@@ -1614,16 +1614,15 @@ mod tests {
         assert_matches!(bincode::deserialize::<ShredVariant>(&[0b1010_0101]), Err(_));
     }
 
-    #[test_case(false, false, 0b0100_0000)]
-    #[test_case(true, false, 0b0110_0000)]
-    #[test_case(true, true, 0b0111_0000)]
-    fn test_shred_variant_compat_merkle_code(chained: bool, resigned: bool, byte: u8) {
+    #[test_case(false, 0b0110_0000)]
+    #[test_case(true, 0b0111_0000)]
+    fn test_shred_variant_compat_merkle_code(resigned: bool, byte: u8) {
         for proof_size in 0..=15u8 {
             let byte = byte | proof_size;
             assert_eq!(
                 u8::from(ShredVariant::MerkleCode {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned,
                 }),
                 byte
@@ -1631,7 +1630,7 @@ mod tests {
             assert_eq!(
                 ShredType::from(ShredVariant::MerkleCode {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned,
                 }),
                 ShredType::Code
@@ -1640,13 +1639,13 @@ mod tests {
                 ShredVariant::try_from(byte).unwrap(),
                 ShredVariant::MerkleCode {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned,
                 },
             );
             let buf = bincode::serialize(&ShredVariant::MerkleCode {
                 proof_size,
-                chained,
+                chained: true,
                 resigned,
             })
             .unwrap();
@@ -1655,7 +1654,7 @@ mod tests {
                 bincode::deserialize::<ShredVariant>(&[byte]).unwrap(),
                 ShredVariant::MerkleCode {
                     proof_size,
-                    chained,
+                    chained: true,
                     resigned,
                 }
             );
