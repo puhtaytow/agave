@@ -2375,7 +2375,7 @@ impl Blockstore {
         let mut all_shreds = vec![];
         let mut slot_entries = vec![];
         let reed_solomon_cache = ReedSolomonCache::default();
-        let mut chained_merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
+        let mut chained_merkle_root = Hash::new_from_array(rand::thread_rng().gen());
         // Find all the entries for start_slot
         for entry in entries.into_iter() {
             if remaining_ticks_in_slot == 0 {
@@ -2403,7 +2403,7 @@ impl Blockstore {
                     );
                 all_shreds.append(&mut data_shreds);
                 all_shreds.append(&mut coding_shreds);
-                chained_merkle_root = Some(coding_shreds.last().unwrap().merkle_root().unwrap());
+                chained_merkle_root = coding_shreds.last().unwrap().merkle_root().unwrap();
                 shredder = Shredder::new(
                     current_slot,
                     parent_slot,
@@ -2424,7 +2424,7 @@ impl Blockstore {
                 keypair,
                 &slot_entries,
                 is_full_slot,
-                chained_merkle_root,
+                Some(chained_merkle_root),
                 0, // next_shred_index
                 0, // next_code_index
                 &reed_solomon_cache,
@@ -4862,7 +4862,7 @@ pub fn create_new_ledger(
         &entries,
         true, // is_last_in_slot
         // chained_merkle_root
-        Some(Hash::new_from_array(rand::thread_rng().gen())),
+        Hash::new_from_array(rand::thread_rng().gen()),
         0, // next_shred_index
         0, // next_code_index
         &ReedSolomonCache::default(),
@@ -7060,7 +7060,7 @@ pub mod tests {
                 &keypair,
                 &entries,
                 true,
-                Some(Hash::default()), // merkle_root
+                Hash::default(), // merkle_root
                 0,
                 0,
                 &rsc,
@@ -7088,9 +7088,9 @@ pub mod tests {
                 &keypair,
                 &[],
                 true,
-                Some(Hash::default()), // merkle_root
-                6,                     // next_shred_index,
-                6,                     // next_code_index
+                Hash::default(), // merkle_root
+                6,               // next_shred_index,
+                6,               // next_code_index
                 &rsc,
                 &mut ProcessShredsStats::default(),
             )
@@ -7151,9 +7151,9 @@ pub mod tests {
                 &Keypair::new(),
                 &entries,
                 true,
-                Some(Hash::default()), // merkle_root
-                last_idx,              // next_shred_index,
-                last_idx,              // next_code_index
+                Hash::default(), // merkle_root
+                last_idx,        // next_shred_index,
+                last_idx,        // next_code_index
                 &rsc,
                 &mut ProcessShredsStats::default(),
             )
@@ -10201,7 +10201,7 @@ pub mod tests {
             &leader_keypair,
             &entries,
             is_last_in_slot,
-            Some(chained_merkle_root),
+            chained_merkle_root,
             fec_set_index, // next_shred_index
             fec_set_index, // next_code_index
             &ReedSolomonCache::default(),
@@ -10261,7 +10261,7 @@ pub mod tests {
         let leader_keypair = Arc::new(Keypair::new());
         let reed_solomon_cache = ReedSolomonCache::default();
         let shredder = Shredder::new(slot, 0, 0, 0).unwrap();
-        let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
+        let merkle_root = Hash::new_from_array(rand::thread_rng().gen());
         let (shreds, _) = shredder.entries_to_merkle_shreds_for_tests(
             &leader_keypair,
             &entries1,
@@ -10621,7 +10621,7 @@ pub mod tests {
         let version = version_from_hash(&entries[0].hash);
         let shredder = Shredder::new(slot, 0, 0, version).unwrap();
         let reed_solomon_cache = ReedSolomonCache::default();
-        let merkle_root = Some(Hash::new_from_array(rand::thread_rng().gen()));
+        let merkle_root = Hash::new_from_array(rand::thread_rng().gen());
         let kp = Keypair::new();
         // produce normal shreds
         let (data1, coding1) = shredder.entries_to_merkle_shreds_for_tests(
