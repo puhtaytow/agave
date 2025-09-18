@@ -760,9 +760,9 @@ mod tests {
                     keypair,
                     &make_entries(rng, num_entries),
                     is_last_in_slot,
-                    Some(Hash::new_from_array(rng.gen())), // chained_merkle_root
-                    rng.gen_range(0..2671),                // next_shred_index
-                    rng.gen_range(0..2781),                // next_code_index
+                    Hash::new_from_array(rng.gen()), // chained_merkle_root
+                    rng.gen_range(0..2671),          // next_shred_index
+                    rng.gen_range(0..2781),          // next_code_index
                     &reed_solomon_cache,
                     &mut ProcessShredsStats::default(),
                 )

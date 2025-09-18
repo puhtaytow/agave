@@ -2424,7 +2424,7 @@ impl Blockstore {
                 keypair,
                 &slot_entries,
                 is_full_slot,
-                Some(chained_merkle_root),
+                chained_merkle_root,
                 0, // next_shred_index
                 0, // next_code_index
                 &reed_solomon_cache,
@@ -5094,10 +5094,9 @@ pub fn entries_to_test_shreds(
             &Keypair::new(),
             entries,
             is_full_slot,
-            // chained_merkle_root
-            Some(Hash::new_from_array(rand::thread_rng().gen())),
-            0, // next_shred_index,
-            0, // next_code_index
+            Hash::new_from_array(rand::thread_rng().gen()), // chained_merkle_root
+            0,                                              // next_shred_index,
+            0,                                              // next_code_index
             &ReedSolomonCache::default(),
             &mut ProcessShredsStats::default(),
         )
@@ -10736,10 +10735,10 @@ pub mod tests {
             .make_merkle_shreds_from_entries(
                 &leader_keypair,
                 &entries,
-                true, // is_last_in_slot
-                Some(Hash::new_unique()),
-                0, // next_shred_index
-                0, // next_code_index,
+                true,               // is_last_in_slot
+                Hash::new_unique(), // chained_merkle_root
+                0,                  // next_shred_index
+                0,                  // next_code_index,
                 &reed_solomon_cache,
                 &mut ProcessShredsStats::default(),
             )
@@ -10752,7 +10751,7 @@ pub mod tests {
                 &leader_keypair,
                 &entries,
                 true, // is_last_in_slot
-                Some(last_data1.chained_merkle_root().unwrap()),
+                last_data1.chained_merkle_root().unwrap(),
                 last_data1.index() + 1, // next_shred_index
                 last_code1.index() + 1, // next_code_index,
                 &reed_solomon_cache,
