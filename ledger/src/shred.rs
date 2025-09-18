@@ -1807,7 +1807,7 @@ mod tests {
                 &keypair,
                 &data,
                 false,
-                Some(Hash::default()),
+                Hash::default(),
                 64,
                 64,
                 &reed_solomon_cache,

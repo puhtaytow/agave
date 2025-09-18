@@ -6876,7 +6876,7 @@ pub mod tests {
                         &keypair,
                         &[],
                         false,
-                        Some(Hash::default()), // merkle_root
+                        Hash::default(), // merkle_root
                         (i * gap) as u32,
                         (i * gap) as u32,
                         &reed_solomon_cache,
@@ -7543,7 +7543,7 @@ pub mod tests {
                 &keypair,
                 &[3, 3, 3],
                 false,
-                Some(Hash::default()),
+                Hash::default(),
                 new_index,
                 new_index,
                 &reed_solomon_cache,
@@ -7886,7 +7886,7 @@ pub mod tests {
                 &keypair,
                 &[1, 1, 1],
                 true,
-                Some(Hash::default()),
+                Hash::default(),
                 next_shred_index as u32,
                 next_shred_index as u32,
                 &reed_solomon_cache,
