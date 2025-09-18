@@ -1014,11 +1014,10 @@ mod tests {
         rng: &mut R,
         slot: Slot,
         data_size: usize,
-        chained: bool,
         is_last_in_slot: bool,
     ) -> Result<Vec<merkle::Shred>, Error> {
         let thread_pool = ThreadPoolBuilder::new().num_threads(2).build().unwrap();
-        let chained_merkle_root = chained.then(|| Hash::new_from_array(rng.gen()));
+        let chained_merkle_root = Hash::new_from_array(rng.gen());
         let parent_offset = rng.gen_range(1..=u16::try_from(slot).unwrap_or(u16::MAX));
         let parent_slot = slot.checked_sub(u64::from(parent_offset)).unwrap();
         let mut data = vec![0u8; data_size];
@@ -1027,7 +1026,7 @@ mod tests {
         merkle::make_shreds_from_data(
             &thread_pool,
             &Keypair::new(),
-            chained_merkle_root,
+            Some(chained_merkle_root),
             &data[..],
             slot,
             parent_slot,
@@ -1168,7 +1167,6 @@ mod tests {
             &mut rng,
             slot,
             1200 * 5, // data_size
-            true,     // chained
             is_last_in_slot,
         )
         .unwrap();
@@ -1418,7 +1416,6 @@ mod tests {
             &mut rng,
             slot,
             1200 * 5, // data_size
-            true,     // chained
             false,    // is_last_in_slot
         )
         .unwrap();
@@ -1526,7 +1523,6 @@ mod tests {
             &mut rng,
             slot,
             1200 * 5, // data_size
-            true,     // chained
             true,     // is_last_in_slot
         )
         .unwrap();
@@ -1966,7 +1962,6 @@ mod tests {
             &mut rng,
             slot,
             1200 * 5, // data_size
-            true,
             is_last_in_slot,
         )
         .unwrap()
