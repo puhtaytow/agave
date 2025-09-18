@@ -7618,7 +7618,12 @@ pub mod tests {
         let slot = 1;
         let (_data_shreds, code_shreds, _) =
             setup_erasure_shreds_with_index_and_chained_merkle_and_last_in_slot(
-                slot, 0, 10, 0, None, true,
+                slot,
+                0,
+                10,
+                0,
+                Hash::default(),
+                true,
             );
         let coding_shred = code_shreds[0].clone();
 
@@ -7655,7 +7660,12 @@ pub mod tests {
         let slot = 1;
         let (_data_shreds, code_shreds, _) =
             setup_erasure_shreds_with_index_and_chained_merkle_and_last_in_slot(
-                slot, 0, 10, 0, None, true,
+                slot,
+                0,
+                10,
+                0,
+                Hash::default(),
+                true,
             );
         let coding_shred = code_shreds[0].clone();
 
@@ -10171,7 +10181,7 @@ pub mod tests {
             parent_slot,
             num_entries,
             fec_set_index,
-            Some(chained_merkle_root),
+            chained_merkle_root,
             true,
         )
     }
@@ -10181,7 +10191,7 @@ pub mod tests {
         parent_slot: u64,
         num_entries: u64,
         fec_set_index: u32,
-        chained_merkle_root: Option<Hash>,
+        chained_merkle_root: Hash,
         is_last_in_slot: bool,
     ) -> (Vec<Shred>, Vec<Shred>, Arc<LeaderScheduleCache>) {
         let entries = make_slot_entries_with_transactions(num_entries);
@@ -10191,7 +10201,7 @@ pub mod tests {
             &leader_keypair,
             &entries,
             is_last_in_slot,
-            chained_merkle_root,
+            Some(chained_merkle_root),
             fec_set_index, // next_shred_index
             fec_set_index, // next_code_index
             &ReedSolomonCache::default(),
@@ -11661,7 +11671,7 @@ pub mod tests {
                 parent_slot,
                 10,
                 fec_set_index,
-                None,
+                Hash::default(),
                 false,
             );
         let merkle_root = first_data_shreds[0].merkle_root().unwrap();
@@ -11672,7 +11682,7 @@ pub mod tests {
                 parent_slot,
                 40,
                 fec_set_index,
-                Some(merkle_root),
+                merkle_root,
                 false,
             );
         let last_index = last_data_shreds.last().unwrap().index();
@@ -11702,7 +11712,7 @@ pub mod tests {
                 parent_slot,
                 100,
                 fec_set_index,
-                None,
+                Hash::default(),
                 false,
             );
         let merkle_root = first_data_shreds[0].merkle_root().unwrap();
@@ -11713,7 +11723,7 @@ pub mod tests {
                 parent_slot,
                 100,
                 fec_set_index,
-                Some(merkle_root),
+                merkle_root,
                 false,
             );
         let last_index = last_data_shreds.last().unwrap().index();
