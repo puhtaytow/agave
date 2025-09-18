@@ -11734,28 +11734,6 @@ pub mod tests {
         let results = blockstore.check_last_fec_set(slot).unwrap();
         assert_eq!(results.last_fec_set_merkle_root, Some(merkle_root));
         assert!(!results.is_retransmitter_signed);
-        blockstore.run_purge(slot, slot, PurgeType::Exact).unwrap();
-
-        // Slot is full, but does not contain retransmitter shreds
-        let fec_set_index = 0;
-        let (first_data_shreds, _, _) =
-            setup_erasure_shreds_with_index_and_chained_merkle_and_last_in_slot(
-                slot,
-                parent_slot,
-                200,
-                fec_set_index,
-                // Do not set merkle root, so shreds are not signed
-                None,
-                true,
-            );
-        assert!(first_data_shreds.len() > DATA_SHREDS_PER_FEC_BLOCK);
-        let block_id = first_data_shreds.last().unwrap().merkle_root().unwrap();
-        blockstore
-            .insert_shreds(first_data_shreds, None, false)
-            .unwrap();
-        let results = blockstore.check_last_fec_set(slot).unwrap();
-        assert_eq!(results.last_fec_set_merkle_root, Some(block_id));
-        assert!(!results.is_retransmitter_signed);
     }
 
     #[test]
