@@ -124,7 +124,15 @@ pub fn new_quic_endpoint(
     endpoint.set_default_client_config(client_config);
     let prune_cache_pending = Arc::<AtomicBool>::default();
     let cache = Arc::<Mutex<HashMap<Pubkey, Connection>>>::default();
-    let router = Arc::<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>::default();
+
+    // let debug = false; // TODO: make switchable maybe ENV?
+    // let router: crate::router::RouterVariant = match debug {
+    //     true => crate::router::MiddlewareRouter::new(),
+    //     false => crate::router::Router::default(),
+    // };
+
+    let router = crate::router::MiddlewareRouter::new();
+
     let (client_sender, client_receiver) = tokio::sync::mpsc::channel(CLIENT_CHANNEL_BUFFER);
     let server_task = runtime.spawn(run_server(
         endpoint.clone(),
@@ -199,14 +207,16 @@ fn new_transport_config() -> TransportConfig {
     config
 }
 
-async fn run_server(
+async fn run_server<R>(
     endpoint: Endpoint,
     sender: Sender<(Pubkey, SocketAddr, Bytes)>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     let stats = Arc::<TurbineQuicStats>::default();
     let report_metrics_task =
         tokio::task::spawn(report_metrics_task("turbine_quic_server", stats.clone()));
@@ -234,15 +244,17 @@ async fn run_server(
     report_metrics_task.abort();
 }
 
-async fn run_client(
+async fn run_client<R>(
     endpoint: Endpoint,
     mut receiver: AsyncReceiver<(SocketAddr, Bytes)>,
     sender: Sender<(Pubkey, SocketAddr, Bytes)>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     let stats = Arc::<TurbineQuicStats>::default();
     let report_metrics_task =
         tokio::task::spawn(report_metrics_task("turbine_quic_client", stats.clone()));
@@ -305,10 +317,12 @@ async fn handle_connecting_task(
     sender: Sender<(Pubkey, SocketAddr, Bytes)>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
     stats: Arc<TurbineQuicStats>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     if let Err(err) = handle_connecting(
         endpoint,
         connecting,
@@ -332,10 +346,12 @@ async fn handle_connecting(
     sender: Sender<(Pubkey, SocketAddr, Bytes)>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
     stats: Arc<TurbineQuicStats>,
-) -> Result<(), Error> {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     let connection = connecting.await?;
     let remote_address = connection.remote_address();
     let remote_pubkey = get_remote_pubkey(&connection)?;
@@ -371,10 +387,12 @@ async fn handle_connection(
     receiver: AsyncReceiver<Bytes>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
     stats: Arc<TurbineQuicStats>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     cache_connection(
         remote_pubkey,
         connection.clone(),
@@ -471,10 +489,12 @@ async fn make_connection_task(
     receiver: AsyncReceiver<Bytes>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
     stats: Arc<TurbineQuicStats>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     if let Err(err) = make_connection(
         endpoint,
         remote_address,
@@ -500,10 +520,13 @@ async fn make_connection(
     receiver: AsyncReceiver<Bytes>,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
     stats: Arc<TurbineQuicStats>,
-) -> Result<(), Error> {
+) -> Result<(), Error>
+where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     let server_name = socket_addr_to_quic_server_name(remote_address);
     let connection = endpoint.connect(remote_address, &server_name)?.await?;
     handle_connection(
@@ -541,9 +564,11 @@ async fn cache_connection(
     connection: Connection,
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     let (old, should_prune_cache) = {
         let mut cache = cache.lock().await;
         (
@@ -586,9 +611,11 @@ async fn drop_connection(
 async fn prune_connection_cache(
     bank_forks: Arc<RwLock<BankForks>>,
     prune_cache_pending: Arc<AtomicBool>,
-    router: Arc<AsyncRwLock<HashMap<SocketAddr, AsyncSender<Bytes>>>>,
+    router: R,
     cache: Arc<Mutex<HashMap<Pubkey, Connection>>>,
-) {
+) where
+    R: crate::router::Router + Send + Sync + Clone + 'static,
+{
     debug_assert!(prune_cache_pending.load(Ordering::Relaxed));
     let staked_nodes = {
         let root_bank = bank_forks.read().unwrap().root_bank();
