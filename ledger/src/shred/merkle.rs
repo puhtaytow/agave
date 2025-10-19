@@ -163,7 +163,6 @@ impl ShredData {
     // the slice storing ledger entries in the shred.
     pub(super) fn get_data(
         shred: &[u8],
-        _proof_size: u8,
         resigned: bool,
         size: u16, // DataShredHeader.size
     ) -> Result<&[u8], Error> {
@@ -582,13 +581,13 @@ impl ShredDataTrait for ShredData {
     #[inline]
     fn data(&self) -> Result<&[u8], Error> {
         let ShredVariant::MerkleData {
-            proof_size,
+            proof_size: _,
             resigned,
         } = self.common_header.shred_variant
         else {
             return Err(Error::InvalidShredVariant);
         };
-        Self::get_data(&self.payload, proof_size, resigned, self.data_header.size)
+        Self::get_data(&self.payload, resigned, self.data_header.size)
     }
 }
 

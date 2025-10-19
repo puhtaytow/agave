@@ -159,9 +159,9 @@ pub(crate) fn get_data(shred: &[u8]) -> Result<&[u8], Error> {
     match get_shred_variant(shred)? {
         ShredVariant::MerkleCode { .. } => Err(Error::InvalidShredType),
         ShredVariant::MerkleData {
-            proof_size,
+            proof_size: _,
             resigned,
-        } => shred::merkle::ShredData::get_data(shred, proof_size, resigned, get_data_size(shred)?),
+        } => shred::merkle::ShredData::get_data(shred, resigned, get_data_size(shred)?),
     }
 }
 
