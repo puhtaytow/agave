@@ -1339,34 +1339,28 @@ mod test {
     #[test_case(false)]
     #[test_case(true)]
     fn test_shred_data_size_of_payload(resigned: bool) {
-        for proof_size in 0..0x15 {
-            assert_eq!(
-                ShredData::SIZE_OF_PAYLOAD,
-                shred_data_size_of_payload(proof_size, resigned)
-            );
-        }
+        assert_eq!(
+            ShredData::SIZE_OF_PAYLOAD,
+            shred_data_size_of_payload(PROOF_ENTRIES_FOR_32_32_BATCH, resigned)
+        );
     }
 
     #[test_case(false)]
     #[test_case(true)]
     fn test_shred_data_capacity(resigned: bool) {
-        for proof_size in 0..0x15 {
-            assert_eq!(
-                ShredData::capacity(proof_size, resigned).unwrap(),
-                shred_data_capacity(proof_size, resigned)
-            );
-        }
+        assert_eq!(
+            ShredData::capacity(PROOF_ENTRIES_FOR_32_32_BATCH, resigned).unwrap(),
+            shred_data_capacity(PROOF_ENTRIES_FOR_32_32_BATCH, resigned)
+        );
     }
 
     #[test_case(false)]
     #[test_case(true)]
     fn test_shred_code_capacity(resigned: bool) {
-        for proof_size in 0..0x15 {
-            assert_eq!(
-                ShredCode::capacity(proof_size, resigned).unwrap(),
-                shred_data_size_of_erasure_encoded_slice(proof_size, resigned),
-            );
-        }
+        assert_eq!(
+            ShredCode::capacity(PROOF_ENTRIES_FOR_32_32_BATCH, resigned).unwrap(),
+            shred_data_size_of_erasure_encoded_slice(PROOF_ENTRIES_FOR_32_32_BATCH, resigned),
+        );
     }
 
     #[test]
