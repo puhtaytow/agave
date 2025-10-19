@@ -195,7 +195,7 @@ impl ShredData {
                 .map(usize::try_from)?
                 .ok()?
         };
-        let proof_offset = Self::get_proof_offset(proof_size, resigned).ok()?;
+        let proof_offset = Self::get_proof_offset(resigned).ok()?;
         let proof = get_merkle_proof(shred, proof_offset, proof_size).ok()?;
         let node = get_merkle_node(shred, SIZE_OF_SIGNATURE..proof_offset).ok()?;
         get_merkle_root(index, node, proof).ok()
@@ -242,7 +242,7 @@ impl ShredCode {
                 .ok()?;
             num_data_shreds.checked_add(position)?
         };
-        let proof_offset = Self::get_proof_offset(proof_size, resigned).ok()?;
+        let proof_offset = Self::get_proof_offset(resigned).ok()?;
         let proof = get_merkle_proof(shred, proof_offset, proof_size).ok()?;
         let node = get_merkle_node(shred, SIZE_OF_SIGNATURE..proof_offset).ok()?;
         get_merkle_root(index, node, proof).ok()
@@ -282,16 +282,16 @@ macro_rules! impl_merkle_shred {
         // Where the merkle proof starts in the shred binary.
         fn proof_offset(&self) -> Result<usize, Error> {
             let ShredVariant::$variant {
-                proof_size,
+                proof_size: _,
                 resigned,
             } = self.common_header.shred_variant
             else {
                 return Err(Error::InvalidShredVariant);
             };
-            Self::get_proof_offset(proof_size, resigned)
+            Self::get_proof_offset(resigned)
         }
 
-        fn get_proof_offset(_proof_size: u8, resigned: bool) -> Result<usize, Error> {
+        fn get_proof_offset(resigned: bool) -> Result<usize, Error> {
             Ok(Self::SIZE_OF_HEADERS + Self::capacity(resigned)? + SIZE_OF_MERKLE_ROOT)
         }
 
@@ -416,7 +416,7 @@ macro_rules! impl_merkle_shred {
             if !resigned {
                 return Err(Error::InvalidShredVariant);
             }
-            let proof_offset = Self::get_proof_offset(proof_size, resigned)?;
+            let proof_offset = Self::get_proof_offset(resigned)?;
             Ok(proof_offset + usize::from(proof_size) * SIZE_OF_MERKLE_PROOF_ENTRY)
         }
 
