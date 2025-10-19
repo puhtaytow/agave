@@ -178,11 +178,11 @@ impl ShredData {
             })
     }
 
-    pub(super) fn get_merkle_root(shred: &[u8], proof_size: u8, resigned: bool) -> Option<Hash> {
+    pub(super) fn get_merkle_root(shred: &[u8], resigned: bool) -> Option<Hash> {
         debug_assert_eq!(
             shred::layout::get_shred_variant(shred).unwrap(),
             ShredVariant::MerkleData {
-                proof_size,
+                proof_size: PROOF_ENTRIES_FOR_32_32_BATCH,
                 resigned,
             },
         );
@@ -221,11 +221,11 @@ impl ShredCode {
     // Offset into the payload where the erasure coded slice begins.
     const ERASURE_SHARD_START_OFFSET: usize = Self::SIZE_OF_HEADERS;
 
-    pub(super) fn get_merkle_root(shred: &[u8], proof_size: u8, resigned: bool) -> Option<Hash> {
+    pub(super) fn get_merkle_root(shred: &[u8], resigned: bool) -> Option<Hash> {
         debug_assert_eq!(
             shred::layout::get_shred_variant(shred).unwrap(),
             ShredVariant::MerkleCode {
-                proof_size,
+                proof_size: PROOF_ENTRIES_FOR_32_32_BATCH,
                 resigned,
             },
         );
