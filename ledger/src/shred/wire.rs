@@ -242,13 +242,13 @@ pub fn get_merkle_root(shred: &[u8]) -> Option<Hash> {
 pub(crate) fn get_chained_merkle_root(shred: &[u8]) -> Option<Hash> {
     let offset = match get_shred_variant(shred).ok()? {
         ShredVariant::MerkleCode {
-            proof_size,
+            proof_size: _,
             resigned,
-        } => shred::merkle::ShredCode::get_chained_merkle_root_offset(proof_size, resigned),
+        } => shred::merkle::ShredCode::get_chained_merkle_root_offset(resigned),
         ShredVariant::MerkleData {
-            proof_size,
+            proof_size: _,
             resigned,
-        } => shred::merkle::ShredData::get_chained_merkle_root_offset(proof_size, resigned),
+        } => shred::merkle::ShredData::get_chained_merkle_root_offset(resigned),
     }
     .ok()?;
     let merkle_root = shred.get(offset..offset + SIZE_OF_MERKLE_ROOT)?;

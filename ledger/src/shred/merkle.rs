@@ -297,19 +297,16 @@ macro_rules! impl_merkle_shred {
 
         fn chained_merkle_root_offset(&self) -> Result<usize, Error> {
             let ShredVariant::$variant {
-                proof_size,
+                proof_size: _,
                 resigned,
             } = self.common_header.shred_variant
             else {
                 return Err(Error::InvalidShredVariant);
             };
-            Self::get_chained_merkle_root_offset(proof_size, resigned)
+            Self::get_chained_merkle_root_offset(resigned)
         }
 
-        pub(super) fn get_chained_merkle_root_offset(
-            _proof_size: u8,
-            resigned: bool,
-        ) -> Result<usize, Error> {
+        pub(super) fn get_chained_merkle_root_offset(resigned: bool) -> Result<usize, Error> {
             Ok(Self::SIZE_OF_HEADERS + Self::capacity(resigned)?)
         }
 
