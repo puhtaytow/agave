@@ -183,8 +183,8 @@ pub enum Error {
     InvalidParentSlot { slot: Slot, parent_slot: Slot },
     #[error("Invalid payload size: {0}")]
     InvalidPayloadSize(/*payload size:*/ usize),
-    #[error("Invalid proof size: {0}")]
-    InvalidProofSize(/*proof_size:*/ u8),
+    #[error("Invalid proof size")]
+    InvalidProofSize,
     #[error("Invalid recovered shred")]
     InvalidRecoveredShred,
     #[error("Invalid shard size: {0}")]

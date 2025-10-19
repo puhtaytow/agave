@@ -275,7 +275,7 @@ macro_rules! impl_merkle_shred {
                         + usize::from(PROOF_ENTRIES_FOR_32_32_BATCH) * SIZE_OF_MERKLE_PROOF_ENTRY
                         + if resigned { SIZE_OF_SIGNATURE } else { 0 },
                 )
-                .ok_or(Error::InvalidProofSize(PROOF_ENTRIES_FOR_32_32_BATCH))
+                .ok_or(Error::InvalidProofSize)
         }
 
         // Where the merkle proof starts in the shred binary.
@@ -358,7 +358,7 @@ macro_rules! impl_merkle_shred {
             let mut slice = self
                 .payload
                 .get_mut(proof_offset..)
-                .ok_or(Error::InvalidProofSize(proof_size))?;
+                .ok_or(Error::InvalidProofSize)?;
             let mut cursor = Cursor::new(slice.as_mut());
             let proof_size = usize::from(proof_size);
             proof.into_iter().enumerate().try_for_each(|(k, entry)| {
