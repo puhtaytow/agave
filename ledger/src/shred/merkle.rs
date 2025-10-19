@@ -280,11 +280,7 @@ macro_rules! impl_merkle_shred {
 
         // Where the merkle proof starts in the shred binary.
         fn proof_offset(&self) -> Result<usize, Error> {
-            let ShredVariant::$variant {
-                proof_size: _,
-                resigned,
-            } = self.common_header.shred_variant
-            else {
+            let ShredVariant::$variant { resigned, .. } = self.common_header.shred_variant else {
                 return Err(Error::InvalidShredVariant);
             };
             Self::get_proof_offset(resigned)
@@ -413,11 +409,7 @@ macro_rules! impl_merkle_shred {
             if self.payload.len() != Self::SIZE_OF_PAYLOAD {
                 return Err(Error::InvalidPayloadSize(self.payload.len()));
             }
-            let ShredVariant::$variant {
-                proof_size: _,
-                resigned,
-            } = self.common_header.shred_variant
-            else {
+            let ShredVariant::$variant { resigned, .. } = self.common_header.shred_variant else {
                 return Err(Error::InvalidShredVariant);
             };
             let offset = Self::SIZE_OF_HEADERS + Self::capacity(resigned)?;
