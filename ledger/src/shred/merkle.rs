@@ -263,7 +263,7 @@ macro_rules! impl_merkle_shred {
         // For ShredCode, size of buffer embedding erasure codes.
         // For ShredData, maximum size of ledger data that can be embedded in a
         // data-shred, which is also equal to:
-        //   ShredCode::capacity(proof_size, chained, resigned).unwrap()
+        //   ShredCode::capacity(resigned).unwrap()
         //       - ShredData::SIZE_OF_HEADERS
         //       + SIZE_OF_SIGNATURE
         pub(super) fn capacity(resigned: bool) -> Result<usize, Error> {
