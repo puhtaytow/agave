@@ -85,8 +85,8 @@ impl ShredData {
     // Maximum size of ledger data that can be embedded in a data-shred.
     // merkle_proof_size is the number of merkle proof entries.
     // None indicates a legacy data-shred.
-    pub fn capacity(proof_size: u8, resigned: bool) -> Result<usize, Error> {
-        merkle::ShredData::capacity(proof_size, resigned)
+    pub fn capacity(resigned: bool) -> Result<usize, Error> {
+        merkle::ShredData::capacity(resigned)
     }
 
     pub(super) fn retransmitter_signature(&self) -> Result<Signature, Error> {

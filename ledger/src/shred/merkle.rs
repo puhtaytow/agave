@@ -163,12 +163,12 @@ impl ShredData {
     // the slice storing ledger entries in the shred.
     pub(super) fn get_data(
         shred: &[u8],
-        proof_size: u8,
+        _proof_size: u8,
         resigned: bool,
         size: u16, // DataShredHeader.size
     ) -> Result<&[u8], Error> {
         let size = usize::from(size);
-        let data_buffer_size = Self::capacity(proof_size, resigned)?;
+        let data_buffer_size = Self::capacity(resigned)?;
         (Self::SIZE_OF_HEADERS..=Self::SIZE_OF_HEADERS + data_buffer_size)
             .contains(&size)
             .then(|| shred.get(Self::SIZE_OF_HEADERS..size))
@@ -266,17 +266,17 @@ macro_rules! impl_merkle_shred {
         //   ShredCode::capacity(proof_size, chained, resigned).unwrap()
         //       - ShredData::SIZE_OF_HEADERS
         //       + SIZE_OF_SIGNATURE
-        pub(super) fn capacity(proof_size: u8, resigned: bool) -> Result<usize, Error> {
+        pub(super) fn capacity(resigned: bool) -> Result<usize, Error> {
             // Merkle proof is generated and signed after coding shreds are
             // generated. Coding shred headers cannot be erasure coded either.
             Self::SIZE_OF_PAYLOAD
                 .checked_sub(
                     Self::SIZE_OF_HEADERS
                         + SIZE_OF_MERKLE_ROOT
-                        + usize::from(proof_size) * SIZE_OF_MERKLE_PROOF_ENTRY
+                        + usize::from(PROOF_ENTRIES_FOR_32_32_BATCH) * SIZE_OF_MERKLE_PROOF_ENTRY
                         + if resigned { SIZE_OF_SIGNATURE } else { 0 },
                 )
-                .ok_or(Error::InvalidProofSize(proof_size))
+                .ok_or(Error::InvalidProofSize(PROOF_ENTRIES_FOR_32_32_BATCH))
         }
 
         // Where the merkle proof starts in the shred binary.
@@ -291,8 +291,8 @@ macro_rules! impl_merkle_shred {
             Self::get_proof_offset(proof_size, resigned)
         }
 
-        fn get_proof_offset(proof_size: u8, resigned: bool) -> Result<usize, Error> {
-            Ok(Self::SIZE_OF_HEADERS + Self::capacity(proof_size, resigned)? + SIZE_OF_MERKLE_ROOT)
+        fn get_proof_offset(_proof_size: u8, resigned: bool) -> Result<usize, Error> {
+            Ok(Self::SIZE_OF_HEADERS + Self::capacity(resigned)? + SIZE_OF_MERKLE_ROOT)
         }
 
         fn chained_merkle_root_offset(&self) -> Result<usize, Error> {
@@ -307,10 +307,10 @@ macro_rules! impl_merkle_shred {
         }
 
         pub(super) fn get_chained_merkle_root_offset(
-            proof_size: u8,
+            _proof_size: u8,
             resigned: bool,
         ) -> Result<usize, Error> {
-            Ok(Self::SIZE_OF_HEADERS + Self::capacity(proof_size, resigned)?)
+            Ok(Self::SIZE_OF_HEADERS + Self::capacity(resigned)?)
         }
 
         pub(super) fn chained_merkle_root(&self) -> Result<Hash, Error> {
@@ -426,13 +426,13 @@ macro_rules! impl_merkle_shred {
                 return Err(Error::InvalidPayloadSize(self.payload.len()));
             }
             let ShredVariant::$variant {
-                proof_size,
+                proof_size: _,
                 resigned,
             } = self.common_header.shred_variant
             else {
                 return Err(Error::InvalidShredVariant);
             };
-            let offset = Self::SIZE_OF_HEADERS + Self::capacity(proof_size, resigned)?;
+            let offset = Self::SIZE_OF_HEADERS + Self::capacity(resigned)?;
             Ok(Self::ERASURE_SHARD_START_OFFSET..offset)
         }
 
@@ -931,8 +931,8 @@ fn make_shreds_data<'a>(
     debug_assert_matches!(common_header.shred_variant, ShredVariant::MerkleData { .. });
     chunks.into_iter().map(move |chunk| {
         debug_assert_matches!(common_header.shred_variant,
-            ShredVariant::MerkleData { proof_size, resigned }
-            if chunk.len() <= ShredData::capacity(proof_size,  resigned).unwrap()
+            ShredVariant::MerkleData { proof_size: _, resigned }
+            if chunk.len() <= ShredData::capacity(resigned).unwrap()
         );
         let size = ShredData::SIZE_OF_HEADERS + chunk.len();
         let mut payload = vec![0u8; ShredData::SIZE_OF_PAYLOAD];
@@ -992,12 +992,12 @@ pub(crate) fn make_shreds_from_data(
     let proof_size = PROOF_ENTRIES_FOR_32_32_BATCH;
 
     // unsigned data_buffer size
-    let data_buffer_per_shred_size = ShredData::capacity(proof_size, false)?;
+    let data_buffer_per_shred_size = ShredData::capacity(false)?;
     let data_buffer_total_size = DATA_SHREDS_PER_FEC_BLOCK * data_buffer_per_shred_size;
 
     // signed data_buffer size
     let data_buffer_per_shred_size_signed = if is_last_in_slot {
-        ShredData::capacity(proof_size, true)?
+        ShredData::capacity(true)?
     } else {
         0
     };
@@ -1097,7 +1097,7 @@ pub(crate) fn make_shreds_from_data(
     if !unsigned_data.is_empty() || (shreds.is_empty() && !is_last_in_slot) {
         stats.padding_bytes += data_buffer_total_size - unsigned_data.len();
         shred_leftover_data(
-            proof_size,
+            PROOF_ENTRIES_FOR_32_32_BATCH,
             false,
             unsigned_data,
             data_buffer_per_shred_size,
@@ -1110,7 +1110,7 @@ pub(crate) fn make_shreds_from_data(
     if !signed_data.is_empty() || (shreds.is_empty() && is_last_in_slot) {
         stats.padding_bytes += data_buffer_total_size_signed - signed_data.len();
         shred_leftover_data(
-            proof_size,
+            PROOF_ENTRIES_FOR_32_32_BATCH,
             true,
             signed_data,
             data_buffer_per_shred_size_signed,
@@ -1310,11 +1310,11 @@ mod test {
     };
 
     // Total size of a data shred including headers and merkle proof.
-    fn shred_data_size_of_payload(proof_size: u8, resigned: bool) -> usize {
+    fn shred_data_size_of_payload(_proof_size: u8, resigned: bool) -> usize {
         ShredData::SIZE_OF_HEADERS
-            + ShredData::capacity(proof_size, resigned).unwrap()
+            + ShredData::capacity(resigned).unwrap()
             + SIZE_OF_MERKLE_ROOT
-            + usize::from(proof_size) * SIZE_OF_MERKLE_PROOF_ENTRY
+            + usize::from(PROOF_ENTRIES_FOR_32_32_BATCH) * SIZE_OF_MERKLE_PROOF_ENTRY
             + if resigned { SIZE_OF_SIGNATURE } else { 0 }
     }
 
@@ -1322,10 +1322,10 @@ mod test {
     // All payload excluding merkle proof and the signature are erasure coded.
     // Therefore the data capacity is equal to erasure encoded shard size minus
     // size of erasure encoded header.
-    fn shred_data_capacity(proof_size: u8, resigned: bool) -> usize {
+    fn shred_data_capacity(_proof_size: u8, resigned: bool) -> usize {
         const SIZE_OF_ERASURE_ENCODED_HEADER: usize =
             ShredData::SIZE_OF_HEADERS - SIZE_OF_SIGNATURE;
-        ShredCode::capacity(proof_size, resigned).unwrap() - SIZE_OF_ERASURE_ENCODED_HEADER
+        ShredCode::capacity(resigned).unwrap() - SIZE_OF_ERASURE_ENCODED_HEADER
     }
 
     fn shred_data_size_of_erasure_encoded_slice(proof_size: u8, resigned: bool) -> usize {
@@ -1349,7 +1349,7 @@ mod test {
     #[test_case(true)]
     fn test_shred_data_capacity(resigned: bool) {
         assert_eq!(
-            ShredData::capacity(PROOF_ENTRIES_FOR_32_32_BATCH, resigned).unwrap(),
+            ShredData::capacity(resigned).unwrap(),
             shred_data_capacity(PROOF_ENTRIES_FOR_32_32_BATCH, resigned)
         );
     }
@@ -1358,7 +1358,7 @@ mod test {
     #[test_case(true)]
     fn test_shred_code_capacity(resigned: bool) {
         assert_eq!(
-            ShredCode::capacity(PROOF_ENTRIES_FOR_32_32_BATCH, resigned).unwrap(),
+            ShredCode::capacity(resigned).unwrap(),
             shred_data_size_of_erasure_encoded_slice(PROOF_ENTRIES_FOR_32_32_BATCH, resigned),
         );
     }
@@ -1425,7 +1425,7 @@ mod test {
         let keypair = Keypair::new();
         let num_shreds = num_data_shreds + num_coding_shreds;
         let proof_size = get_proof_size(num_shreds);
-        let capacity = ShredData::capacity(proof_size, resigned).unwrap();
+        let capacity = ShredData::capacity(resigned).unwrap();
         let common_header = ShredCommonHeader {
             signature: Signature::default(),
             shred_variant: ShredVariant::MerkleData {

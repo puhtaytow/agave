@@ -873,15 +873,12 @@ pub fn max_entries_per_n_shred_last_or_not(
     // Default 32:32 erasure batches yields 64 shreds; log2(64) = 6.
     if !is_last_in_slot {
         // all shreds are unsigned
-        let shred_data_size =
-            ShredData::capacity(/*proof_size:*/ 6, /*resigned:*/ false).unwrap() as u64;
+        let shred_data_size = ShredData::capacity(/*resigned:*/ false).unwrap() as u64;
         (shred_data_size * num_shreds - count_size) / entry_size
     } else {
         // last FEC SET is signed, all others are unsigned
-        let shred_data_size_unsigned =
-            ShredData::capacity(/*proof_size:*/ 6, /*resigned:*/ false).unwrap() as u64;
-        let shred_data_size_signed =
-            ShredData::capacity(/*proof_size:*/ 6, /*resigned:*/ true).unwrap() as u64;
+        let shred_data_size_unsigned = ShredData::capacity(/*resigned:*/ false).unwrap() as u64;
+        let shred_data_size_signed = ShredData::capacity(/*resigned:*/ true).unwrap() as u64;
         let shreds_per_fec_block = SHREDS_PER_FEC_BLOCK as u64;
         (shred_data_size_unsigned * (num_shreds - shreds_per_fec_block)
             + shred_data_size_signed * shreds_per_fec_block
@@ -896,7 +893,7 @@ pub fn max_entries_per_n_shred(
     shred_data_size: Option<usize>,
 ) -> u64 {
     // Default 32:32 erasure batches yields 64 shreds; log2(64) = 6.
-    let data_buffer_size = ShredData::capacity(/*proof_size:*/ 6, /*resigned:*/ true).unwrap();
+    let data_buffer_size = ShredData::capacity(/*resigned:*/ true).unwrap();
     let shred_data_size = shred_data_size.unwrap_or(data_buffer_size) as u64;
     let vec_size = wincode::serialized_size(&vec![entry]).unwrap();
     let entry_size = wincode::serialized_size(entry).unwrap();
