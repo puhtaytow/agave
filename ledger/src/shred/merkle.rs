@@ -200,17 +200,17 @@ impl ShredData {
         get_merkle_root(index, node, proof).ok()
     }
 
-    pub(crate) const fn const_capacity(proof_size: u8, resigned: bool) -> Result<usize, u8> {
+    pub(crate) const fn const_capacity(resigned: bool) -> Result<usize, u8> {
         // Merkle proof is generated and signed after coding shreds are
         // generated. Coding shred headers cannot be erasure coded either.
         match Self::SIZE_OF_PAYLOAD.checked_sub(
             Self::SIZE_OF_HEADERS
                 + SIZE_OF_MERKLE_ROOT
-                + (proof_size as usize) * SIZE_OF_MERKLE_PROOF_ENTRY
+                + (PROOF_ENTRIES_FOR_32_32_BATCH as usize) * SIZE_OF_MERKLE_PROOF_ENTRY
                 + if resigned { SIZE_OF_SIGNATURE } else { 0 },
         ) {
             Some(v) => Ok(v),
-            None => Err(proof_size),
+            None => Err(PROOF_ENTRIES_FOR_32_32_BATCH),
         }
     }
 }

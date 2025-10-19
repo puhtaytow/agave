@@ -50,10 +50,7 @@
 //! So, given a) - c), we must restrict data shred's payload length such that the entire coding
 //! payload can fit into one coding shred / packet.
 
-pub(crate) use self::{
-    merkle_tree::{PROOF_ENTRIES_FOR_32_32_BATCH, SIZE_OF_MERKLE_ROOT},
-    payload::serde_bytes_payload,
-};
+pub(crate) use self::{merkle_tree::SIZE_OF_MERKLE_ROOT, payload::serde_bytes_payload};
 pub use {
     self::{
         payload::Payload,
@@ -129,7 +126,7 @@ pub const MAX_CODE_SHREDS_PER_SLOT: usize = MAX_DATA_SHREDS_PER_SLOT;
 // 2. Merkles are chained
 // 3. No retransmit signature (only included for last batch)
 pub const fn get_data_shred_bytes_per_batch_typical() -> u64 {
-    let capacity = match merkle::ShredData::const_capacity(PROOF_ENTRIES_FOR_32_32_BATCH, false) {
+    let capacity = match merkle::ShredData::const_capacity(false) {
         Ok(v) => v,
         Err(_proof_size) => {
             panic!("this is unreachable");
