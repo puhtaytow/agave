@@ -395,25 +395,19 @@ macro_rules! impl_merkle_shred {
         }
 
         pub(super) fn retransmitter_signature_offset(&self) -> Result<usize, Error> {
-            let ShredVariant::$variant {
-                proof_size,
-                resigned,
-            } = self.common_header.shred_variant
-            else {
+            let ShredVariant::$variant { resigned, .. } = self.common_header.shred_variant else {
                 return Err(Error::InvalidShredVariant);
             };
-            Self::get_retransmitter_signature_offset(proof_size, resigned)
+            Self::get_retransmitter_signature_offset(resigned)
         }
 
-        pub(super) fn get_retransmitter_signature_offset(
-            proof_size: u8,
-            resigned: bool,
-        ) -> Result<usize, Error> {
+        pub(super) fn get_retransmitter_signature_offset(resigned: bool) -> Result<usize, Error> {
             if !resigned {
                 return Err(Error::InvalidShredVariant);
             }
             let proof_offset = Self::get_proof_offset(resigned)?;
-            Ok(proof_offset + usize::from(proof_size) * SIZE_OF_MERKLE_PROOF_ENTRY)
+            Ok(proof_offset
+                + usize::from(PROOF_ENTRIES_FOR_32_32_BATCH) * SIZE_OF_MERKLE_PROOF_ENTRY)
         }
 
         // Returns the offsets into the payload which are erasure coded.

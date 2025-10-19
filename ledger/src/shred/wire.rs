@@ -260,13 +260,13 @@ pub(crate) fn get_chained_merkle_root(shred: &[u8]) -> Option<Hash> {
 fn get_retransmitter_signature_offset(shred: &[u8]) -> Result<usize, Error> {
     match get_shred_variant(shred)? {
         ShredVariant::MerkleCode {
-            proof_size,
+            proof_size: _,
             resigned,
-        } => shred::merkle::ShredCode::get_retransmitter_signature_offset(proof_size, resigned),
+        } => shred::merkle::ShredCode::get_retransmitter_signature_offset(resigned),
         ShredVariant::MerkleData {
-            proof_size,
+            proof_size: _,
             resigned,
-        } => shred::merkle::ShredData::get_retransmitter_signature_offset(proof_size, resigned),
+        } => shred::merkle::ShredData::get_retransmitter_signature_offset(resigned),
     }
 }
 
@@ -337,7 +337,7 @@ pub fn resign_shred(shred: &mut [u8], keypair: &Keypair) -> Result<(), Error> {
             proof_size,
             resigned,
         } => (
-            shred::merkle::ShredCode::get_retransmitter_signature_offset(proof_size, resigned)?,
+            shred::merkle::ShredCode::get_retransmitter_signature_offset(resigned)?,
             shred::merkle::ShredCode::get_merkle_root(shred, proof_size, resigned)
                 .ok_or(Error::InvalidMerkleRoot)?,
         ),
@@ -345,7 +345,7 @@ pub fn resign_shred(shred: &mut [u8], keypair: &Keypair) -> Result<(), Error> {
             proof_size,
             resigned,
         } => (
-            shred::merkle::ShredData::get_retransmitter_signature_offset(proof_size, resigned)?,
+            shred::merkle::ShredData::get_retransmitter_signature_offset(resigned)?,
             shred::merkle::ShredData::get_merkle_root(shred, proof_size, resigned)
                 .ok_or(Error::InvalidMerkleRoot)?,
         ),
