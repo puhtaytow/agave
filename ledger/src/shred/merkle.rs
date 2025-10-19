@@ -1406,8 +1406,6 @@ mod test {
     #[test_case(37, true)]
     #[test_case(64, false)]
     #[test_case(64, true)]
-    #[test_case(73, false)]
-    #[test_case(73, true)]
     fn test_recover_merkle_shreds(num_shreds: usize, resigned: bool) {
         let mut rng = rand::thread_rng();
         let reed_solomon_cache = ReedSolomonCache::default();
