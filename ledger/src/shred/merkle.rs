@@ -195,7 +195,7 @@ impl ShredData {
                 .ok()?
         };
         let proof_offset = Self::get_proof_offset(resigned).ok()?;
-        let proof = get_merkle_proof(shred, proof_offset, proof_size).ok()?;
+        let proof = get_merkle_proof(shred, proof_offset).ok()?;
         let node = get_merkle_node(shred, SIZE_OF_SIGNATURE..proof_offset).ok()?;
         get_merkle_root(index, node, proof).ok()
     }
@@ -242,7 +242,7 @@ impl ShredCode {
             num_data_shreds.checked_add(position)?
         };
         let proof_offset = Self::get_proof_offset(resigned).ok()?;
-        let proof = get_merkle_proof(shred, proof_offset, proof_size).ok()?;
+        let proof = get_merkle_proof(shred, proof_offset).ok()?;
         let node = get_merkle_node(shred, SIZE_OF_SIGNATURE..proof_offset).ok()?;
         get_merkle_root(index, node, proof).ok()
     }
@@ -332,18 +332,16 @@ macro_rules! impl_merkle_shred {
         }
 
         pub(super) fn merkle_root(&self) -> Result<Hash, Error> {
-            let proof_size = self.proof_size()?;
             let index = self.erasure_shard_index()?;
             let proof_offset = self.proof_offset()?;
-            let proof = get_merkle_proof(&self.payload, proof_offset, proof_size)?;
+            let proof = get_merkle_proof(&self.payload, proof_offset)?;
             let node = get_merkle_node(&self.payload, SIZE_OF_SIGNATURE..proof_offset)?;
             get_merkle_root(index, node, proof)
         }
 
         fn merkle_proof(&self) -> Result<impl Iterator<Item = &MerkleProofEntry>, Error> {
-            let proof_size = self.proof_size()?;
             let proof_offset = self.proof_offset()?;
-            get_merkle_proof(&self.payload, proof_offset, proof_size)
+            get_merkle_proof(&self.payload, proof_offset)
         }
 
         fn merkle_node(&self) -> Result<Hash, Error> {
@@ -595,9 +593,8 @@ impl ShredCodeTrait for ShredCode {
 fn get_merkle_proof(
     shred: &[u8],
     proof_offset: usize, // Where the merkle proof starts.
-    proof_size: u8,      // Number of proof entries.
 ) -> Result<impl Iterator<Item = &MerkleProofEntry>, Error> {
-    let proof_size = usize::from(proof_size) * SIZE_OF_MERKLE_PROOF_ENTRY;
+    let proof_size = usize::from(PROOF_ENTRIES_FOR_32_32_BATCH) * SIZE_OF_MERKLE_PROOF_ENTRY;
     Ok(shred
         .get(proof_offset..proof_offset + proof_size)
         .ok_or(Error::InvalidPayloadSize(shred.len()))?
@@ -1378,42 +1375,25 @@ mod test {
         }
     }
 
-    #[test_case(19, false)]
-    #[test_case(19, true)]
-    #[test_case(31, false)]
-    #[test_case(31, true)]
-    #[test_case(32, false)]
-    #[test_case(32, true)]
-    #[test_case(33, false)]
-    #[test_case(33, true)]
-    #[test_case(37, false)]
-    #[test_case(37, true)]
-    #[test_case(64, false)]
-    #[test_case(64, true)]
-    fn test_recover_merkle_shreds(num_shreds: usize, resigned: bool) {
+    #[test_case(false)]
+    #[test_case(true)]
+    fn test_recover_merkle_shreds(resigned: bool) {
         let mut rng = rand::thread_rng();
-        let reed_solomon_cache = ReedSolomonCache::default();
-        for num_data_shreds in 1..num_shreds {
-            let num_coding_shreds = num_shreds - num_data_shreds;
-            run_recover_merkle_shreds(
-                &mut rng,
-                resigned,
-                num_data_shreds,
-                num_coding_shreds,
-                &reed_solomon_cache,
-            );
-        }
+        run_recover_merkle_shreds(&mut rng, resigned, &ReedSolomonCache::default());
     }
 
     fn run_recover_merkle_shreds<R: Rng + CryptoRng>(
         rng: &mut R,
         resigned: bool,
-        num_data_shreds: usize,
-        num_coding_shreds: usize,
+
         reed_solomon_cache: &ReedSolomonCache,
     ) {
+        // TODO:
+        let num_data_shreds = 32;
+        let num_coding_shreds = 32;
+        let num_shreds = 64;
+
         let keypair = Keypair::new();
-        let num_shreds = num_data_shreds + num_coding_shreds;
         let proof_size = get_proof_size(num_shreds);
         let capacity = ShredData::capacity(resigned).unwrap();
         let common_header = ShredCommonHeader {
