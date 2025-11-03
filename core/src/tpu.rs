@@ -28,7 +28,7 @@ use {
     bytes::Bytes,
     crossbeam_channel::{bounded, unbounded, Receiver},
     solana_clock::Slot,
-    solana_gossip::cluster_info::ClusterInfo,
+    solana_gossip::{cluster_info::ClusterInfo, sockets::TpuSockets},
     solana_keypair::Keypair,
     solana_ledger::{
         blockstore::Blockstore, blockstore_processor::TransactionStatusSender,
@@ -62,7 +62,7 @@ use {
     },
     std::{
         collections::HashMap,
-        net::{SocketAddr, UdpSocket},
+        net::SocketAddr,
         num::NonZeroUsize,
         sync::{atomic::AtomicBool, Arc, RwLock},
         thread::{self, JoinHandle},
@@ -71,19 +71,6 @@ use {
     tokio::sync::{mpsc, mpsc::Sender as AsyncSender},
     tokio_util::sync::CancellationToken,
 };
-
-pub struct TpuSockets {
-    pub transactions: Vec<UdpSocket>,
-    pub transaction_forwards: Vec<UdpSocket>,
-    pub vote: Vec<UdpSocket>,
-    pub broadcast: Vec<UdpSocket>,
-    pub transactions_quic: Vec<UdpSocket>,
-    pub transactions_forwards_quic: Vec<UdpSocket>,
-    pub vote_quic: Vec<UdpSocket>,
-    /// Client-side socket for the forwarding votes.
-    pub vote_forwarding_client: UdpSocket,
-    pub vortexor_receivers: Option<Vec<UdpSocket>>,
-}
 
 /// The `SigVerifier` enum is used to determine whether to use a local or remote signature verifier.
 enum SigVerifier {
@@ -176,6 +163,8 @@ impl Tpu {
             vote_quic: tpu_vote_quic_sockets,
             vote_forwarding_client: vote_forwarding_client_socket,
             vortexor_receivers,
+            vote_client_quic: _,
+            transaction_forwarding_clients: _,
         } = sockets;
 
         let (packet_sender, packet_receiver) = unbounded();
