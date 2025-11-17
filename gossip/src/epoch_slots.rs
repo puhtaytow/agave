@@ -247,7 +247,14 @@ impl CompressedSlots {
     }
 }
 
-#[cfg_attr(feature = "frozen-abi", derive(AbiExample))]
+#[cfg_attr(feature = "frozen-abi", derive(StableAbi), derive(AbiExample))]
+#[cfg_attr(
+    feature = "frozen-abi",
+    frozen_abi(
+        digest = "H4pHPLGaqzQVAnMDKCgHD3R5sqWNxZwpCuZpmukAQSa",
+        abi_digest = "5RoDSUMyqu38JmXiZBKXzAGRuku7JfHtKamyGqnYN7ND"
+    )
+)]
 #[derive(Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
 pub struct EpochSlots {
     pub from: Pubkey,
