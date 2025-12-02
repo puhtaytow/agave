@@ -12,7 +12,7 @@ use {
     derive(AbiExample, AbiEnumVisitor, StableAbi),
     frozen_abi(
         api_digest = "6NFC2nmHc5VdjYKn6cbiskj9cLyk7jsWErJinojzYQhX",
-        abi_digest = "42YgWB8k6nErZJWqmcxN4QoRBVoeTHTymgDS99HdDUfz"
+        abi_digest = "9r9qhxnqApLXM4GWi5ZSnAbKSb4TxG8RepUTfLQEBj5h"
     )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -31,15 +31,15 @@ pub enum Vote {
 
 #[cfg(feature = "frozen-abi")]
 impl solana_frozen_abi::rand::prelude::Distribution<Vote>
-    for solana_frozen_abi::rand::distributions::Standard
+    for solana_frozen_abi::rand::distr::StandardUniform
 {
     fn sample<R: solana_frozen_abi::rand::Rng + ?Sized>(&self, rng: &mut R) -> Vote {
-        match rng.r#gen_range(0..5) {
-            0 => Vote::Notarize(rng.r#gen()),
-            1 => Vote::Finalize(rng.r#gen()),
-            2 => Vote::Skip(rng.r#gen()),
-            3 => Vote::NotarizeFallback(rng.r#gen()),
-            _ => Vote::SkipFallback(rng.r#gen()),
+        match rng.random_range(0..5) {
+            0 => Vote::Notarize(rng.random()),
+            1 => Vote::Finalize(rng.random()),
+            2 => Vote::Skip(rng.random()),
+            3 => Vote::NotarizeFallback(rng.random()),
+            _ => Vote::SkipFallback(rng.random()),
         }
     }
 }
@@ -170,12 +170,12 @@ pub struct NotarizationVote {
 
 #[cfg(feature = "frozen-abi")]
 impl solana_frozen_abi::rand::prelude::Distribution<NotarizationVote>
-    for solana_frozen_abi::rand::distributions::Standard
+    for solana_frozen_abi::rand::distr::StandardUniform
 {
     fn sample<R: solana_frozen_abi::rand::Rng + ?Sized>(&self, rng: &mut R) -> NotarizationVote {
         NotarizationVote {
-            slot: rng.r#gen(),
-            block_id: Hash::new_from_array(rng.r#gen()),
+            slot: rng.random(),
+            block_id: Hash::new_from_array(rng.random()),
         }
     }
 }
@@ -197,10 +197,10 @@ pub struct FinalizationVote {
 
 #[cfg(feature = "frozen-abi")]
 impl solana_frozen_abi::rand::prelude::Distribution<FinalizationVote>
-    for solana_frozen_abi::rand::distributions::Standard
+    for solana_frozen_abi::rand::distr::StandardUniform
 {
     fn sample<R: solana_frozen_abi::rand::Rng + ?Sized>(&self, rng: &mut R) -> FinalizationVote {
-        FinalizationVote { slot: rng.r#gen() }
+        FinalizationVote { slot: rng.random() }
     }
 }
 
@@ -223,10 +223,10 @@ pub struct SkipVote {
 
 #[cfg(feature = "frozen-abi")]
 impl solana_frozen_abi::rand::prelude::Distribution<SkipVote>
-    for solana_frozen_abi::rand::distributions::Standard
+    for solana_frozen_abi::rand::distr::StandardUniform
 {
     fn sample<R: solana_frozen_abi::rand::Rng + ?Sized>(&self, rng: &mut R) -> SkipVote {
-        SkipVote { slot: rng.r#gen() }
+        SkipVote { slot: rng.random() }
     }
 }
 
@@ -249,15 +249,15 @@ pub struct NotarizationFallbackVote {
 
 #[cfg(feature = "frozen-abi")]
 impl solana_frozen_abi::rand::prelude::Distribution<NotarizationFallbackVote>
-    for solana_frozen_abi::rand::distributions::Standard
+    for solana_frozen_abi::rand::distr::StandardUniform
 {
     fn sample<R: solana_frozen_abi::rand::Rng + ?Sized>(
         &self,
         rng: &mut R,
     ) -> NotarizationFallbackVote {
         NotarizationFallbackVote {
-            slot: rng.r#gen(),
-            block_id: Hash::new_from_array(rng.r#gen()),
+            slot: rng.random(),
+            block_id: Hash::new_from_array(rng.random()),
         }
     }
 }
@@ -279,9 +279,9 @@ pub struct SkipFallbackVote {
 
 #[cfg(feature = "frozen-abi")]
 impl solana_frozen_abi::rand::prelude::Distribution<SkipFallbackVote>
-    for solana_frozen_abi::rand::distributions::Standard
+    for solana_frozen_abi::rand::distr::StandardUniform
 {
     fn sample<R: solana_frozen_abi::rand::Rng + ?Sized>(&self, rng: &mut R) -> SkipFallbackVote {
-        SkipFallbackVote { slot: rng.r#gen() }
+        SkipFallbackVote { slot: rng.random() }
     }
 }
