@@ -30,31 +30,25 @@ impl PushActiveSet {
 
     pub(crate) fn get_nodes<'a>(
         &'a self,
-        pubkey: &'a Pubkey, // This node.
-        origin: &'a Pubkey, // CRDS value owner.
-        stakes: &HashMap<Pubkey, u64>,
+        pubkey: &'a Pubkey,
+        origin: &'a Pubkey,
+        _stakes: &HashMap<Pubkey, u64>,
     ) -> impl Iterator<Item = &'a Pubkey> + 'a + use<'a> {
-        let stake = stakes.get(pubkey).min(stakes.get(origin));
-        self.get_entry(stake).get_nodes(pubkey, origin)
+        self.0
+            .iter()
+            .flat_map(|entry| entry.0.keys())
+            .filter(move |node| *node != pubkey && *node != origin)
     }
 
     // Prunes origins for the given gossip node.
     // We will stop pushing messages from the specified origins to the node.
     pub(crate) fn prune(
         &self,
-        pubkey: &Pubkey,    // This node.
-        node: &Pubkey,      // Gossip node.
-        origins: &[Pubkey], // CRDS value owners.
-        stakes: &HashMap<Pubkey, u64>,
+        _pubkey: &Pubkey,    // This node.
+        _node: &Pubkey,      // Gossip node.
+        _origins: &[Pubkey], // CRDS value owners.
+        _stakes: &HashMap<Pubkey, u64>,
     ) {
-        let stake = stakes.get(pubkey);
-        for origin in origins {
-            if origin == pubkey {
-                continue;
-            }
-            let stake = stake.min(stakes.get(origin));
-            self.get_entry(stake).prune(node, origin)
-        }
     }
 
     pub(crate) fn rotate<R: Rng>(
@@ -103,6 +97,12 @@ impl PushActiveSet {
     }
 }
 
+// self.0
+//     .iter()
+//     .flat_map(|entry| entry.0.keys())
+//     .filter(move |node| *node != pubkey)
+//     .filter(move |node| *node != origin)
+
 impl PushActiveSetEntry {
     const BLOOM_FALSE_RATE: f64 = 0.1;
     const BLOOM_MAX_BITS: usize = 1024 * 8 * 4;
@@ -112,25 +112,17 @@ impl PushActiveSetEntry {
         pubkey: &'a Pubkey, // This node.
         origin: &'a Pubkey, // CRDS value owner.
     ) -> impl Iterator<Item = &'a Pubkey> + 'a {
-        let pubkey_eq_origin = pubkey == origin;
         self.0
             .iter()
-            .filter(move |(node, bloom_filter)| {
-                // Bloom filter can return false positive for origin == pubkey
-                // but a node should always be able to push its own values.
-                !bloom_filter.contains(origin) || (pubkey_eq_origin && &pubkey != node)
-            })
-            .map(|(node, _bloom_filter)| node)
+            .map(|(node, _)| node)
+            .filter(move |node| *node != pubkey && *node != origin)
     }
 
     fn prune(
         &self,
-        node: &Pubkey,   // Gossip node.
-        origin: &Pubkey, // CRDS value owner
+        _node: &Pubkey,   // Gossip node.
+        _origin: &Pubkey, // CRDS value owner
     ) {
-        if let Some(bloom_filter) = self.0.get(node) {
-            bloom_filter.add(origin);
-        }
     }
 
     fn rotate<R: Rng>(
