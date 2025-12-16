@@ -329,22 +329,11 @@ pub(crate) fn get_gossip_nodes<R: Rng>(
 ) -> Vec<ContactInfo> {
     // Exclude nodes which have not been active for this long.
     const ACTIVE_TIMEOUT: Duration = Duration::from_secs(60);
-    let active_cutoff = now.saturating_sub(ACTIVE_TIMEOUT.as_millis() as u64);
+    let _active_cutoff = now.saturating_sub(ACTIVE_TIMEOUT.as_millis() as u64);
     let crds = crds.read().unwrap();
+
     crds.get_nodes()
-        .filter_map(|value| {
-            let node = value.value.contact_info().unwrap();
-            // Exclude nodes which have not been active recently.
-            if value.local_timestamp < active_cutoff {
-                // In order to mitigate eclipse attack, for staked nodes
-                // continue retrying periodically.
-                let stake = stakes.get(node.pubkey()).copied().unwrap_or_default();
-                if stake == 0u64 || !rng.gen_ratio(1, 16) {
-                    return None;
-                }
-            }
-            Some(node)
-        })
+        .filter_map(|value| Some(value.value.contact_info().unwrap()))
         .filter(|node| {
             node.pubkey() != pubkey
                 && verify_shred_version(node.shred_version())

@@ -113,6 +113,7 @@ impl PushActiveSetEntry {
         origin: &'a Pubkey, // CRDS value owner.
     ) -> impl Iterator<Item = &'a Pubkey> + 'a {
         let pubkey_eq_origin = pubkey == origin;
+
         self.0
             .iter()
             .filter(move |(node, bloom_filter)| {

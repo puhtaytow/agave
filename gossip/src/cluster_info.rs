@@ -1305,12 +1305,14 @@ impl ClusterInfo {
                     should_retain_crds_value(value, stakes, GossipFilterDirection::EgressPush)
                 })
         };
+
         self.stats
             .push_fanout_num_entries
             .add_relaxed(entries.len() as u64);
         self.stats
             .push_fanout_num_nodes
             .add_relaxed(num_pushes as u64);
+
         let push_messages: Vec<_> = {
             let gossip_crds =
                 self.time_gossip_read_lock("push_req_lookup", &self.stats.new_push_requests2);
@@ -1890,12 +1892,16 @@ impl ClusterInfo {
             let now = timestamp();
             self.gossip.process_push_message(messages, now)
         };
+
         // Generate prune messages.
         let prune_messages = self.generate_prune_messages(thread_pool, origins, stakes);
+
         let mut packet_batch = make_gossip_packet_batch(prune_messages, recycler, &self.stats);
+
         self.new_push_requests(stakes)
             .filter_map(|(addr, data)| make_gossip_packet(addr, &data, &self.stats))
             .for_each(|pkt| packet_batch.push(pkt));
+
         if !packet_batch.is_empty() {
             if let Err(TrySendError::Full(packet_batch)) =
                 response_sender.try_send(packet_batch.into())

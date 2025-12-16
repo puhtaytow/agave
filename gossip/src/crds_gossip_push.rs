@@ -133,6 +133,7 @@ impl CrdsGossipPush {
         let mut origins = HashSet::new();
         for (from, values) in messages {
             self.num_total.fetch_add(values.len(), Ordering::Relaxed);
+
             for value in values {
                 if !wallclock_window.contains(&value.wallclock()) {
                     continue;
@@ -180,10 +181,12 @@ impl CrdsGossipPush {
         const MAX_NUM_PUSHES: usize = 1 << 12;
         let mut num_pushes = 0;
         let mut values = Vec::new();
+
         let mut push_messages = HashMap::<Pubkey, Vec</*index:*/ usize>>::new();
         let wallclock_window = self.wallclock_window(now);
-        let active_set = self.active_set.read().unwrap();
+
         let mut crds_cursor = self.crds_cursor.lock().unwrap();
+
         // crds should be locked last after self.{active_set,crds_cursor}.
         let crds = crds.read().unwrap();
         let entries = crds
@@ -191,33 +194,40 @@ impl CrdsGossipPush {
             .map(|entry| &entry.value)
             .filter(|value| wallclock_window.contains(&value.wallclock()))
             .filter(|value| should_retain_crds_value(value));
+
         'outer: for value in entries {
             let origin = value.pubkey();
-            let mut nodes = active_set
-                .get_nodes(pubkey, &origin, stakes)
-                .take(self.push_fanout)
-                .peekable();
+
+            let mut nodes = crds.get_nodes().peekable();
+
             let index = values.len();
             if nodes.peek().is_some() {
                 values.push(value.clone())
             }
             let should_report =
                 should_report_message_signature(value.signature(), SIGNATURE_SAMPLE_LEADING_ZEROS);
-            for &node in nodes {
-                if should_report {
-                    log_gossip_crds_sample_egress(value, &node);
-                }
-                push_messages.entry(node).or_default().push(index);
+
+            for node in nodes {
+                // if should_report {
+                //     log_gossip_crds_sample_egress(value, node.value.pubkey());
+                // }
+
+                push_messages
+                    .entry(node.value.pubkey())
+                    .or_default()
+                    .push(index);
                 num_pushes += 1;
                 if num_pushes >= MAX_NUM_PUSHES {
                     break 'outer;
                 }
             }
         }
+
         drop(crds);
         drop(crds_cursor);
-        drop(active_set);
+
         self.num_pushes.fetch_add(num_pushes, Ordering::Relaxed);
+
         (values, push_messages, num_pushes)
     }
 
