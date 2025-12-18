@@ -29,7 +29,7 @@ impl HashInfo {
     derive(AbiExample, StableAbi),
     frozen_abi(
         api_digest = "DZVVXt4saSgH1CWGrzBcX2sq5yswCuRqGx1Y1ZehtWT6",
-        abi_digest = "5CwTMLh6gzK47YvweZRL7r7ZCXC7hS3CDiPkF9xCRKFm"
+        abi_digest = "Bg5kuZpsniKaMAmMXt19dczR92MrhJGZHHDM1CZXj1C"
     )
 )]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,21 +46,20 @@ pub struct BlockhashQueue {
     max_age: usize,
 }
 
-// #[cfg(feature = "frozen-abi")]
+#[cfg(feature = "frozen-abi")]
 impl<'a> arbitrary::Arbitrary<'a> for BlockhashQueue {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        use ahash::RandomState;
-
         let num_hashes = u.int_in_range(0..=1000)?;
-        let mut hashes: HashMap<Hash, HashInfo, RandomState> = HashMap::with_capacity_and_hasher(
-            num_hashes,
-            RandomState::with_seeds(
-                u.arbitrary()?,
-                u.arbitrary()?,
-                u.arbitrary()?,
-                u.arbitrary()?,
-            ),
-        );
+        let mut hashes: HashMap<Hash, HashInfo, ahash::RandomState> =
+            HashMap::with_capacity_and_hasher(
+                num_hashes,
+                ahash::RandomState::with_seeds(
+                    u.arbitrary()?,
+                    u.arbitrary()?,
+                    u.arbitrary()?,
+                    u.arbitrary()?,
+                ),
+            );
         for _ in 0..num_hashes {
             let hash = Hash::new_from_array(u.arbitrary()?);
             let info = HashInfo {

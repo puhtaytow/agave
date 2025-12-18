@@ -16,8 +16,11 @@ pub type Block = (Slot, Hash);
 /// A consensus vote.
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "A9wHKYuPgAR7cxidTT51ACVv5WNqHkfj2jVqJLGBC5bv")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "A9wHKYuPgAR7cxidTT51ACVv5WNqHkfj2jVqJLGBC5bv",
+        abi_digest = "HBKh1X4nMVewJDFL5GA7zE5MRdm9GKa7FDvJZdHjC3bi"
+    )
 )]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VoteMessage {
@@ -29,11 +32,25 @@ pub struct VoteMessage {
     pub rank: u16,
 }
 
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for VoteMessage {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            vote: u.arbitrary()?,
+            signature: solana_bls_signatures::signature::Signature(u.arbitrary()?),
+            rank: u.arbitrary()?,
+        })
+    }
+}
+
 /// The different types of certificates and their relevant state.
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample, AbiEnumVisitor),
-    frozen_abi(digest = "CazjewshYYizgQuCgBBRv6gzasJpUvFVKoSeEirWRKgA")
+    derive(AbiExample, AbiEnumVisitor, StableAbi),
+    frozen_abi(
+        api_digest = "CazjewshYYizgQuCgBBRv6gzasJpUvFVKoSeEirWRKgA",
+        abi_digest = "3FsH8efdYXRgfbrskhQEWW2iKtxK83inGLCsE792w6Xp"
+    )
 )]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub enum CertificateType {
@@ -49,6 +66,33 @@ pub enum CertificateType {
     Skip(Slot),
     /// Genesis certificate
     Genesis(Slot, Hash),
+}
+
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for CertificateType {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let variant: u8 = u.int_in_range(0..=5)?;
+        match variant {
+            0 => Ok(Self::Finalize(u.arbitrary()?)),
+            1 => Ok(Self::FinalizeFast(
+                u.arbitrary()?,
+                Hash::new_from_array(u.arbitrary()?),
+            )),
+            2 => Ok(Self::Notarize(
+                u.arbitrary()?,
+                Hash::new_from_array(u.arbitrary()?),
+            )),
+            3 => Ok(Self::NotarizeFallback(
+                u.arbitrary()?,
+                Hash::new_from_array(u.arbitrary()?),
+            )),
+            4 => Ok(Self::Skip(u.arbitrary()?)),
+            _ => Ok(Self::Genesis(
+                u.arbitrary()?,
+                Hash::new_from_array(u.arbitrary()?),
+            )),
+        }
+    }
 }
 
 impl CertificateType {
@@ -80,8 +124,11 @@ impl CertificateType {
 /// BLS vote message, we need rank to look up pubkey
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "CLJbmbTECu2MeBmqWNDsfTgkAC2yudxHsmNU9saww8L")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "CLJbmbTECu2MeBmqWNDsfTgkAC2yudxHsmNU9saww8L",
+        abi_digest = "8kkzEBFhWYa2Cz7NQLFMKqBsAJPq481ZTn1PuzZXgv7B"
+    )
 )]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Certificate {
@@ -94,11 +141,25 @@ pub struct Certificate {
     pub bitmap: Vec<u8>,
 }
 
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for Certificate {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            cert_type: u.arbitrary()?,
+            signature: solana_bls_signatures::signature::Signature(u.arbitrary()?),
+            bitmap: u.arbitrary()?,
+        })
+    }
+}
+
 /// A consensus message sent between validators.
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample, AbiEnumVisitor),
-    frozen_abi(digest = "4YvBgNbve59tf9i4DSraiSZ3eoMF4Y1V5mDdUCoFv8S2")
+    derive(AbiExample, AbiEnumVisitor, StableAbi, arbitrary::Arbitrary),
+    frozen_abi(
+        api_digest = "4YvBgNbve59tf9i4DSraiSZ3eoMF4Y1V5mDdUCoFv8S2",
+        abi_digest = "Fdbxxd4CQ8hBJdXBTitD21Vud8DnxvuBeUiEffFvWRbs"
+    )
 )]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]

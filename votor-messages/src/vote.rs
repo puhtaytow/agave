@@ -9,8 +9,11 @@ use {
 /// structures expected by the program
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample, AbiEnumVisitor),
-    frozen_abi(digest = "AgKoR2cpjUSVCW7Cpihob5nDiPcFt1PXmoPKWJg3zuSB")
+    derive(AbiExample, AbiEnumVisitor, StableAbi, arbitrary::Arbitrary),
+    frozen_abi(
+        api_digest = "AgKoR2cpjUSVCW7Cpihob5nDiPcFt1PXmoPKWJg3zuSB",
+        abi_digest = "4BT6j92CPi33ofLeQrKP251ubZfKWM3taPaXi3YfjZDh"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Vote {
@@ -156,8 +159,11 @@ impl From<GenesisVote> for Vote {
 /// A notarization vote
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "5AdwChAjsj5QUXLdpDnGGK2L2nA8y8EajVXi6jsmTv1m")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "5AdwChAjsj5QUXLdpDnGGK2L2nA8y8EajVXi6jsmTv1m",
+        api_digest = "5AdwChAjsj5QUXLdpDnGGK2L2nA8y8EajVXi6jsmTv1m"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct NotarizationVote {
@@ -167,11 +173,24 @@ pub struct NotarizationVote {
     pub block_id: Hash,
 }
 
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for NotarizationVote {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            slot: u.arbitrary()?,
+            block_id: Hash::new_from_array(u.arbitrary()?),
+        })
+    }
+}
+
 /// A finalization vote
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "2XQ5N6YLJjF28w7cMFFUQ9SDgKuf9JpJNtAiXSPA8vR2")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "2XQ5N6YLJjF28w7cMFFUQ9SDgKuf9JpJNtAiXSPA8vR2",
+        abi_digest = "2yVVG53brso9tTHZ29MKLDmjCbLghZ7wXvJRbMmprw3s"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct FinalizationVote {
@@ -179,13 +198,25 @@ pub struct FinalizationVote {
     pub slot: Slot,
 }
 
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for FinalizationVote {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            slot: u.arbitrary()?,
+        })
+    }
+}
+
 /// A skip vote
 /// Represents a range of slots to skip
 /// inclusive on both ends
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "G8Nrx3sMYdnLpHsCNark3BGA58BmW2sqNnqjkYhQHtN")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "G8Nrx3sMYdnLpHsCNark3BGA58BmW2sqNnqjkYhQHtN",
+        abi_digest = "2yVVG53brso9tTHZ29MKLDmjCbLghZ7wXvJRbMmprw3s"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SkipVote {
@@ -193,11 +224,23 @@ pub struct SkipVote {
     pub slot: Slot,
 }
 
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for SkipVote {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            slot: u.arbitrary()?,
+        })
+    }
+}
+
 /// A notarization fallback vote
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "7j5ZPwwyz1FaG3fpyQv5PVnQXicdSmqSk8NvqzkG1Eqz")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "7j5ZPwwyz1FaG3fpyQv5PVnQXicdSmqSk8NvqzkG1Eqz",
+        abi_digest = "BkQcVz6VVfYmUMnbLP3NLPENWMp8H3gDdoNgN46Q5BW2"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct NotarizationFallbackVote {
@@ -207,16 +250,38 @@ pub struct NotarizationFallbackVote {
     pub block_id: Hash,
 }
 
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for NotarizationFallbackVote {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            slot: u.arbitrary()?,
+            block_id: Hash::new_from_array(u.arbitrary()?),
+        })
+    }
+}
+
 /// A skip fallback vote
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "WsUNum8V62gjRU1yAnPuBMAQui4YvMwD1RwrzHeYkeF")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "WsUNum8V62gjRU1yAnPuBMAQui4YvMwD1RwrzHeYkeF",
+        abi_digest = "2yVVG53brso9tTHZ29MKLDmjCbLghZ7wXvJRbMmprw3s"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct SkipFallbackVote {
     /// The slot this vote is cast for.
     pub slot: Slot,
+}
+
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for SkipFallbackVote {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            slot: u.arbitrary()?,
+        })
+    }
 }
 
 /// A genesis vote. Only used during the migration from TowerBFT
@@ -225,7 +290,7 @@ pub struct SkipFallbackVote {
     derive(AbiExample, StableAbi),
     frozen_abi(
         api_digest = "2JAiHmnnKHCzhkyCY3Bej6rAaVkMHsXgRcz1TPCNqAJ9",
-        abi_digest = "_H7dyqfRmWs7FYfzMNNFmkCdPYRvoXvEQZSawcdKk53jo"
+        abi_digest = "BkQcVz6VVfYmUMnbLP3NLPENWMp8H3gDdoNgN46Q5BW2"
     )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
