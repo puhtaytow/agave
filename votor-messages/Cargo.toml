@@ -15,11 +15,13 @@ dev-context-only-utils = []
 frozen-abi = [
     "dep:solana-frozen-abi",
     "dep:solana-frozen-abi-macro",
+    "dep:arbitrary",
     "solana-hash/frozen-abi",
     "solana-bls-signatures/frozen-abi",
 ]
 
 [dependencies]
+arbitrary = { workspace = true, features = ["derive"], optional = true}
 agave-feature-set = { workspace = true }
 agave-logger = { workspace = true }
 log = { workspace = true }

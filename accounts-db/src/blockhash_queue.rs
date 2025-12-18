@@ -26,8 +26,11 @@ impl HashInfo {
 /// Low memory overhead, so can be cloned for every checkpoint
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "DZVVXt4saSgH1CWGrzBcX2sq5yswCuRqGx1Y1ZehtWT6")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "DZVVXt4saSgH1CWGrzBcX2sq5yswCuRqGx1Y1ZehtWT6",
+        abi_digest = "5CwTMLh6gzK47YvweZRL7r7ZCXC7hS3CDiPkF9xCRKFm"
+    )
 )]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BlockhashQueue {
@@ -41,6 +44,42 @@ pub struct BlockhashQueue {
 
     /// hashes older than `max_age` will be dropped from the queue
     max_age: usize,
+}
+
+// #[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for BlockhashQueue {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        use ahash::RandomState;
+
+        let num_hashes = u.int_in_range(0..=1000)?;
+        let mut hashes: HashMap<Hash, HashInfo, RandomState> = HashMap::with_capacity_and_hasher(
+            num_hashes,
+            RandomState::with_seeds(
+                u.arbitrary()?,
+                u.arbitrary()?,
+                u.arbitrary()?,
+                u.arbitrary()?,
+            ),
+        );
+        for _ in 0..num_hashes {
+            let hash = Hash::new_from_array(u.arbitrary()?);
+            let info = HashInfo {
+                fee_calculator: FeeCalculator {
+                    lamports_per_signature: u.arbitrary()?,
+                },
+                hash_index: u.arbitrary()?,
+                timestamp: u.arbitrary()?,
+            };
+            hashes.insert(hash, info);
+        }
+
+        Ok(Self {
+            last_hash_index: u.arbitrary()?,
+            last_hash: Some(Hash::new_from_array(u.arbitrary()?)),
+            hashes,
+            max_age: u.arbitrary()?,
+        })
+    }
 }
 
 impl Default for BlockhashQueue {

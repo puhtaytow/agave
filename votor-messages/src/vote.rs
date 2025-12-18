@@ -222,8 +222,11 @@ pub struct SkipFallbackVote {
 /// A genesis vote. Only used during the migration from TowerBFT
 #[cfg_attr(
     feature = "frozen-abi",
-    derive(AbiExample),
-    frozen_abi(digest = "2JAiHmnnKHCzhkyCY3Bej6rAaVkMHsXgRcz1TPCNqAJ9")
+    derive(AbiExample, StableAbi),
+    frozen_abi(
+        api_digest = "2JAiHmnnKHCzhkyCY3Bej6rAaVkMHsXgRcz1TPCNqAJ9",
+        abi_digest = "_H7dyqfRmWs7FYfzMNNFmkCdPYRvoXvEQZSawcdKk53jo"
+    )
 )]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct GenesisVote {
@@ -231,4 +234,14 @@ pub struct GenesisVote {
     pub slot: Slot,
     /// The block hash being voted on
     pub block_id: Hash,
+}
+
+#[cfg(feature = "frozen-abi")]
+impl<'a> arbitrary::Arbitrary<'a> for GenesisVote {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            slot: u.arbitrary()?,
+            block_id: Hash::new_from_array(u.arbitrary()?),
+        })
+    }
 }

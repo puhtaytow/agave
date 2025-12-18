@@ -32,11 +32,13 @@ frozen-abi = [
     "dev-context-only-utils",
     "dep:solana-frozen-abi",
     "dep:solana-frozen-abi-macro",
+    "dep:arbitrary",
     "solana-fee-calculator/frozen-abi",
     "solana-vote-program/frozen-abi",
 ]
 
 [dependencies]
+arbitrary = { workspace = true, features = ["derive"], optional = true}
 agave-fs = { workspace = true }
 ahash = { workspace = true }
 bincode = { workspace = true }
