@@ -208,10 +208,6 @@ impl CrdsGossipPush {
                 should_report_message_signature(value.signature(), SIGNATURE_SAMPLE_LEADING_ZEROS);
 
             for node in nodes {
-                // if should_report {
-                //     log_gossip_crds_sample_egress(value, node.value.pubkey());
-                // }
-
                 push_messages
                     .entry(node.value.pubkey())
                     .or_default()
