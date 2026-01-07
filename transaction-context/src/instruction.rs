@@ -2,16 +2,16 @@ use {
     crate::{
         instruction_accounts::BorrowedInstructionAccount,
         vm_addresses::{
-            GUEST_INSTRUCTION_ACCOUNTS_ADDRESS, GUEST_INSTRUCTION_DATA_BASE_ADDRESS,
+            GUEST_INSTRUCTION_ACCOUNT_BASE_ADDRESS, GUEST_INSTRUCTION_DATA_BASE_ADDRESS,
             GUEST_REGION_SIZE,
         },
         vm_slice::VmSlice,
-        IndexOfAccount, InstructionAccount, TransactionContext, MAX_ACCOUNTS_PER_TRANSACTION,
+        IndexOfAccount, InstructionAccount, TransactionContext,
     },
     solana_account::ReadableAccount,
     solana_instruction::error::InstructionError,
     solana_pubkey::Pubkey,
-    std::{collections::HashSet, ops::Range},
+    std::collections::HashSet,
 };
 
 /// Instruction shared between runtime and programs.
@@ -37,50 +37,23 @@ impl Default for InstructionFrame {
 }
 
 impl InstructionFrame {
-    /// This function retrieves the range to index transaction_context.instruction_accounts
-    pub fn instruction_accounts_range(&self) -> Range<usize> {
-        let first_account_index = self
-            .instruction_accounts
-            .ptr()
-            .saturating_sub(GUEST_INSTRUCTION_ACCOUNTS_ADDRESS)
-            .checked_div(size_of::<InstructionAccount>() as u64)
-            .unwrap();
-        (first_account_index as usize)
-            ..(first_account_index.saturating_add(self.instruction_accounts.len()) as usize)
-    }
-
-    /// This function retrieves the range to index transaction_context.deduplication_maps
-    pub fn deduplication_map_range(instruction_index: usize) -> Range<usize> {
-        instruction_index.saturating_mul(MAX_ACCOUNTS_PER_TRANSACTION)
-            ..instruction_index
-                .saturating_add(1)
-                .saturating_mul(MAX_ACCOUNTS_PER_TRANSACTION)
-    }
-
     pub fn configure_vm_slices(
         &mut self,
         instruction_index: u64,
-        penultimate_slice: Option<VmSlice<InstructionAccount>>,
         instruction_accounts_len: usize,
         instruction_data_len: u64,
     ) {
+        let common_offset = GUEST_REGION_SIZE.saturating_mul(instruction_index);
+
         // Instruction data slice
         self.instruction_data = VmSlice::new(
-            GUEST_INSTRUCTION_DATA_BASE_ADDRESS
-                .saturating_add(GUEST_REGION_SIZE.saturating_mul(instruction_index)),
+            GUEST_INSTRUCTION_DATA_BASE_ADDRESS.saturating_add(common_offset),
             instruction_data_len,
         );
 
         // Instruction accounts slice
-        let instruction_accounts_start_address = if let Some(penultimate_slice) = penultimate_slice
-        {
-            penultimate_slice.end()
-        } else {
-            GUEST_INSTRUCTION_ACCOUNTS_ADDRESS
-        };
-
         self.instruction_accounts = VmSlice::new(
-            instruction_accounts_start_address,
+            GUEST_INSTRUCTION_ACCOUNT_BASE_ADDRESS.saturating_add(common_offset),
             instruction_accounts_len as u64,
         );
     }
