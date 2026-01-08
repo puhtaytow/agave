@@ -151,6 +151,7 @@ pub enum ClusterInfoError {
     TooManyIncrementalSnapshotHashes,
 }
 
+// #[derive(Debug)]
 pub struct ClusterInfo {
     /// The network
     pub gossip: CrdsGossip,
@@ -159,9 +160,9 @@ pub struct ClusterInfo {
     /// Network entrypoints
     entrypoints: RwLock<Vec<ContactInfo>>,
     outbound_budget: DataBudget,
-    my_contact_info: RwLock<ContactInfo>,
+    pub my_contact_info: RwLock<ContactInfo>,
     ping_cache: Mutex<PingCache>,
-    pub(crate) stats: GossipStats,
+    pub stats: GossipStats,
     local_message_pending_push_queue: Mutex<Vec<CrdsValue>>,
     contact_debug_interval: u64, // milliseconds, 0 = disabled
     contact_save_interval: u64,  // milliseconds, 0 = disabled

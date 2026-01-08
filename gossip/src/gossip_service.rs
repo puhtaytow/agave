@@ -36,6 +36,7 @@ use {
 
 const SUBMIT_GOSSIP_STATS_INTERVAL: Duration = Duration::from_secs(2);
 
+#[derive(Debug)]
 pub struct GossipService {
     thread_hdls: Vec<JoinHandle<()>>,
 }

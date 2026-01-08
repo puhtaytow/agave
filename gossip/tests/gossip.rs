@@ -6,6 +6,7 @@ use {
     rayon::iter::*,
     solana_gossip::{
         cluster_info::ClusterInfo,
+        cluster_info_metrics::GossipStats,
         contact_info::{ContactInfo, Protocol},
         crds::Cursor,
         gossip_service::GossipService,
@@ -86,20 +87,37 @@ fn test_node_with_bank(
     )
 }
 
-/// Test that the network converges.
-/// Run until every node in the network has a full ContactInfo set.
-/// Check that nodes stop sending updates after all the ContactInfo has been shared.
-/// tests that actually use this function are below
+//////
+use std::{collections::HashMap, sync::LazyLock};
+
+pub static NODES_STATS: LazyLock<RwLock<HashMap<String, GossipStats>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
 fn run_gossip_topo<F>(num: usize, topo: F)
 where
     F: Fn(&Vec<(Arc<ClusterInfo>, GossipService, UdpSocket)>),
 {
+    println!("DEBUG: run_gossip_topo#1");
+
     let exit = Arc::new(AtomicBool::new(false));
     let listen: Vec<_> = (0..num).map(|_| test_node(exit.clone())).collect();
+
+    // let my_contact_info = listen[0].0.my_contact_info.read();
+
+    // println!(
+    //     "MY_CONTACT_INFO: {:#?}\n\n",
+    //     my_contact_info.unwrap().pubkey()
+    // );
+
+    // println!("STATS: {: ?}", listen[0].0.stats);
+
     topo(&listen);
     let mut done = false;
     for i in 0..(num * 32) {
         let total: usize = listen.iter().map(|v| v.0.gossip_peers().len()).sum();
+
+        // // stats to NODES_STATS
+
         if (total + num) * 10 > num * num * 9 {
             done = true;
             break;
@@ -154,6 +172,9 @@ fn retransmit_to(
 #[test]
 fn gossip_ring() {
     agave_logger::setup();
+
+    println!("DEBUG: before");
+
     run_gossip_topo(40, |listen| {
         let num = listen.len();
         for n in 0..num {
