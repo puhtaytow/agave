@@ -88,9 +88,187 @@ fn test_node_with_bank(
 }
 
 //////
+///
 use std::{collections::HashMap, sync::LazyLock};
 
-pub static NODES_STATS: LazyLock<RwLock<HashMap<String, GossipStats>>> =
+#[derive(Debug, Clone)]
+pub struct GossipStatsSnapshot {
+    pub bad_prune_destination: u64,
+    pub entrypoint2: u64,
+    pub entrypoint: u64,
+    pub epoch_slots_filled: u64,
+    pub epoch_slots_lookup: u64,
+    pub filter_crds_values_dropped_requests: u64,
+    pub filter_crds_values_dropped_values: u64,
+    pub filter_pull_response: u64,
+    pub generate_prune_messages: u64,
+    pub generate_pull_responses: u64,
+    pub get_votes: u64,
+    pub get_votes_count: u64,
+    pub gossip_listen_loop_iterations_since_last_report: u64,
+    pub gossip_listen_loop_time: u64,
+    pub gossip_packets_dropped_count: u64,
+    pub gossip_pull_request_dropped_requests: u64,
+    pub gossip_pull_request_no_budget: u64,
+    pub gossip_pull_request_sent_bytes: u64,
+    pub gossip_transmit_loop_iterations_since_last_report: u64,
+    pub gossip_transmit_loop_time: u64,
+    pub gossip_transmit_packets_dropped_count: u64,
+    pub handle_batch_ping_messages_time: u64,
+    pub handle_batch_pong_messages_time: u64,
+    pub handle_batch_prune_messages_time: u64,
+    pub handle_batch_pull_requests_time: u64,
+    pub handle_batch_pull_responses_time: u64,
+    pub handle_batch_push_messages_time: u64,
+    pub new_pull_requests: u64,
+    pub new_push_requests2: u64,
+    pub new_push_requests: u64,
+    pub num_unverifed_gossip_addrs: u64,
+    pub packets_received_count: u64,
+    pub packets_received_ping_messages_count: u64,
+    pub packets_received_pong_messages_count: u64,
+    pub packets_received_prune_messages_count: u64,
+    pub packets_received_pull_requests_count: u64,
+    pub packets_received_pull_responses_count: u64,
+    pub packets_received_push_messages_count: u64,
+    pub packets_received_unknown_count: u64,
+    pub packets_received_verified_count: u64,
+    pub packets_sent_ping_messages_count: u64,
+    pub packets_sent_pong_messages_count: u64,
+    pub packets_sent_prune_messages_count: u64,
+    pub packets_sent_pull_requests_count: u64,
+    pub packets_sent_pull_responses_count: u64,
+    pub packets_sent_push_messages_count: u64,
+    pub process_gossip_packets_time: u64,
+    pub process_prune: u64,
+    pub process_pull_response: u64,
+    pub process_pull_response_count: u64,
+    pub process_pull_response_fail_insert: u64,
+    pub process_pull_response_fail_timeout: u64,
+    pub process_pull_response_len: u64,
+    pub process_pull_response_success: u64,
+    pub process_push_message: u64,
+    pub prune_message_len: u64,
+    pub prune_message_timeout: u64,
+    pub prune_received_cache: u64,
+    pub pull_from_entrypoint_count: u64,
+    pub pull_request_ping_pong_check_failed_count: u64,
+    pub purge: u64,
+    pub purge_count: u64,
+    pub push_fanout_num_entries: u64,
+    pub push_fanout_num_nodes: u64,
+    pub push_message_value_count: u64,
+    pub push_vote_read: u64,
+    pub repair_peers: u64,
+    pub save_contact_info_time: u64,
+    pub skip_pull_response_shred_version: u64,
+    pub skip_pull_shred_version: u64,
+    pub skip_push_message_shred_version: u64,
+    pub trim_crds_table: u64,
+    pub trim_crds_table_failed: u64,
+    pub trim_crds_table_purged_values_count: u64,
+    pub tvu_peers: u64,
+    pub verify_gossip_packets_time: u64,
+    pub window_request_loopback: u64,
+}
+
+impl From<&GossipStats> for GossipStatsSnapshot {
+    fn from(stats: &GossipStats) -> Self {
+        Self {
+            bad_prune_destination: stats.bad_prune_destination.load(),
+            entrypoint2: stats.entrypoint2.load(),
+            entrypoint: stats.entrypoint.load(),
+            epoch_slots_filled: stats.epoch_slots_filled.load(),
+            epoch_slots_lookup: stats.epoch_slots_lookup.load(),
+            filter_crds_values_dropped_requests: stats.filter_crds_values_dropped_requests.load(),
+            filter_crds_values_dropped_values: stats.filter_crds_values_dropped_values.load(),
+            filter_pull_response: stats.filter_pull_response.load(),
+            generate_prune_messages: stats.generate_prune_messages.load(),
+            generate_pull_responses: stats.generate_pull_responses.load(),
+            get_votes: stats.get_votes.load(),
+            get_votes_count: stats.get_votes_count.load(),
+            gossip_listen_loop_iterations_since_last_report: stats
+                .gossip_listen_loop_iterations_since_last_report
+                .load(),
+            gossip_listen_loop_time: stats.gossip_listen_loop_time.load(),
+            gossip_packets_dropped_count: stats.gossip_packets_dropped_count.load(),
+            gossip_pull_request_dropped_requests: stats.gossip_pull_request_dropped_requests.load(),
+            gossip_pull_request_no_budget: stats.gossip_pull_request_no_budget.load(),
+            gossip_pull_request_sent_bytes: stats.gossip_pull_request_sent_bytes.load(),
+            gossip_transmit_loop_iterations_since_last_report: stats
+                .gossip_transmit_loop_iterations_since_last_report
+                .load(),
+            gossip_transmit_loop_time: stats.gossip_transmit_loop_time.load(),
+            gossip_transmit_packets_dropped_count: stats
+                .gossip_transmit_packets_dropped_count
+                .load(),
+            handle_batch_ping_messages_time: stats.handle_batch_ping_messages_time.load(),
+            handle_batch_pong_messages_time: stats.handle_batch_pong_messages_time.load(),
+            handle_batch_prune_messages_time: stats.handle_batch_prune_messages_time.load(),
+            handle_batch_pull_requests_time: stats.handle_batch_pull_requests_time.load(),
+            handle_batch_pull_responses_time: stats.handle_batch_pull_responses_time.load(),
+            handle_batch_push_messages_time: stats.handle_batch_push_messages_time.load(),
+            new_pull_requests: stats.new_pull_requests.load(),
+            new_push_requests2: stats.new_push_requests2.load(),
+            new_push_requests: stats.new_push_requests.load(),
+            num_unverifed_gossip_addrs: stats.num_unverifed_gossip_addrs.load(),
+            packets_received_count: stats.packets_received_count.load(),
+            packets_received_ping_messages_count: stats.packets_received_ping_messages_count.load(),
+            packets_received_pong_messages_count: stats.packets_received_pong_messages_count.load(),
+            packets_received_prune_messages_count: stats
+                .packets_received_prune_messages_count
+                .load(),
+            packets_received_pull_requests_count: stats.packets_received_pull_requests_count.load(),
+            packets_received_pull_responses_count: stats
+                .packets_received_pull_responses_count
+                .load(),
+            packets_received_push_messages_count: stats.packets_received_push_messages_count.load(),
+            packets_received_unknown_count: stats.packets_received_unknown_count.load(),
+            packets_received_verified_count: stats.packets_received_verified_count.load(),
+            packets_sent_ping_messages_count: stats.packets_sent_ping_messages_count.load(),
+            packets_sent_pong_messages_count: stats.packets_sent_pong_messages_count.load(),
+            packets_sent_prune_messages_count: stats.packets_sent_prune_messages_count.load(),
+            packets_sent_pull_requests_count: stats.packets_sent_pull_requests_count.load(),
+            packets_sent_pull_responses_count: stats.packets_sent_pull_responses_count.load(),
+            packets_sent_push_messages_count: stats.packets_sent_push_messages_count.load(),
+            process_gossip_packets_time: stats.process_gossip_packets_time.load(),
+            process_prune: stats.process_prune.load(),
+            process_pull_response: stats.process_pull_response.load(),
+            process_pull_response_count: stats.process_pull_response_count.load(),
+            process_pull_response_fail_insert: stats.process_pull_response_fail_insert.load(),
+            process_pull_response_fail_timeout: stats.process_pull_response_fail_timeout.load(),
+            process_pull_response_len: stats.process_pull_response_len.load(),
+            process_pull_response_success: stats.process_pull_response_success.load(),
+            process_push_message: stats.process_push_message.load(),
+            prune_message_len: stats.prune_message_len.load(),
+            prune_message_timeout: stats.prune_message_timeout.load(),
+            prune_received_cache: stats.prune_received_cache.load(),
+            pull_from_entrypoint_count: stats.pull_from_entrypoint_count.load(),
+            pull_request_ping_pong_check_failed_count: stats
+                .pull_request_ping_pong_check_failed_count
+                .load(),
+            purge: stats.purge.load(),
+            purge_count: stats.purge_count.load(),
+            push_fanout_num_entries: stats.push_fanout_num_entries.load(),
+            push_fanout_num_nodes: stats.push_fanout_num_nodes.load(),
+            push_message_value_count: stats.push_message_value_count.load(),
+            push_vote_read: stats.push_vote_read.load(),
+            repair_peers: stats.repair_peers.load(),
+            save_contact_info_time: stats.save_contact_info_time.load(),
+            skip_pull_response_shred_version: stats.skip_pull_response_shred_version.load(),
+            skip_pull_shred_version: stats.skip_pull_shred_version.load(),
+            skip_push_message_shred_version: stats.skip_push_message_shred_version.load(),
+            trim_crds_table: stats.trim_crds_table.load(),
+            trim_crds_table_failed: stats.trim_crds_table_failed.load(),
+            trim_crds_table_purged_values_count: stats.trim_crds_table_purged_values_count.load(),
+            tvu_peers: stats.tvu_peers.load(),
+            verify_gossip_packets_time: stats.verify_gossip_packets_time.load(),
+            window_request_loopback: stats.window_request_loopback.load(),
+        }
+    }
+}
+
+pub static NODES_STATS: LazyLock<RwLock<HashMap<usize, GossipStatsSnapshot>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
 fn run_gossip_topo<F>(num: usize, topo: F)
@@ -98,25 +276,14 @@ where
     F: Fn(&Vec<(Arc<ClusterInfo>, GossipService, UdpSocket)>),
 {
     println!("DEBUG: run_gossip_topo#1");
-
     let exit = Arc::new(AtomicBool::new(false));
     let listen: Vec<_> = (0..num).map(|_| test_node(exit.clone())).collect();
 
-    // let my_contact_info = listen[0].0.my_contact_info.read();
-
-    // println!(
-    //     "MY_CONTACT_INFO: {:#?}\n\n",
-    //     my_contact_info.unwrap().pubkey()
-    // );
-
-    // println!("STATS: {: ?}", listen[0].0.stats);
-
     topo(&listen);
+
     let mut done = false;
     for i in 0..(num * 32) {
         let total: usize = listen.iter().map(|v| v.0.gossip_peers().len()).sum();
-
-        // // stats to NODES_STATS
 
         if (total + num) * 10 > num * num * 9 {
             done = true;
@@ -126,12 +293,78 @@ where
         }
         sleep(Duration::from_secs(1));
     }
+
+    // collect and the end
+    {
+        let mut nodes_stats = NODES_STATS.write().unwrap();
+        for (idx, (cluster_info, _, _)) in listen.iter().enumerate() {
+            nodes_stats.insert(idx, GossipStatsSnapshot::from(&cluster_info.stats));
+        }
+    }
+
+    println!("\n####### NODES STATST #######");
+    {
+        let nodes_stats = NODES_STATS.read().unwrap();
+        for i in 0..num {
+            if let Some(stats) = nodes_stats.get(&i) {
+                println!("Node {}: {:#?}", i, stats);
+            }
+        }
+    }
+    println!("#######\n");
+
     exit.store(true, Ordering::Relaxed);
     for (_, dr, _) in listen {
         dr.join().unwrap();
     }
+
     assert!(done);
 }
+
+// use std::{collections::HashMap, sync::LazyLock};
+
+// pub static NODES_STATS: LazyLock<RwLock<HashMap<String, GossipStats>>> =
+//     LazyLock::new(|| RwLock::new(HashMap::new()));
+
+// fn run_gossip_topo<F>(num: usize, topo: F)
+// where
+//     F: Fn(&Vec<(Arc<ClusterInfo>, GossipService, UdpSocket)>),
+// {
+//     println!("DEBUG: run_gossip_topo#1");
+
+//     let exit = Arc::new(AtomicBool::new(false));
+//     let listen: Vec<_> = (0..num).map(|_| test_node(exit.clone())).collect();
+
+//     // let my_contact_info = listen[0].0.my_contact_info.read();
+
+//     // println!(
+//     //     "MY_CONTACT_INFO: {:#?}\n\n",
+//     //     my_contact_info.unwrap().pubkey()
+//     // );
+
+//     // println!("STATS: {: ?}", listen[0].0.stats);
+
+//     topo(&listen);
+//     let mut done = false;
+//     for i in 0..(num * 32) {
+//         let total: usize = listen.iter().map(|v| v.0.gossip_peers().len()).sum();
+
+//         // // stats to NODES_STATS
+
+//         if (total + num) * 10 > num * num * 9 {
+//             done = true;
+//             break;
+//         } else {
+//             trace!("not converged {} {} {}", i, total + num, num * num);
+//         }
+//         sleep(Duration::from_secs(1));
+//     }
+//     exit.store(true, Ordering::Relaxed);
+//     for (_, dr, _) in listen {
+//         dr.join().unwrap();
+//     }
+//     assert!(done);
+// }
 
 /// retransmit messages to a list of nodes
 fn retransmit_to(
@@ -175,7 +408,7 @@ fn gossip_ring() {
 
     println!("DEBUG: before");
 
-    run_gossip_topo(40, |listen| {
+    run_gossip_topo(100, |listen| {
         let num = listen.len();
         for n in 0..num {
             let y = n % listen.len();
