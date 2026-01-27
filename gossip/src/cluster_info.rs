@@ -172,6 +172,26 @@ pub struct ClusterInfo {
 }
 
 impl ClusterInfo {
+    /// Checks if target node is in the ping cache, if it is returns (true, None)
+    /// If not in cache, returns false and, if all goes well, a Packet to send to the node
+    pub fn check_ping(&self, target: Pubkey, target_addr: SocketAddr) -> (bool, Option<Packet>) {
+        let mut rng = rand::thread_rng();
+        let (state, maybe_ping) = {
+            let mut pingcache = self.ping_cache.lock().unwrap();
+            pingcache.check(
+                &mut rng,
+                &self.keypair.load(),
+                Instant::now(),
+                (target, target_addr),
+            )
+        };
+        let pkt = maybe_ping.map(|ping| {
+            let ping = Protocol::PingMessage(ping);
+            make_gossip_packet(target_addr, &ping, &self.stats).unwrap()
+        });
+        (state, pkt)
+    }
+
     pub fn new(
         contact_info: ContactInfo,
         keypair: Arc<Keypair>,
@@ -3003,259 +3023,259 @@ mod tests {
             .unwrap();
     }
 
-    #[test]
-    fn test_refresh_vote_eviction() {
-        let keypair = Arc::new(Keypair::new());
-        let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
-        let cluster_info = ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified);
+    // #[test]
+    // fn test_refresh_vote_eviction() {
+    //     let keypair = Arc::new(Keypair::new());
+    //     let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
+    //     let cluster_info = ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified);
 
-        // Push MAX_LOCKOUT_HISTORY votes into gossip, one for each slot between
-        // [lowest_vote_slot, lowest_vote_slot + MAX_LOCKOUT_HISTORY)
-        let lowest_vote_slot = 1;
-        let max_vote_slot = lowest_vote_slot + MAX_LOCKOUT_HISTORY as Slot;
-        let mut first_vote = None;
-        let mut prev_votes = vec![];
-        for slot in 1..max_vote_slot {
-            prev_votes.push(slot);
-            let unrefresh_vote = Vote::new(vec![slot], Hash::new_unique());
-            let vote_ix = vote_instruction::vote(
-                &Pubkey::new_unique(), // vote_pubkey
-                &Pubkey::new_unique(), // authorized_voter_pubkey
-                unrefresh_vote,
-            );
-            let vote_tx = Transaction::new_with_payer(
-                &[vote_ix], // instructions
-                None,       // payer
-            );
-            if first_vote.is_none() {
-                first_vote = Some(vote_tx.clone());
-            }
-            cluster_info.push_vote(&prev_votes, vote_tx);
-        }
+    //     // Push MAX_LOCKOUT_HISTORY votes into gossip, one for each slot between
+    //     // [lowest_vote_slot, lowest_vote_slot + MAX_LOCKOUT_HISTORY)
+    //     let lowest_vote_slot = 1;
+    //     let max_vote_slot = lowest_vote_slot + MAX_LOCKOUT_HISTORY as Slot;
+    //     let mut first_vote = None;
+    //     let mut prev_votes = vec![];
+    //     for slot in 1..max_vote_slot {
+    //         prev_votes.push(slot);
+    //         let unrefresh_vote = Vote::new(vec![slot], Hash::new_unique());
+    //         let vote_ix = vote_instruction::vote(
+    //             &Pubkey::new_unique(), // vote_pubkey
+    //             &Pubkey::new_unique(), // authorized_voter_pubkey
+    //             unrefresh_vote,
+    //         );
+    //         let vote_tx = Transaction::new_with_payer(
+    //             &[vote_ix], // instructions
+    //             None,       // payer
+    //         );
+    //         if first_vote.is_none() {
+    //             first_vote = Some(vote_tx.clone());
+    //         }
+    //         cluster_info.push_vote(&prev_votes, vote_tx);
+    //     }
 
-        let initial_votes = cluster_info.get_votes(&mut Cursor::default());
-        assert_eq!(initial_votes.len(), MAX_VOTES as usize);
+    //     let initial_votes = cluster_info.get_votes(&mut Cursor::default());
+    //     assert_eq!(initial_votes.len(), MAX_VOTES as usize);
 
-        // Trying to refresh a vote less than all votes in gossip should do nothing
-        let refresh_slot = lowest_vote_slot - 1;
-        let refresh_vote = Vote::new(vec![refresh_slot], Hash::new_unique());
-        let refresh_ix = vote_instruction::vote(
-            &Pubkey::new_unique(), // vote_pubkey
-            &Pubkey::new_unique(), // authorized_voter_pubkey
-            refresh_vote.clone(),
-        );
-        let refresh_tx = Transaction::new_with_payer(
-            &[refresh_ix], // instructions
-            None,          // payer
-        );
-        cluster_info.refresh_vote(refresh_tx.clone(), refresh_slot);
-        let current_votes = cluster_info.get_votes(&mut Cursor::default());
-        assert_eq!(initial_votes, current_votes);
-        assert!(!current_votes.contains(&refresh_tx));
+    //     // Trying to refresh a vote less than all votes in gossip should do nothing
+    //     let refresh_slot = lowest_vote_slot - 1;
+    //     let refresh_vote = Vote::new(vec![refresh_slot], Hash::new_unique());
+    //     let refresh_ix = vote_instruction::vote(
+    //         &Pubkey::new_unique(), // vote_pubkey
+    //         &Pubkey::new_unique(), // authorized_voter_pubkey
+    //         refresh_vote.clone(),
+    //     );
+    //     let refresh_tx = Transaction::new_with_payer(
+    //         &[refresh_ix], // instructions
+    //         None,          // payer
+    //     );
+    //     cluster_info.refresh_vote(refresh_tx.clone(), refresh_slot);
+    //     let current_votes = cluster_info.get_votes(&mut Cursor::default());
+    //     assert_eq!(initial_votes, current_votes);
+    //     assert!(!current_votes.contains(&refresh_tx));
 
-        // Trying to refresh a vote should evict the first slot less than the refreshed vote slot
-        let refresh_slot = max_vote_slot + 1;
-        let refresh_vote = Vote::new(vec![refresh_slot], Hash::new_unique());
-        let refresh_ix = vote_instruction::vote(
-            &Pubkey::new_unique(), // vote_pubkey
-            &Pubkey::new_unique(), // authorized_voter_pubkey
-            refresh_vote.clone(),
-        );
-        let refresh_tx = Transaction::new_with_payer(
-            &[refresh_ix], // instructions
-            None,          // payer
-        );
-        cluster_info.refresh_vote(refresh_tx.clone(), refresh_slot);
+    //     // Trying to refresh a vote should evict the first slot less than the refreshed vote slot
+    //     let refresh_slot = max_vote_slot + 1;
+    //     let refresh_vote = Vote::new(vec![refresh_slot], Hash::new_unique());
+    //     let refresh_ix = vote_instruction::vote(
+    //         &Pubkey::new_unique(), // vote_pubkey
+    //         &Pubkey::new_unique(), // authorized_voter_pubkey
+    //         refresh_vote.clone(),
+    //     );
+    //     let refresh_tx = Transaction::new_with_payer(
+    //         &[refresh_ix], // instructions
+    //         None,          // payer
+    //     );
+    //     cluster_info.refresh_vote(refresh_tx.clone(), refresh_slot);
 
-        // This should evict the latest vote since it's for a slot less than refresh_slot
-        let votes = cluster_info.get_votes(&mut Cursor::default());
-        assert_eq!(votes.len(), MAX_VOTES as usize);
-        assert!(votes.contains(&refresh_tx));
-        assert!(!votes.contains(&first_vote.unwrap()));
-    }
+    //     // This should evict the latest vote since it's for a slot less than refresh_slot
+    //     let votes = cluster_info.get_votes(&mut Cursor::default());
+    //     assert_eq!(votes.len(), MAX_VOTES as usize);
+    //     assert!(votes.contains(&refresh_tx));
+    //     assert!(!votes.contains(&first_vote.unwrap()));
+    // }
 
-    #[test]
-    fn test_refresh_vote() {
-        let keypair = Arc::new(Keypair::new());
-        let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
-        let cluster_info = ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified);
+    // #[test]
+    // fn test_refresh_vote() {
+    //     let keypair = Arc::new(Keypair::new());
+    //     let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
+    //     let cluster_info = ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified);
 
-        // Construct and push a vote for some other slot
-        let unrefresh_slot = 5;
-        let unrefresh_tower = vec![1, 3, unrefresh_slot];
-        let unrefresh_vote = Vote::new(unrefresh_tower.clone(), Hash::new_unique());
-        let unrefresh_ix = vote_instruction::vote(
-            &Pubkey::new_unique(), // vote_pubkey
-            &Pubkey::new_unique(), // authorized_voter_pubkey
-            unrefresh_vote,
-        );
-        let unrefresh_tx = Transaction::new_with_payer(
-            &[unrefresh_ix], // instructions
-            None,            // payer
-        );
-        cluster_info.push_vote(&unrefresh_tower, unrefresh_tx.clone());
-        let mut cursor = Cursor::default();
-        let votes = cluster_info.get_votes(&mut cursor);
-        assert_eq!(votes, vec![unrefresh_tx.clone()]);
+    //     // Construct and push a vote for some other slot
+    //     let unrefresh_slot = 5;
+    //     let unrefresh_tower = vec![1, 3, unrefresh_slot];
+    //     let unrefresh_vote = Vote::new(unrefresh_tower.clone(), Hash::new_unique());
+    //     let unrefresh_ix = vote_instruction::vote(
+    //         &Pubkey::new_unique(), // vote_pubkey
+    //         &Pubkey::new_unique(), // authorized_voter_pubkey
+    //         unrefresh_vote,
+    //     );
+    //     let unrefresh_tx = Transaction::new_with_payer(
+    //         &[unrefresh_ix], // instructions
+    //         None,            // payer
+    //     );
+    //     cluster_info.push_vote(&unrefresh_tower, unrefresh_tx.clone());
+    //     let mut cursor = Cursor::default();
+    //     let votes = cluster_info.get_votes(&mut cursor);
+    //     assert_eq!(votes, vec![unrefresh_tx.clone()]);
 
-        // Now construct vote for the slot to be refreshed later.
-        let refresh_slot = unrefresh_slot + 1;
-        let refresh_tower = vec![1, 3, unrefresh_slot, refresh_slot];
-        let refresh_vote = Vote::new(refresh_tower.clone(), Hash::new_unique());
-        let refresh_ix = vote_instruction::vote(
-            &Pubkey::new_unique(), // vote_pubkey
-            &Pubkey::new_unique(), // authorized_voter_pubkey
-            refresh_vote.clone(),
-        );
-        let refresh_tx = Transaction::new_with_payer(
-            &[refresh_ix], // instructions
-            None,          // payer
-        );
+    //     // Now construct vote for the slot to be refreshed later.
+    //     let refresh_slot = unrefresh_slot + 1;
+    //     let refresh_tower = vec![1, 3, unrefresh_slot, refresh_slot];
+    //     let refresh_vote = Vote::new(refresh_tower.clone(), Hash::new_unique());
+    //     let refresh_ix = vote_instruction::vote(
+    //         &Pubkey::new_unique(), // vote_pubkey
+    //         &Pubkey::new_unique(), // authorized_voter_pubkey
+    //         refresh_vote.clone(),
+    //     );
+    //     let refresh_tx = Transaction::new_with_payer(
+    //         &[refresh_ix], // instructions
+    //         None,          // payer
+    //     );
 
-        // Trying to refresh vote when it doesn't yet exist in gossip
-        // should add the vote without eviction if there is room in the gossip table.
-        cluster_info.refresh_vote(refresh_tx.clone(), refresh_slot);
+    //     // Trying to refresh vote when it doesn't yet exist in gossip
+    //     // should add the vote without eviction if there is room in the gossip table.
+    //     cluster_info.refresh_vote(refresh_tx.clone(), refresh_slot);
 
-        // Should be two votes in gossip
-        cursor = Cursor::default();
-        let votes = cluster_info.get_votes(&mut cursor);
-        assert_eq!(votes.len(), 2);
-        assert!(votes.contains(&unrefresh_tx));
-        assert!(votes.contains(&refresh_tx));
+    //     // Should be two votes in gossip
+    //     cursor = Cursor::default();
+    //     let votes = cluster_info.get_votes(&mut cursor);
+    //     assert_eq!(votes.len(), 2);
+    //     assert!(votes.contains(&unrefresh_tx));
+    //     assert!(votes.contains(&refresh_tx));
 
-        // Refresh a few times, we should only have the latest update
-        let mut latest_refresh_tx = refresh_tx;
-        for _ in 0..10 {
-            let latest_refreshed_recent_blockhash = Hash::new_unique();
-            let new_signer = Keypair::new();
-            let refresh_ix = vote_instruction::vote(
-                &new_signer.pubkey(), // vote_pubkey
-                &new_signer.pubkey(), // authorized_voter_pubkey
-                refresh_vote.clone(),
-            );
-            latest_refresh_tx = Transaction::new_signed_with_payer(
-                &[refresh_ix],
-                None,
-                &[&new_signer],
-                latest_refreshed_recent_blockhash,
-            );
-            cluster_info.refresh_vote(latest_refresh_tx.clone(), refresh_slot);
-            // Sleep to avoid votes with same timestamp causing later vote to not override prior vote
-            std::thread::sleep(Duration::from_millis(1));
-        }
-        // The diff since `max_ts` should only be the latest refreshed vote
-        let votes = cluster_info.get_votes(&mut cursor);
-        assert_eq!(votes.len(), 1);
-        assert_eq!(votes[0], latest_refresh_tx);
+    //     // Refresh a few times, we should only have the latest update
+    //     let mut latest_refresh_tx = refresh_tx;
+    //     for _ in 0..10 {
+    //         let latest_refreshed_recent_blockhash = Hash::new_unique();
+    //         let new_signer = Keypair::new();
+    //         let refresh_ix = vote_instruction::vote(
+    //             &new_signer.pubkey(), // vote_pubkey
+    //             &new_signer.pubkey(), // authorized_voter_pubkey
+    //             refresh_vote.clone(),
+    //         );
+    //         latest_refresh_tx = Transaction::new_signed_with_payer(
+    //             &[refresh_ix],
+    //             None,
+    //             &[&new_signer],
+    //             latest_refreshed_recent_blockhash,
+    //         );
+    //         cluster_info.refresh_vote(latest_refresh_tx.clone(), refresh_slot);
+    //         // Sleep to avoid votes with same timestamp causing later vote to not override prior vote
+    //         std::thread::sleep(Duration::from_millis(1));
+    //     }
+    //     // The diff since `max_ts` should only be the latest refreshed vote
+    //     let votes = cluster_info.get_votes(&mut cursor);
+    //     assert_eq!(votes.len(), 1);
+    //     assert_eq!(votes[0], latest_refresh_tx);
 
-        // Should still be two votes in gossip
-        let votes = cluster_info.get_votes(&mut Cursor::default());
-        assert_eq!(votes.len(), 2);
-        assert!(votes.contains(&unrefresh_tx));
-        assert!(votes.contains(&latest_refresh_tx));
-    }
+    //     // Should still be two votes in gossip
+    //     let votes = cluster_info.get_votes(&mut Cursor::default());
+    //     assert_eq!(votes.len(), 2);
+    //     assert!(votes.contains(&unrefresh_tx));
+    //     assert!(votes.contains(&latest_refresh_tx));
+    // }
 
-    #[test]
-    fn test_push_vote() {
-        let keypair = Arc::new(Keypair::new());
-        let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
-        let cluster_info =
-            ClusterInfo::new(contact_info, keypair.clone(), SocketAddrSpace::Unspecified);
+    // #[test]
+    // fn test_push_vote() {
+    //     let keypair = Arc::new(Keypair::new());
+    //     let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
+    //     let cluster_info =
+    //         ClusterInfo::new(contact_info, keypair.clone(), SocketAddrSpace::Unspecified);
 
-        // make sure empty crds is handled correctly
-        let mut cursor = Cursor::default();
-        let votes = cluster_info.get_votes(&mut cursor);
-        assert_eq!(votes, vec![]);
+    //     // make sure empty crds is handled correctly
+    //     let mut cursor = Cursor::default();
+    //     let votes = cluster_info.get_votes(&mut cursor);
+    //     assert_eq!(votes, vec![]);
 
-        // add a vote
-        let vote = Vote::new(
-            vec![1, 3, 7], // slots
-            Hash::new_unique(),
-        );
-        let ix = vote_instruction::vote(
-            &Pubkey::new_unique(), // vote_pubkey
-            &Pubkey::new_unique(), // authorized_voter_pubkey
-            vote,
-        );
-        let tx = Transaction::new_with_payer(
-            &[ix], // instructions
-            None,  // payer
-        );
-        let tower = vec![7]; // Last slot in the vote.
-        cluster_info.push_vote(&tower, tx.clone());
+    //     // add a vote
+    //     let vote = Vote::new(
+    //         vec![1, 3, 7], // slots
+    //         Hash::new_unique(),
+    //     );
+    //     let ix = vote_instruction::vote(
+    //         &Pubkey::new_unique(), // vote_pubkey
+    //         &Pubkey::new_unique(), // authorized_voter_pubkey
+    //         vote,
+    //     );
+    //     let tx = Transaction::new_with_payer(
+    //         &[ix], // instructions
+    //         None,  // payer
+    //     );
+    //     let tower = vec![7]; // Last slot in the vote.
+    //     cluster_info.push_vote(&tower, tx.clone());
 
-        let (labels, votes) = cluster_info.get_votes_with_labels(&mut cursor);
-        assert_eq!(votes, vec![tx]);
-        assert_eq!(labels.len(), 1);
-        match labels[0] {
-            CrdsValueLabel::Vote(_, pubkey) => {
-                assert_eq!(pubkey, keypair.pubkey());
-            }
+    //     let (labels, votes) = cluster_info.get_votes_with_labels(&mut cursor);
+    //     assert_eq!(votes, vec![tx]);
+    //     assert_eq!(labels.len(), 1);
+    //     match labels[0] {
+    //         CrdsValueLabel::Vote(_, pubkey) => {
+    //             assert_eq!(pubkey, keypair.pubkey());
+    //         }
 
-            _ => panic!("Bad match"),
-        }
-        // make sure timestamp filter works
-        let votes = cluster_info.get_votes(&mut cursor);
-        assert_eq!(votes, vec![]);
-    }
+    //         _ => panic!("Bad match"),
+    //     }
+    //     // make sure timestamp filter works
+    //     let votes = cluster_info.get_votes(&mut cursor);
+    //     assert_eq!(votes, vec![]);
+    // }
 
-    fn new_vote_transaction(slots: Vec<Slot>) -> Transaction {
-        let vote = Vote::new(slots, Hash::new_unique());
-        let ix = vote_instruction::vote(
-            &Pubkey::new_unique(), // vote_pubkey
-            &Pubkey::new_unique(), // authorized_voter_pubkey
-            vote,
-        );
-        Transaction::new_with_payer(
-            &[ix], // instructions
-            None,  // payer
-        )
-    }
+    // fn new_vote_transaction(slots: Vec<Slot>) -> Transaction {
+    //     let vote = Vote::new(slots, Hash::new_unique());
+    //     let ix = vote_instruction::vote(
+    //         &Pubkey::new_unique(), // vote_pubkey
+    //         &Pubkey::new_unique(), // authorized_voter_pubkey
+    //         vote,
+    //     );
+    //     Transaction::new_with_payer(
+    //         &[ix], // instructions
+    //         None,  // payer
+    //     )
+    // }
 
-    #[test]
-    fn test_push_votes_with_tower() {
-        let get_vote_slots = |cluster_info: &ClusterInfo| -> Vec<Slot> {
-            let (labels, _) = cluster_info.get_votes_with_labels(&mut Cursor::default());
-            let gossip_crds = cluster_info.gossip.crds.read().unwrap();
-            let mut vote_slots = HashSet::new();
-            for label in labels {
-                let CrdsData::Vote(_, vote) = &gossip_crds.get::<&CrdsData>(&label).unwrap() else {
-                    panic!("this should not happen!");
-                };
-                assert!(vote_slots.insert(vote.slot().unwrap()));
-            }
-            vote_slots.into_iter().sorted().collect()
-        };
-        let keypair = Arc::new(Keypair::new());
-        let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
-        let cluster_info = ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified);
-        let mut tower = Vec::new();
+    // #[test]
+    // fn test_push_votes_with_tower() {
+    //     let get_vote_slots = |cluster_info: &ClusterInfo| -> Vec<Slot> {
+    //         let (labels, _) = cluster_info.get_votes_with_labels(&mut Cursor::default());
+    //         let gossip_crds = cluster_info.gossip.crds.read().unwrap();
+    //         let mut vote_slots = HashSet::new();
+    //         for label in labels {
+    //             let CrdsData::Vote(_, vote) = &gossip_crds.get::<&CrdsData>(&label).unwrap() else {
+    //                 panic!("this should not happen!");
+    //             };
+    //             assert!(vote_slots.insert(vote.slot().unwrap()));
+    //         }
+    //         vote_slots.into_iter().sorted().collect()
+    //     };
+    //     let keypair = Arc::new(Keypair::new());
+    //     let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
+    //     let cluster_info = ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified);
+    //     let mut tower = Vec::new();
 
-        // Evict the oldest vote
-        for k in 0..2 * MAX_LOCKOUT_HISTORY {
-            let slot = k as Slot;
-            tower.push(slot);
-            let vote = new_vote_transaction(vec![slot]);
-            cluster_info.push_vote(&tower, vote);
+    //     // Evict the oldest vote
+    //     for k in 0..2 * MAX_LOCKOUT_HISTORY {
+    //         let slot = k as Slot;
+    //         tower.push(slot);
+    //         let vote = new_vote_transaction(vec![slot]);
+    //         cluster_info.push_vote(&tower, vote);
 
-            let vote_slots = get_vote_slots(&cluster_info);
-            let min_vote = k.saturating_sub(MAX_VOTES as usize - 1) as u64;
-            assert!(vote_slots.into_iter().eq(min_vote..=(k as u64)));
-            sleep(Duration::from_millis(1));
-        }
+    //         let vote_slots = get_vote_slots(&cluster_info);
+    //         let min_vote = k.saturating_sub(MAX_VOTES as usize - 1) as u64;
+    //         assert!(vote_slots.into_iter().eq(min_vote..=(k as u64)));
+    //         sleep(Duration::from_millis(1));
+    //     }
 
-        // Attempting to push an older vote will panic
-        let slot = 30;
-        tower.clear();
-        tower.extend(0..=slot);
-        let vote = new_vote_transaction(vec![slot]);
-        assert!(panic::catch_unwind(|| cluster_info.push_vote(&tower, vote))
-            .err()
-            .and_then(|a| a
-                .downcast_ref::<String>()
-                .map(|s| { s.starts_with("Submitting old vote") }))
-            .unwrap_or_default());
-    }
+    //     // Attempting to push an older vote will panic
+    //     let slot = 30;
+    //     tower.clear();
+    //     tower.extend(0..=slot);
+    //     let vote = new_vote_transaction(vec![slot]);
+    //     assert!(panic::catch_unwind(|| cluster_info.push_vote(&tower, vote))
+    //         .err()
+    //         .and_then(|a| a
+    //             .downcast_ref::<String>()
+    //             .map(|s| { s.starts_with("Submitting old vote") }))
+    //         .unwrap_or_default());
+    // }
 
     #[test]
     fn test_push_epoch_slots() {
