@@ -191,7 +191,7 @@ dependencies = [
  "env_logger",
  "libc",
  "log",
- "signal-hook",
+ "signal-hook 0.4.3",
 ]
 
 [[package]]
@@ -6919,6 +6919,16 @@ dependencies = [
 
 [[package]]
 name = "signal-hook"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d881a16cf4426aa584979d30bd82cb33429027e42122b169753d6ef1085ed6e2"
+dependencies = [
+ "libc",
+ "signal-hook-registry",
+]
+
+[[package]]
+name = "signal-hook"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b57709da74f9ff9f4a27dce9526eec25ca8407c45a7887243b031a58935fb8e"
@@ -8232,7 +8242,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "shaq",
- "signal-hook",
+ "signal-hook 0.4.3",
  "slab",
  "solana-account",
  "solana-accounts-db",
@@ -8918,6 +8928,7 @@ dependencies = [
  "solana-keypair",
  "solana-ledger",
  "solana-measure",
+ "solana-message",
  "solana-metrics",
  "solana-native-token",
  "solana-net-utils",
@@ -9418,6 +9429,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "solana-logger"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef7421d1092680d72065edbf5c7605856719b021bf5f173656c71febcdd5d003"
+dependencies = [
+ "env_logger",
+ "lazy_static",
+ "libc",
+ "log",
+ "signal-hook 0.3.18",
+]
+
+[[package]]
 name = "solana-measure"
 version = "4.0.0-alpha.0"
 
@@ -9443,8 +9467,11 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-address 1.1.0",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
  "solana-hash 3.1.0",
  "solana-instruction",
+ "solana-logger",
  "solana-sanitize",
  "solana-sdk-ids",
  "solana-short-vec",
@@ -11569,6 +11596,8 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-address 2.0.0",
+ "solana-frozen-abi",
+ "solana-frozen-abi-macro",
  "solana-hash 4.0.1",
  "solana-instruction",
  "solana-instruction-error",

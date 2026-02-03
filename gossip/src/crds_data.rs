@@ -39,7 +39,14 @@ pub(crate) const MAX_EPOCH_SLOTS: EpochSlotsIndex = 255;
 /// * Merge Strategy - Latest wallclock is picked
 /// * LowestSlot index is deprecated
 #[allow(clippy::large_enum_variant)]
-#[cfg_attr(feature = "frozen-abi", derive(AbiExample, AbiEnumVisitor))]
+#[cfg_attr(
+    feature = "frozen-abi",
+    derive(AbiExample, AbiEnumVisitor, StableAbi,),
+    frozen_abi(
+        api_digest = "HbUQDATKfpN8pjyyarSGa8uN4SuLNTvMf7T5b66ajnNZ",
+        // abi_digest = "7DpV7t5vZAWSZEshJ4hAVTHnR37jzLwUMYhs1fGrX3G5"
+    )
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum CrdsData {
     #[allow(private_interfaces)]
