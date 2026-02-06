@@ -56,8 +56,8 @@ pub enum CrdsData {
         #[serde(deserialize_with = "reject_nonzero_u8")] u8, // u8 is deprecated
         LowestSlot,
     ),
-    #[allow(private_interfaces)]
-    LegacySnapshotHashes(LegacySnapshotHashes), // Deprecated
+    // #[allow(private_interfaces)]
+    // LegacySnapshotHashes(LegacySnapshotHashes), // Deprecated
     #[allow(private_interfaces)]
     AccountsHashes(AccountsHashes), // Deprecated
     EpochSlots(EpochSlotsIndex, EpochSlots),
@@ -90,7 +90,7 @@ impl Sanitize for CrdsData {
                 }
                 val.sanitize()
             }
-            CrdsData::LegacySnapshotHashes(val) => val.sanitize(),
+            // CrdsData::LegacySnapshotHashes(val) => val.sanitize(),
             CrdsData::AccountsHashes(val) => val.sanitize(),
             CrdsData::EpochSlots(ix, val) => {
                 if *ix as usize >= MAX_EPOCH_SLOTS as usize {
@@ -133,7 +133,7 @@ impl CrdsData {
             0 => CrdsData::from(ContactInfo::new_rand(rng, pubkey)),
             // Index for LowestSlot is deprecated and should be zero.
             1 => CrdsData::LowestSlot(0, LowestSlot::new_rand(rng, pubkey)),
-            2 => CrdsData::LegacySnapshotHashes(LegacySnapshotHashes::new_rand(rng, pubkey)),
+            // 2 => CrdsData::LegacySnapshotHashes(LegacySnapshotHashes::new_rand(rng, pubkey)),
             3 => CrdsData::AccountsHashes(AccountsHashes::new_rand(rng, pubkey)),
             4 => CrdsData::Vote(rng.random_range(0..MAX_VOTES), Vote::new_rand(rng, pubkey)),
             5 => CrdsData::RestartLastVotedForkSlots(RestartLastVotedForkSlots::new_rand(
@@ -152,7 +152,7 @@ impl CrdsData {
             CrdsData::LegacyContactInfo(contact_info) => contact_info.wallclock(),
             CrdsData::Vote(_, vote) => vote.wallclock,
             CrdsData::LowestSlot(_, obj) => obj.wallclock,
-            CrdsData::LegacySnapshotHashes(hash) => hash.wallclock,
+            // CrdsData::LegacySnapshotHashes(hash) => hash.wallclock,
             CrdsData::AccountsHashes(hash) => hash.wallclock,
             CrdsData::EpochSlots(_, p) => p.wallclock,
             CrdsData::LegacyVersion(version) => version.wallclock,
@@ -171,7 +171,7 @@ impl CrdsData {
             CrdsData::LegacyContactInfo(contact_info) => *contact_info.pubkey(),
             CrdsData::Vote(_, vote) => vote.from,
             CrdsData::LowestSlot(_, slots) => slots.from,
-            CrdsData::LegacySnapshotHashes(hash) => hash.from,
+            // CrdsData::LegacySnapshotHashes(hash) => hash.from,
             CrdsData::AccountsHashes(hash) => hash.from,
             CrdsData::EpochSlots(_, p) => p.from,
             CrdsData::LegacyVersion(version) => version.from,
@@ -193,7 +193,7 @@ impl CrdsData {
             Self::Vote(..) => false,
             Self::LowestSlot(0, _) => false,
             Self::LowestSlot(1.., _) => true,
-            Self::LegacySnapshotHashes(_) => true,
+            // Self::LegacySnapshotHashes(_) => true,
             Self::AccountsHashes(_) => true,
             Self::EpochSlots(..) => false,
             Self::LegacyVersion(_) => true,

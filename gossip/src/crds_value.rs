@@ -171,7 +171,7 @@ impl CrdsValue {
             CrdsData::LegacyContactInfo(_) => CrdsValueLabel::LegacyContactInfo(pubkey),
             CrdsData::Vote(ix, _) => CrdsValueLabel::Vote(ix, pubkey),
             CrdsData::LowestSlot(_, _) => CrdsValueLabel::LowestSlot(pubkey),
-            CrdsData::LegacySnapshotHashes(_) => CrdsValueLabel::LegacySnapshotHashes(pubkey),
+            // CrdsData::LegacySnapshotHashes(_) => CrdsValueLabel::LegacySnapshotHashes(pubkey),
             CrdsData::AccountsHashes(_) => CrdsValueLabel::AccountsHashes(pubkey),
             CrdsData::EpochSlots(ix, _) => CrdsValueLabel::EpochSlots(ix, pubkey),
             CrdsData::LegacyVersion(_) => CrdsValueLabel::LegacyVersion(pubkey),
@@ -194,12 +194,12 @@ impl CrdsValue {
         Some(node)
     }
 
-    pub(crate) fn epoch_slots(&self) -> Option<&EpochSlots> {
-        let CrdsData::EpochSlots(_, epoch_slots) = &self.data else {
-            return None;
-        };
-        Some(epoch_slots)
-    }
+    // pub(crate) fn epoch_slots(&self) -> Option<&EpochSlots> {
+    //     let CrdsData::EpochSlots(_, epoch_slots) = &self.data else {
+    //         return None;
+    //     };
+    //     Some(epoch_slots)
+    // }
 
     /// Returns the bincode serialized size (in bytes) of the CrdsValue.
     pub fn bincode_serialized_size(&self) -> usize {

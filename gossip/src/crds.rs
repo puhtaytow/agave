@@ -739,7 +739,7 @@ impl CrdsDataStats {
             CrdsData::LegacyContactInfo(_) => 0,
             CrdsData::Vote(_, _) => 1,
             CrdsData::LowestSlot(_, _) => 2,
-            CrdsData::LegacySnapshotHashes(_) => 3,
+            // CrdsData::LegacySnapshotHashes(_) => 3,
             CrdsData::AccountsHashes(_) => 4,
             CrdsData::EpochSlots(_, _) => 5,
             CrdsData::LegacyVersion(_) => 6,

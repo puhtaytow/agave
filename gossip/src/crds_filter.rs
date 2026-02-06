@@ -62,7 +62,7 @@ pub(crate) fn should_retain_crds_value(
         // Fully deprecated messages
         CrdsData::AccountsHashes(_) => false,
         CrdsData::LegacyContactInfo(_) => false,
-        CrdsData::LegacySnapshotHashes(_) => false,
+        // CrdsData::LegacySnapshotHashes(_) => false,
         CrdsData::LegacyVersion(_) => false,
         CrdsData::LowestSlot(1.., _) => false,
         CrdsData::NodeInstance(_) => false,
