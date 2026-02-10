@@ -4,23 +4,18 @@
 //! batches, and gathering send transaction statistics.
 
 pub mod lru;
-pub mod ringbuf;
+pub mod simple;
 
 use {
     crate::{
         connection_worker::ConnectionWorker,
         logging::{debug, trace},
         transaction_batch::TransactionBatch,
-        workers_cache::ringbuf::RingbufWorkersCache,
+        workers_cache::simple::SimpleCache,
         SendTransactionStats,
     },
     quinn::Endpoint,
-    std::{
-        collections::{HashMap, VecDeque},
-        net::SocketAddr,
-        sync::Arc,
-        time::Duration,
-    },
+    std::{net::SocketAddr, sync::Arc, time::Duration},
     thiserror::Error,
     tokio::{
         sync::mpsc::{self, error::TrySendError},
@@ -37,11 +32,11 @@ pub trait WorkersCacheInterface {
     fn pop_next(&mut self) -> Option<(SocketAddr, WorkerInfo)>;
 }
 
-/// [`WorkersCacheStrategy`] Strategy for caching connection workers.
+/// [`WorkersCacheStrategy`] strategy for caching connection workers.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WorkersCacheStrategy {
     Lru,
-    Ringbuf,
+    SimpleCache,
 }
 
 /// [`WorkerInfo`] holds information about a worker responsible for sending
@@ -169,7 +164,7 @@ impl WorkersCache {
     ) -> Self {
         let workers: Box<dyn WorkersCacheInterface + Send> = match worker_cache_strategy {
             WorkersCacheStrategy::Lru => Box::new(::lru::LruCache::new(capacity)),
-            WorkersCacheStrategy::Ringbuf => Box::new(RingbufWorkersCache::new(capacity)),
+            WorkersCacheStrategy::SimpleCache => Box::new(SimpleCache::new(capacity)),
         };
 
         Self { workers, cancel }
