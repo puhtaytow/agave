@@ -1,17 +1,16 @@
-#![allow(unused_variables)]
 //! This module defines [`WorkersCache`] along with aux struct [`WorkerInfo`]. These
 //! structures provide mechanisms for caching workers, sending transaction
 //! batches, and gathering send transaction statistics.
 
+pub mod array_cache;
 pub mod lru;
-pub mod simple;
 
 use {
     crate::{
         connection_worker::ConnectionWorker,
         logging::{debug, trace},
         transaction_batch::TransactionBatch,
-        workers_cache::simple::SimpleCache,
+        workers_cache::array_cache::ArrayCache,
         SendTransactionStats,
     },
     quinn::Endpoint,
@@ -164,7 +163,9 @@ impl WorkersCache {
     ) -> Self {
         let workers: Box<dyn WorkersCacheInterface + Send> = match worker_cache_strategy {
             WorkersCacheStrategy::Lru => Box::new(::lru::LruCache::new(capacity)),
-            WorkersCacheStrategy::SimpleCache => Box::new(SimpleCache::new(capacity)),
+            WorkersCacheStrategy::SimpleCache => {
+                Box::new(ArrayCache::<SocketAddr, WorkerInfo>::new(capacity))
+            }
         };
 
         Self { workers, cancel }
