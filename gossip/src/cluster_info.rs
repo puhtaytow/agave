@@ -1933,8 +1933,7 @@ impl ClusterInfo {
                         wallclock,
                     };
                     prune_data.sign(&self_keypair);
-                    let prune_message = Protocol::PruneMessage(self_pubkey, prune_data);
-                    (addr, prune_message)
+                    (addr, Protocol::PruneMessage(prune_data))
                 })
                 .collect()
         })
@@ -2050,7 +2049,7 @@ impl ClusterInfo {
                         push_messages.push((from, data));
                     }
                 }
-                Protocol::PruneMessage(_from, data) => prune_messages.push(data),
+                Protocol::PruneMessage(data) => prune_messages.push(data),
                 Protocol::PingMessage(ping) => ping_messages.push((from_addr, ping)),
                 Protocol::PongMessage(pong) => pong_messages.push((from_addr, pong)),
             }
@@ -2439,7 +2438,7 @@ fn discard_different_shred_version(
         // check_pull_request_shred_version).
         Protocol::PullRequest(..) => return,
         // No CRDS values in Prune, Ping and Pong messages.
-        Protocol::PruneMessage(_, _) | Protocol::PingMessage(_) | Protocol::PongMessage(_) => {
+        Protocol::PruneMessage(_) | Protocol::PingMessage(_) | Protocol::PongMessage(_) => {
             return;
         }
     };
