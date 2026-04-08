@@ -333,6 +333,71 @@ mod test {
     }
 
     #[test]
+    fn test_bloom_wire_format_regression() {
+        fn assert_wire_format(
+            false_rate: f64,
+            expected_num_bits: u64,
+            expected_num_keys: u64,
+            keys: Vec<u64>,
+            expected_serialized_len: usize,
+            expected_serialized_hash: Hash,
+        ) {
+            let num_bits = Bloom::<Hash>::num_bits(1287f64, false_rate);
+            let num_keys = Bloom::<Hash>::num_keys(num_bits, 1287f64);
+            assert_eq!(num_bits as u64, expected_num_bits);
+            assert_eq!(num_keys as u64, expected_num_keys);
+
+            let mut bloom = Bloom::<Hash>::new(num_bits as usize, keys);
+            for hash_value in [
+                Hash::new_from_array([0u8; 32]),
+                Hash::new_from_array([1u8; 32]),
+                Hash::new_from_array([2u8; 32]),
+                Hash::new_from_array([3u8; 32]),
+                Hash::new_from_array([4u8; 32]),
+            ] {
+                bloom.add(&hash_value);
+            }
+
+            let serialized = bincode::serialize(&bloom).unwrap();
+            assert_eq!(serialized.len(), expected_serialized_len);
+            assert_eq!(hash(serialized.as_slice()), expected_serialized_hash);
+        }
+
+        assert_wire_format(
+            0.1f64,
+            6168,
+            3,
+            vec![
+                0x0123_4567_89ab_cdef,
+                0xfedc_ba98_7654_3210,
+                0x0f1e_2d3c_4b5a_6978,
+            ],
+            833,
+            Hash::new_from_array([
+                186, 247, 46, 104, 13, 127, 226, 6, 196, 199, 126, 11, 99, 173, 236, 66, 163,
+                10, 228, 233, 220, 127, 121, 247, 12, 183, 173, 231, 122, 182, 112, 121,
+            ]),
+        );
+        assert_wire_format(
+            0.01f64,
+            12336,
+            7,
+            vec![
+                0x0123_4567_89ab_cdef,
+                0xfedc_ba98_7654_3210,
+                0x0f1e_2d3c_4b5a_6978,
+                0x8877_6655_4433_2211,
+                0x1122_3344_5566_7788,
+            ],
+            1617,
+            Hash::new_from_array([
+                116, 127, 147, 126, 135, 69, 139, 180, 8, 181, 101, 161, 178, 175, 6, 144, 48,
+                13, 38, 26, 175, 55, 44, 225, 5, 207, 86, 162, 167, 141, 173, 100,
+            ]),
+        );
+    }
+
+    #[test]
     fn test_debug() {
         let mut b: Bloom<Hash> = Bloom::new(3, vec![100]);
         b.add(&Hash::default());
