@@ -2,7 +2,7 @@ use {
     crate::weighted_shuffle::WeightedShuffle,
     indexmap::IndexMap,
     rand::Rng,
-    solana_bloom::bloom::{Bloom, ConcurrentBloom},
+    solana_bloom::bloom::{Bloom, ConcurrentBloom, FalsePositiveRate},
     solana_native_token::LAMPORTS_PER_SOL,
     solana_pubkey::Pubkey,
     std::collections::HashMap,
@@ -100,7 +100,7 @@ impl PushActiveSet {
 }
 
 impl PushActiveSetEntry {
-    const BLOOM_FALSE_RATE: f64 = 0.1;
+    const BLOOM_FALSE_RATE: FalsePositiveRate = FalsePositiveRate::TEN_PERCENT;
     const BLOOM_MAX_BITS: usize = 1024 * 8 * 4;
 
     fn get_nodes<'a>(

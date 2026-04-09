@@ -22,6 +22,66 @@ pub trait BloomHashIndex {
     fn hash_at_index(&self, hash_index: u64) -> u64;
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FalsePositiveRate {
+    // Integer percent in [1, 99], e.g. 1 == 1% and 10 == 10%.
+    percent: u64,
+}
+
+impl FalsePositiveRate {
+    const SCALE: u64 = 100;
+    const FRACTIONAL_BITS: u32 = 14;
+    const ONE_Q14: u64 = 1u64 << Self::FRACTIONAL_BITS;
+    const TWO_Q14: u64 = 2u64 << Self::FRACTIONAL_BITS;
+    const LN_2_Q14: u64 = 11_357;
+    const LN_2_SQUARED_Q14: u64 = 7_872;
+
+    pub const TEN_PERCENT: Self = Self::new(10);
+    pub const ONE_PERCENT: Self = Self::new(1);
+
+    pub const fn new(percent: u64) -> Self {
+        Self { percent }
+    }
+
+    fn validate(self) {
+        assert!(self.percent > 0);
+        assert!(self.percent < Self::SCALE);
+    }
+
+    fn neg_ln_q14(self) -> u64 {
+        self.validate();
+        let log2_q14 = Self::log2_q14(
+            Self::SCALE
+                .checked_shl(Self::FRACTIONAL_BITS)
+                .unwrap()
+                .checked_div(self.percent)
+                .unwrap(),
+        );
+        log2_q14.checked_mul(Self::LN_2_Q14).unwrap() >> Self::FRACTIONAL_BITS
+    }
+
+    fn log2_q14(mut x: u64) -> u64 {
+        assert!(x >= Self::ONE_Q14);
+
+        let mut exponent = 0u64;
+        while x >= Self::TWO_Q14 {
+            x >>= 1;
+            exponent = exponent.checked_add(1).unwrap();
+        }
+
+        let mut log2_q14 = exponent.checked_shl(Self::FRACTIONAL_BITS).unwrap();
+        let mut y = x;
+        for bit in (0..Self::FRACTIONAL_BITS).rev() {
+            y = y.checked_mul(y).unwrap() >> Self::FRACTIONAL_BITS;
+            if y >= Self::TWO_Q14 {
+                y >>= 1;
+                log2_q14 |= 1u64 << bit;
+            }
+        }
+        log2_q14
+    }
+}
+
 #[cfg_attr(feature = "frozen-abi", derive(AbiExample))]
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq, Eq)]
 pub struct Bloom<T: BloomHashIndex> {
@@ -82,26 +142,56 @@ impl<T: BloomHashIndex> Bloom<T> {
     /// `keysize` bytes.
     ///
     /// See <https://hur.st/bloomfilter/>.
-    pub fn random(num_items: usize, false_rate: f64, max_bits: usize) -> Self {
-        let m = Self::num_bits(num_items as f64, false_rate);
-        let num_bits = cmp::max(1, cmp::min(m as usize, max_bits));
-        let num_keys = Self::num_keys(num_bits as f64, num_items as f64) as usize;
+    pub fn random(num_items: usize, false_rate: FalsePositiveRate, max_bits: usize) -> Self {
+        let m = Self::num_bits(num_items as u64, false_rate);
+        let num_bits = cmp::max(1, cmp::min(usize::try_from(m).unwrap(), max_bits));
+        let num_keys = usize::try_from(Self::num_keys(num_bits as u64, num_items as u64)).unwrap();
         let keys: Vec<u64> = (0..num_keys).map(|_| rand::rng().random()).collect();
         Self::new(num_bits, keys)
     }
-    fn num_bits(num_items: f64, false_rate: f64) -> f64 {
-        let n = num_items;
-        let p = false_rate;
-        ((n * p.ln()) / (1f64 / 2f64.powf(2f64.ln())).ln()).ceil()
+
+    fn div_ceil(numerator: u64, denominator: u64) -> u64 {
+        numerator
+            .checked_add(denominator.checked_sub(1).unwrap())
+            .unwrap()
+            / denominator
     }
-    fn num_keys(num_bits: f64, num_items: f64) -> f64 {
-        let n = num_items;
-        let m = num_bits;
-        // infinity as usize is zero in rust 1.43 but 2^64-1 in rust 1.45; ensure it's zero here
-        if n == 0.0 {
-            0.0
+
+    fn div_round(numerator: u64, denominator: u64) -> u64 {
+        numerator.checked_add(denominator / 2).unwrap() / denominator
+    }
+
+    fn num_bits(num_items: u64, false_rate: FalsePositiveRate) -> u64 {
+        let bits_per_item_q14 = Self::div_ceil(
+            false_rate
+                .neg_ln_q14()
+                .checked_shl(FalsePositiveRate::FRACTIONAL_BITS)
+                .unwrap(),
+            FalsePositiveRate::LN_2_SQUARED_Q14,
+        );
+        let integer_part = bits_per_item_q14 >> FalsePositiveRate::FRACTIONAL_BITS;
+        let fractional_part = bits_per_item_q14 & (FalsePositiveRate::ONE_Q14 - 1);
+        let whole_bits = num_items.checked_mul(integer_part).unwrap();
+        let fractional_bits = Self::div_ceil(
+            num_items.checked_mul(fractional_part).unwrap(),
+            FalsePositiveRate::ONE_Q14,
+        );
+        whole_bits.checked_add(fractional_bits).unwrap()
+    }
+
+    fn num_keys(num_bits: u64, num_items: u64) -> u64 {
+        if num_items == 0 {
+            0
         } else {
-            1f64.max(((m / n) * 2f64.ln()).round())
+            let whole = num_bits / num_items;
+            let remainder = num_bits % num_items;
+            let whole_q14 = whole.checked_mul(FalsePositiveRate::LN_2_Q14).unwrap();
+            let remainder_q14 = Self::div_round(
+                remainder.checked_mul(FalsePositiveRate::LN_2_Q14).unwrap(),
+                num_items,
+            );
+            let ratio_q14 = whole_q14.checked_add(remainder_q14).unwrap();
+            u64::max(1, Self::div_round(ratio_q14, FalsePositiveRate::ONE_Q14))
         }
     }
     fn pos(&self, key: &T, k: u64) -> u64 {
@@ -250,7 +340,7 @@ impl<T: BloomHashIndex> Deref for ConcurrentBloomInterval<T> {
 impl<T: BloomHashIndex> ConcurrentBloomInterval<T> {
     /// Create a new filter with the given parameters.
     /// See `Bloom::random` for details.
-    pub fn new(num_items: usize, false_positive_rate: f64, max_bits: usize) -> Self {
+    pub fn new(num_items: usize, false_positive_rate: FalsePositiveRate, max_bits: usize) -> Self {
         let bloom = Bloom::random(num_items, false_positive_rate, max_bits);
         Self {
             interval: AtomicInterval::default(),
@@ -273,23 +363,23 @@ mod test {
     #[test]
     fn test_bloom_filter() {
         //empty
-        let bloom: Bloom<Hash> = Bloom::random(0, 0.1, 100);
+        let bloom: Bloom<Hash> = Bloom::random(0, FalsePositiveRate::TEN_PERCENT, 100);
         assert_eq!(bloom.keys.len(), 0);
         assert_eq!(bloom.bits.len(), 1);
 
         //normal
-        let bloom: Bloom<Hash> = Bloom::random(10, 0.1, 100);
+        let bloom: Bloom<Hash> = Bloom::random(10, FalsePositiveRate::TEN_PERCENT, 100);
         assert_eq!(bloom.keys.len(), 3);
         assert_eq!(bloom.bits.len(), 48);
 
         //saturated
-        let bloom: Bloom<Hash> = Bloom::random(100, 0.1, 100);
+        let bloom: Bloom<Hash> = Bloom::random(100, FalsePositiveRate::TEN_PERCENT, 100);
         assert_eq!(bloom.keys.len(), 1);
         assert_eq!(bloom.bits.len(), 100);
     }
     #[test]
     fn test_add_contains() {
-        let mut bloom: Bloom<Hash> = Bloom::random(100, 0.1, 100);
+        let mut bloom: Bloom<Hash> = Bloom::random(100, FalsePositiveRate::TEN_PERCENT, 100);
         //known keys to avoid false positives in the test
         bloom.keys = vec![0, 1, 2, 3];
 
@@ -305,8 +395,8 @@ mod test {
     }
     #[test]
     fn test_random() {
-        let mut b1: Bloom<Hash> = Bloom::random(10, 0.1, 100);
-        let mut b2: Bloom<Hash> = Bloom::random(10, 0.1, 100);
+        let mut b1: Bloom<Hash> = Bloom::random(10, FalsePositiveRate::TEN_PERCENT, 100);
+        let mut b2: Bloom<Hash> = Bloom::random(10, FalsePositiveRate::TEN_PERCENT, 100);
         b1.keys.sort_unstable();
         b2.keys.sort_unstable();
         assert_ne!(b1.keys, b2.keys);
@@ -323,29 +413,35 @@ mod test {
     // k = round((m / n) * log(2));
     #[test]
     fn test_filter_math() {
-        assert_eq!(Bloom::<Hash>::num_bits(100f64, 0.1f64) as u64, 480u64);
-        assert_eq!(Bloom::<Hash>::num_bits(100f64, 0.01f64) as u64, 959u64);
-        assert_eq!(Bloom::<Hash>::num_keys(1000f64, 50f64) as u64, 14u64);
-        assert_eq!(Bloom::<Hash>::num_keys(2000f64, 50f64) as u64, 28u64);
-        assert_eq!(Bloom::<Hash>::num_keys(2000f64, 25f64) as u64, 55u64);
+        assert_eq!(
+            Bloom::<Hash>::num_bits(100, FalsePositiveRate::TEN_PERCENT),
+            480u64
+        );
+        assert_eq!(
+            Bloom::<Hash>::num_bits(100, FalsePositiveRate::ONE_PERCENT),
+            959u64
+        );
+        assert_eq!(Bloom::<Hash>::num_keys(1000, 50), 14u64);
+        assert_eq!(Bloom::<Hash>::num_keys(2000, 50), 28u64);
+        assert_eq!(Bloom::<Hash>::num_keys(2000, 25), 55u64);
         //ensure min keys is 1
-        assert_eq!(Bloom::<Hash>::num_keys(20f64, 1000f64) as u64, 1u64);
+        assert_eq!(Bloom::<Hash>::num_keys(20, 1000), 1u64);
     }
 
     #[test]
     fn test_bloom_wire_format_regression() {
         fn assert_wire_format(
-            false_rate: f64,
+            false_rate: FalsePositiveRate,
             expected_num_bits: u64,
             expected_num_keys: u64,
             keys: Vec<u64>,
             expected_serialized_len: usize,
             expected_serialized_hash: Hash,
         ) {
-            let num_bits = Bloom::<Hash>::num_bits(1287f64, false_rate);
-            let num_keys = Bloom::<Hash>::num_keys(num_bits, 1287f64);
-            assert_eq!(num_bits as u64, expected_num_bits);
-            assert_eq!(num_keys as u64, expected_num_keys);
+            let num_bits = Bloom::<Hash>::num_bits(1287, false_rate);
+            let num_keys = Bloom::<Hash>::num_keys(num_bits, 1287);
+            assert_eq!(num_bits, expected_num_bits);
+            assert_eq!(num_keys, expected_num_keys);
 
             let mut bloom = Bloom::<Hash>::new(num_bits as usize, keys);
             for hash_value in [
@@ -364,7 +460,7 @@ mod test {
         }
 
         assert_wire_format(
-            0.1f64,
+            FalsePositiveRate::TEN_PERCENT,
             6168,
             3,
             vec![
@@ -374,12 +470,12 @@ mod test {
             ],
             833,
             Hash::new_from_array([
-                186, 247, 46, 104, 13, 127, 226, 6, 196, 199, 126, 11, 99, 173, 236, 66, 163,
-                10, 228, 233, 220, 127, 121, 247, 12, 183, 173, 231, 122, 182, 112, 121,
+                186, 247, 46, 104, 13, 127, 226, 6, 196, 199, 126, 11, 99, 173, 236, 66, 163, 10,
+                228, 233, 220, 127, 121, 247, 12, 183, 173, 231, 122, 182, 112, 121,
             ]),
         );
         assert_wire_format(
-            0.01f64,
+            FalsePositiveRate::ONE_PERCENT,
             12336,
             7,
             vec![
@@ -391,8 +487,8 @@ mod test {
             ],
             1617,
             Hash::new_from_array([
-                116, 127, 147, 126, 135, 69, 139, 180, 8, 181, 101, 161, 178, 175, 6, 144, 48,
-                13, 38, 26, 175, 55, 44, 225, 5, 207, 86, 162, 167, 141, 173, 100,
+                116, 127, 147, 126, 135, 69, 139, 180, 8, 181, 101, 161, 178, 175, 6, 144, 48, 13,
+                38, 26, 175, 55, 44, 225, 5, 207, 86, 162, 167, 141, 173, 100,
             ]),
         );
     }
@@ -427,7 +523,8 @@ mod test {
         let hash_values: Vec<_> = std::iter::repeat_with(generate_random_hash)
             .take(1200)
             .collect();
-        let bloom: ConcurrentBloom<_> = Bloom::<Hash>::random(1287, 0.1, 7424).into();
+        let bloom: ConcurrentBloom<_> =
+            Bloom::<Hash>::random(1287, FalsePositiveRate::TEN_PERCENT, 7424).into();
         assert_eq!(bloom.keys.len(), 3);
         assert_eq!(bloom.num_bits, 6168);
         assert_eq!(bloom.bits.len(), 97);

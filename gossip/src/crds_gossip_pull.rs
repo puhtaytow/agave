@@ -28,7 +28,7 @@ use {
     },
     rayon::{ThreadPool, prelude::*},
     serde::{Deserialize, Serialize},
-    solana_bloom::bloom::{Bloom, ConcurrentBloom},
+    solana_bloom::bloom::{Bloom, ConcurrentBloom, FalsePositiveRate},
     solana_hash::Hash,
     solana_keypair::Keypair,
     solana_native_token::LAMPORTS_PER_SOL,
@@ -95,7 +95,11 @@ impl CrdsFilter {
         let max_bits = (max_bytes * 8) as f64;
         let max_items = Self::max_items(max_bits, FALSE_RATE, KEYS);
         let mask_bits = Self::mask_bits(num_items as f64, max_items);
-        let filter = Bloom::random(max_items as usize, FALSE_RATE, max_bits as usize);
+        let filter = Bloom::random(
+            max_items as usize,
+            FalsePositiveRate::TEN_PERCENT,
+            max_bits as usize,
+        );
         let seed: u64 = rand::rng().random_range(0..2u64.pow(mask_bits));
         let mask = Self::compute_mask(seed, mask_bits);
         CrdsFilter {
@@ -179,7 +183,11 @@ impl CrdsFilterSet {
         for _ in 0..MAX_NUM_FILTERS.min(size) {
             let k = rng.random_range(0..indices.len());
             let k = indices.swap_remove(k);
-            let filter = Bloom::random(max_items as usize, FALSE_RATE, max_bits as usize);
+            let filter = Bloom::random(
+                max_items as usize,
+                FalsePositiveRate::TEN_PERCENT,
+                max_bits as usize,
+            );
             filters[k] = Some(ConcurrentBloom::<Hash>::from(filter));
         }
         Self { filters, mask_bits }
