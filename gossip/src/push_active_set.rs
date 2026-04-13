@@ -100,7 +100,7 @@ impl PushActiveSet {
 }
 
 impl PushActiveSetEntry {
-    const BLOOM_FALSE_RATE: FalsePositiveRate = FalsePositiveRate::TEN_PERCENT;
+    const BLOOM_FALSE_RATE: FalsePositiveRate = FalsePositiveRate::new(10);
     const BLOOM_MAX_BITS: usize = 1024 * 8 * 4;
 
     fn get_nodes<'a>(

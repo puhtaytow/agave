@@ -92,7 +92,7 @@ fn bench_add_hash(b: &mut Bencher) {
         .collect();
     let mut fail = 0;
     b.iter(|| {
-        let mut bloom = Bloom::random(1287, FalsePositiveRate::TEN_PERCENT, 7424);
+        let mut bloom = Bloom::random(1287, FalsePositiveRate::new(10), 7424);
         for hash_value in &hash_values {
             bloom.add(hash_value);
         }
@@ -112,7 +112,7 @@ fn bench_add_hash_atomic(b: &mut Bencher) {
     let mut fail = 0;
     b.iter(|| {
         let bloom: ConcurrentBloom<_> =
-            Bloom::random(1287, FalsePositiveRate::TEN_PERCENT, 7424).into();
+            Bloom::random(1287, FalsePositiveRate::new(10), 7424).into();
         // Intentionally not using parallelism here, so that this and above
         // benchmark only compare the bit-vector ops.
         // For benchmarking the parallel code, change bellow for loop to:
