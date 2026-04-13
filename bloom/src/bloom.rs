@@ -23,10 +23,7 @@ pub trait BloomHashIndex {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FalsePositiveRate {
-    // Integer percent in [1, 99], e.g. 1 == 1% and 10 == 10%.
-    percent: u64,
-}
+pub struct FalsePositiveRate(u64);
 
 impl FalsePositiveRate {
     const SCALE: u64 = 100;
@@ -40,12 +37,7 @@ impl FalsePositiveRate {
     pub const ONE_PERCENT: Self = Self::new(1);
 
     pub const fn new(percent: u64) -> Self {
-        Self { percent }
-    }
-
-    fn validate(self) {
-        assert!(self.percent > 0);
-        assert!(self.percent < Self::SCALE);
+        Self(percent)
     }
 
     fn neg_ln_q14(self) -> u64 {
