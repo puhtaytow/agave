@@ -33,16 +33,8 @@ thread_local! {
 
 /// Only used in macro, do not use directly!
 pub fn calculate_heap_cost(heap_size: u32, heap_cost: u64) -> u64 {
-    const KIBIBYTE: u64 = 1024;
-    const PAGE_SIZE_KB: u64 = 32;
-    let mut rounded_heap_size = u64::from(heap_size);
-    rounded_heap_size =
-        rounded_heap_size.saturating_add(PAGE_SIZE_KB.saturating_mul(KIBIBYTE).saturating_sub(1));
-    rounded_heap_size
-        .checked_div(PAGE_SIZE_KB.saturating_mul(KIBIBYTE))
-        .expect("PAGE_SIZE_KB * KIBIBYTE > 0")
-        .saturating_sub(1)
-        .saturating_mul(heap_cost)
+    const PAGE_SIZE: u32 = 32 * 1024;
+    u64::from(heap_size.saturating_sub(1) / PAGE_SIZE).saturating_mul(heap_cost)
 }
 
 /// Only used in macro, do not use directly!
