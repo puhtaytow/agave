@@ -5,6 +5,7 @@ target/
 /solana-metrics/
 /solana-metrics.tar.bz2
 /test-ledger/
+__fuzz__/
 
 **/*.rs.bk
 .cargo
