@@ -4,12 +4,13 @@
 use solana_program_runtime::program_metrics::LoadProgramMetrics;
 use {
     crate::program_loader::load_program_with_pubkey,
+    crate::transaction_processor::TransactionBatchProcessor,
     solana_account::{Account, AccountSharedData},
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_instruction::error::InstructionError,
     solana_program_runtime::{
         invoke_context::BuiltinFunctionRegisterer,
-        loaded_programs::{ProgramCacheForTxBatch, ProgramRuntimeEnvironment},
+        loaded_programs::{ForkGraph, ProgramCacheForTxBatch, ProgramRuntimeEnvironment},
         program_cache_entry::ProgramCacheEntry,
         solana_sbpf::program::BuiltinFunctionDefinition,
     },
@@ -106,6 +107,17 @@ pub fn new_program_cache_with_builtins(slot: u64) -> ProgramCacheForTxBatch {
     }
 
     cache
+}
+
+pub fn add_builtins_to_transaction_batch_processor<FG: ForkGraph>(
+    transaction_processor: &TransactionBatchProcessor<FG>,
+) {
+    for builtin in SVM_BUILTINS {
+        transaction_processor.add_builtin(
+            builtin.program_id,
+            ProgramCacheEntry::new_builtin(0u64, builtin.name.len(), builtin.register_fn),
+        );
+    }
 }
 
 /// Add a program loaded from ELF bytes to the cache.

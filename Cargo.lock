@@ -5751,9 +5751,9 @@ dependencies = [
 
 [[package]]
 name = "protosol"
-version = "9.0.1"
+version = "9.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e19fd23beba10243272008acfa690c6cda43efed0fd23e3fa9c9dc6e1a989848"
+checksum = "61dfab20271ca73268fec941784821bb2ed864d07dba4f1624cb23dbb442092d"
 dependencies = [
  "prost 0.11.9",
 ]
@@ -10863,13 +10863,16 @@ dependencies = [
  "serde",
  "shuttle",
  "solana-account 4.3.1",
+ "solana-address-lookup-table-interface",
  "solana-bpf-loader-program",
  "solana-clock",
  "solana-compute-budget",
+ "solana-compute-budget-instruction",
  "solana-compute-budget-interface",
  "solana-compute-budget-program",
  "solana-ed25519-program",
  "solana-epoch-schedule",
+ "solana-fee",
  "solana-fee-calculator",
  "solana-fee-structure",
  "solana-frozen-abi",
@@ -10899,6 +10902,7 @@ dependencies = [
  "solana-secp256r1-program",
  "solana-signature",
  "solana-signer",
+ "solana-slot-hashes",
  "solana-svm",
  "solana-svm-callback",
  "solana-svm-feature-set",
