@@ -23,13 +23,13 @@ use {
     std::{collections::HashSet, sync::Arc},
 };
 
-struct SvmBuiltinPrototype {
+pub(crate) struct SvmBuiltinPrototype {
     pub program_id: Pubkey,
     pub name: &'static str,
     pub register_fn: BuiltinFunctionRegisterer,
 }
 
-static SVM_BUILTINS: &[SvmBuiltinPrototype] = &[
+pub(crate) static SVM_BUILTINS: &[SvmBuiltinPrototype] = &[
     SvmBuiltinPrototype {
         program_id: solana_system_program::id(),
         name: "system_program",

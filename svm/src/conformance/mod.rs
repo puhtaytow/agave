@@ -4,6 +4,8 @@
 pub mod account_state;
 pub mod callback;
 #[cfg(feature = "conformance")]
+pub mod direct_mapping;
+#[cfg(feature = "conformance")]
 pub mod elf_loader;
 #[cfg(feature = "conformance")]
 mod err;
@@ -18,3 +20,4 @@ pub mod serialization;
 mod setup;
 #[cfg(feature = "conformance")]
 pub mod syscall;
+pub mod txn;
