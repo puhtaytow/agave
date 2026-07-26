@@ -238,7 +238,6 @@ fn test_program_sbf_sanity() {
 
         let mut program_cache =
             default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-        let sysvar_cache = default_sysvar_cache();
 
         let context = InstrContext {
             feature_set,
@@ -247,7 +246,7 @@ fn test_program_sbf_sanity() {
             cu_avail: MAX_COMPUTE_UNIT_LIMIT as u64, // Widen to 1.4 M
         };
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
         let result = match effects.result {
             Some(err) => Err(err),
@@ -308,14 +307,13 @@ fn test_program_sbf_loader_deprecated() {
             &program_elf,
             &feature_set,
         );
-        let sysvar_cache = default_sysvar_cache();
 
         let account_metas = vec![AccountMeta::new(pubkey, true)];
         let instruction = Instruction::new_with_bytes(program_id, &[255], account_metas);
 
         let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
         assert!(effects.result.is_none());
     }
@@ -432,7 +430,7 @@ fn test_sol_alloc_free_no_longer_deployable_with_upgradeable_loader() {
     // in elf inside syscall table. In this case, `sol_alloc_free_` can't be
     // found in syscall table. Hence, the verification fails and the deployment
     // fails.
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert_eq!(effects.result, Some(InstructionError::InvalidAccountData));
 }
@@ -460,7 +458,6 @@ fn test_program_sbf_duplicate_accounts() {
         let feature_set = SVMFeatureSet::all_enabled();
         let mut program_cache =
             default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-        let sysvar_cache = default_sysvar_cache();
 
         let payer_pubkey = Pubkey::new_unique();
         let payee_pubkey = Pubkey::new_unique();
@@ -484,7 +481,7 @@ fn test_program_sbf_duplicate_accounts() {
             ]);
             let instruction = Instruction::new_with_bytes(program_id, data, account_metas.clone());
             let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
-            execute_instr(&context, &mut program_cache, &sysvar_cache)
+            execute_instr(&context, &mut program_cache, &default_sysvar_cache())
         };
 
         let effects = execute(&[1]);
@@ -533,7 +530,7 @@ fn test_program_sbf_duplicate_accounts() {
         ]);
         let instruction = Instruction::new_with_bytes(program_id, &[7], account_metas);
         let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
         assert!(effects.result.is_none());
     }
 }
@@ -568,7 +565,6 @@ fn test_program_sbf_error_handling() {
 
         let mut program_cache =
             default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-        let sysvar_cache = default_sysvar_cache();
 
         // Helper to execute an instruction with the given data byte.
         let mut execute = |data: &[u8]| {
@@ -578,7 +574,7 @@ fn test_program_sbf_error_handling() {
             let context =
                 InstrContext::new_with_default_budget(feature_set, accounts.clone(), instruction);
 
-            execute_instr(&context, &mut program_cache, &sysvar_cache)
+            execute_instr(&context, &mut program_cache, &default_sysvar_cache())
         };
 
         let effects = execute(&[1]);
@@ -654,7 +650,6 @@ fn test_return_data_and_log_data_syscall() {
 
         let mut program_cache =
             default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-        let sysvar_cache = default_sysvar_cache();
 
         let account_metas = vec![AccountMeta::new(pubkey, true)];
         let instruction =
@@ -662,7 +657,7 @@ fn test_return_data_and_log_data_syscall() {
 
         let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
         assert!(effects.result.is_none());
 
@@ -796,8 +791,6 @@ fn test_program_sbf_invoke_sanity() {
             keyed_account_for_compute_budget_program(),
         ]);
 
-        let sysvar_cache = default_sysvar_cache();
-
         let account_metas = vec![
             AccountMeta::new(mint_keypair.pubkey(), true),
             AccountMeta::new(argument_keypair.pubkey(), true),
@@ -852,7 +845,7 @@ fn test_program_sbf_invoke_sanity() {
                 cu_avail: 1_400_000,
             };
 
-            execute_txn(&context, program_cache, &sysvar_cache)
+            execute_txn(&context, program_cache, &default_sysvar_cache())
         };
 
         // success cases
@@ -1426,7 +1419,6 @@ fn test_program_sbf_program_id_spoofing() {
         &spoof1_system_elf,
         &feature_set,
     );
-    let sysvar_cache = default_sysvar_cache();
 
     let account_metas = vec![
         AccountMeta::new_readonly(system_program::id(), false),
@@ -1440,7 +1432,7 @@ fn test_program_sbf_program_id_spoofing() {
 
     let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert_eq!(
         effects.result,
@@ -1485,7 +1477,6 @@ fn test_program_sbf_caller_has_access_to_cpi_program() {
         &caller_access_elf,
         &feature_set,
     );
-    let sysvar_cache = default_sysvar_cache();
 
     let account_metas = vec![
         AccountMeta::new_readonly(caller_pubkey, false),
@@ -1495,7 +1486,7 @@ fn test_program_sbf_caller_has_access_to_cpi_program() {
 
     let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert_eq!(effects.result, Some(InstructionError::MissingAccount));
 }
@@ -1517,7 +1508,6 @@ fn test_program_sbf_ro_modify() {
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
 
     let account_metas = vec![
         AccountMeta::new_readonly(system_program::id(), false),
@@ -1531,7 +1521,7 @@ fn test_program_sbf_ro_modify() {
         let context =
             InstrContext::new_with_default_budget(feature_set, accounts.clone(), instruction);
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
         assert_eq!(
             effects.result,
@@ -1553,7 +1543,6 @@ fn test_program_sbf_call_depth() {
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
     let program_accounts = upgradeable_program_accounts(&program_id, &program_elf);
 
     let mut execute = |depth: usize| {
@@ -1565,7 +1554,7 @@ fn test_program_sbf_call_depth() {
             instruction,
         );
 
-        execute_instr(&context, &mut program_cache, &sysvar_cache)
+        execute_instr(&context, &mut program_cache, &default_sysvar_cache())
     };
 
     let effects = execute(compute_budget.max_call_depth - 1);
@@ -1589,7 +1578,6 @@ fn test_program_sbf_compute_budget() {
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
 
     let instruction = Instruction::new_with_bincode(program_id, &0, vec![]);
 
@@ -1600,7 +1588,7 @@ fn test_program_sbf_compute_budget() {
         cu_avail: 0,
     };
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert_eq!(
         effects.result,
@@ -1652,7 +1640,6 @@ fn assert_instruction_count() {
     }
 
     let feature_set = SVMFeatureSet::all_enabled();
-    let sysvar_cache = default_sysvar_cache();
 
     println!("\n  {:36} expected actual  diff", "SBF program");
     for (program_name, expected_consumption) in programs.iter() {
@@ -1675,7 +1662,7 @@ fn assert_instruction_count() {
 
         let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
         let consumption = context.cu_avail.saturating_sub(effects.cu_avail);
         let diff: i64 = consumption as i64 - *expected_consumption as i64;
@@ -1850,10 +1837,12 @@ fn test_program_sbf_instruction_introspection_passing_transaction() {
         None,
     );
 
-    let sysvar_cache = default_sysvar_cache();
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(effects.status, Ok(()));
-    fixture.preserve_accounts_state(effects);
 }
 
 #[test]
@@ -1867,7 +1856,6 @@ fn test_program_sbf_instruction_introspection_writable_special_instructions1111(
         .pubkey();
 
     let program_id = fixture.program_ids[0];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -1889,7 +1877,7 @@ fn test_program_sbf_instruction_introspection_writable_special_instructions1111(
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     assert_eq!(
         effects.status,
         Err(TransactionError::InstructionError(
@@ -1910,7 +1898,6 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
         .pubkey();
 
     let program_id = fixture.program_ids[0];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -1930,7 +1917,7 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
 
     #[allow(deprecated)]
     let expected_error = Err(TransactionError::InstructionError(
@@ -1957,7 +1944,6 @@ fn test_program_sbf_r2_instruction_data_pointer(num_accounts: usize, input_data_
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut accounts = Vec::new();
     let mut account_metas = Vec::new();
@@ -1985,7 +1971,7 @@ fn test_program_sbf_r2_instruction_data_pointer(num_accounts: usize, input_data_
 
     let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert!(effects.result.is_none());
     assert_eq!(input_data, effects.return_data);
@@ -2504,7 +2490,6 @@ fn test_program_sbf_disguised_as_sbf_loader() {
             &program_elf,
             &feature_set,
         );
-        let sysvar_cache = default_sysvar_cache();
 
         let account_metas = vec![AccountMeta::new_readonly(program_id, false)];
         let instruction = Instruction::new_with_bytes(bpf_loader::id(), &[1], account_metas);
@@ -2522,7 +2507,7 @@ fn test_program_sbf_disguised_as_sbf_loader() {
             instruction,
         );
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
         assert_eq!(effects.result, Some(InstructionError::UnsupportedProgramId));
     }
 }
@@ -2546,8 +2531,6 @@ fn test_program_reads_from_program_account() {
         &feature_set,
     );
 
-    let sysvar_cache = default_sysvar_cache();
-
     // Loader V2 (bpf_loader) stores the raw ELF in the program account.
     let program_account = Account {
         lamports: 1,
@@ -2566,7 +2549,7 @@ fn test_program_reads_from_program_account() {
         instruction,
     );
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
     assert!(effects.result.is_none());
 }
 
@@ -2588,8 +2571,6 @@ fn test_program_sbf_c_dup() {
         &feature_set,
     );
 
-    let sysvar_cache = default_sysvar_cache();
-
     let account_address = Pubkey::new_unique();
     let account =
         Account::new_data(42, &[1_u8, 2, 3], &solana_sdk_ids::system_program::id()).unwrap();
@@ -2604,7 +2585,7 @@ fn test_program_sbf_c_dup() {
     accounts.push((account_address, account));
     let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
     assert!(effects.result.is_none());
 }
 
@@ -3077,7 +3058,6 @@ fn test_program_sbf_ro_account_modify() {
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
 
     let argument_pubkey = Pubkey::new_unique();
     let mut accounts = upgradeable_program_accounts(&program_id, &program_elf);
@@ -3094,7 +3074,7 @@ fn test_program_sbf_ro_account_modify() {
         let context =
             InstrContext::new_with_default_budget(feature_set, accounts.clone(), instruction);
 
-        let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
         assert_eq!(effects.result, Some(InstructionError::ReadonlyDataModified));
     }
@@ -3125,7 +3105,6 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
     ]);
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         mut accounts,
@@ -3156,7 +3135,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
             None,
         );
 
-        execute_txn(&context, &mut program_cache, &sysvar_cache)
+        execute_txn(&context, &mut program_cache, &default_sysvar_cache())
     };
 
     let mut bump = 0;
@@ -3483,7 +3462,6 @@ fn test_program_sbf_realloc_invoke() {
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
     ]);
-    let sysvar_cache = default_sysvar_cache();
 
     // Loaded-account data size limit is not enforced by the transaction conformance harness,
     // but keep the compute-budget instructions to preserve the original transactions.
@@ -3509,7 +3487,7 @@ fn test_program_sbf_realloc_invoke() {
             None,
         );
 
-        execute_txn(&context, &mut program_cache, &sysvar_cache)
+        execute_txn(&context, &mut program_cache, &default_sysvar_cache())
     };
 
     let mut bump = 0;
@@ -4065,7 +4043,6 @@ fn test_program_sbf_processed_inner_instruction() {
     let sibling_inner_program_id = fixture.program_ids[1];
     let noop_program_id = fixture.program_ids[2];
     let invoke_and_return_program_id = fixture.program_ids[3];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -4112,7 +4089,7 @@ fn test_program_sbf_processed_inner_instruction() {
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     assert_eq!(effects.status, Ok(()));
 }
 
@@ -4128,7 +4105,6 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
 
     let noop = fixture.program_ids[0];
     let inner_instruction_alignment_check = fixture.program_ids[1];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -4166,7 +4142,7 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     assert_eq!(effects.status, Ok(()));
 }
 
@@ -4198,7 +4174,6 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         AccountMeta::new_readonly(invoke_program_id, false),
         AccountMeta::new_readonly(realloc_program_id, false),
     ];
-    let sysvar_cache = default_sysvar_cache();
 
     for (account_size, byte_index) in [
         (0, 0),                                   // first realloc byte
@@ -4240,7 +4215,11 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
                 None,
             );
 
-            let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+            let effects = execute_txn(
+                &context,
+                &mut fixture.program_cache,
+                &default_sysvar_cache(),
+            );
             if (byte_index as usize) < account_size || virtual_address_space_adjustments {
                 assert_eq!(
                     effects.status,
@@ -4294,7 +4273,11 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(
         effects.status,
         Err(if virtual_address_space_adjustments {
@@ -4354,7 +4337,11 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             None,
         );
 
-        let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+        let effects = execute_txn(
+            &context,
+            &mut fixture.program_cache,
+            &default_sysvar_cache(),
+        );
         if virtual_address_space_adjustments {
             assert_eq!(
                 effects.status,
@@ -4415,7 +4402,11 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 }
 
@@ -4487,7 +4478,6 @@ fn test_cpi_account_data_updates_caller_grows(
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS];
     instruction_data.extend_from_slice(b"bar");
@@ -4512,7 +4502,11 @@ fn test_cpi_account_data_updates_caller_grows(
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
 
     if deprecated_caller {
         assert_eq!(
@@ -4557,7 +4551,6 @@ fn test_cpi_account_data_updates_callee_grows(
     let mut account = Account::new(42, 0, &account_metas[2].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLEE_GROWS];
     instruction_data.extend_from_slice(b"bar");
@@ -4582,7 +4575,11 @@ fn test_cpi_account_data_updates_callee_grows(
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     if deprecated_callee {
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
         // deprecated_callee is incapable of resizing accounts
@@ -4634,7 +4631,6 @@ fn test_cpi_account_data_updates_callee_shrinks_smaller_than_original_len(
     let mut account = Account::new(42, 0, &account_metas[2].pubkey);
     account.data = b"foobar".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLEE_SHRINKS_SMALLER_THAN_ORIGINAL_LEN,
@@ -4662,7 +4658,11 @@ fn test_cpi_account_data_updates_callee_shrinks_smaller_than_original_len(
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     if deprecated_callee {
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
         // deprecated_callee is incapable of resizing accounts
@@ -4713,7 +4713,6 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_larger_than_origina
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS_CALLEE_SHRINKS,
@@ -4743,7 +4742,11 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_larger_than_origina
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     if deprecated_caller {
         assert_eq!(
             effects.status,
@@ -4786,7 +4789,6 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_smaller_than_origin
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS_CALLEE_SHRINKS,
@@ -4816,7 +4818,11 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_smaller_than_origin
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     if deprecated_caller {
         assert_eq!(
             effects.status,
@@ -4861,7 +4867,6 @@ fn test_cpi_invalid_account_info_pointers() {
             .iter()
             .map(|program_id| AccountMeta::new_readonly(*program_id, false)),
     );
-    let sysvar_cache = default_sysvar_cache();
 
     for invoke_program_id in program_ids {
         for ix in [
@@ -4895,7 +4900,11 @@ fn test_cpi_invalid_account_info_pointers() {
                 None,
             );
 
-            let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+            let effects = execute_txn(
+                &context,
+                &mut fixture.program_cache,
+                &default_sysvar_cache(),
+            );
             assert!(effects.status.is_err(), "{:?}", effects.status);
             assert!(
                 effects
@@ -4924,7 +4933,6 @@ fn test_deplete_cost_meter_with_access_violation() {
 
     let invoke_program_id = fixture.program_ids[0];
     fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -4961,7 +4969,7 @@ fn test_deplete_cost_meter_with_access_violation() {
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     assert_eq!(
         effects.status,
         Err(TransactionError::InstructionError(
@@ -4986,7 +4994,6 @@ fn test_program_sbf_deplete_cost_meter_with_divide_by_zero() {
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
 
     let instruction = Instruction::new_with_bytes(program_id, &[], vec![]);
 
@@ -4997,7 +5004,7 @@ fn test_program_sbf_deplete_cost_meter_with_divide_by_zero() {
         cu_avail: 10_000,
     };
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert_eq!(
         effects.result,
@@ -5030,7 +5037,6 @@ fn test_deny_access_beyond_current_length(
     let writable_account_keypair = fixture.add_account(Some(account));
 
     let invoke_program_id = fixture.program_ids[0];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5064,7 +5070,7 @@ fn test_deny_access_beyond_current_length(
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     assert_eq!(
         effects.status,
         if virtual_address_space_adjustments {
@@ -5098,7 +5104,6 @@ fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
     let account_keypair = fixture.add_account(None);
 
     let invoke_program_id = fixture.program_ids[0];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5132,7 +5137,7 @@ fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     assert_eq!(
         effects.status,
         Err(TransactionError::InstructionError(
@@ -5164,7 +5169,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         AccountMeta::new(account_keypair.pubkey(), false),
         AccountMeta::new_readonly(invoke_program_id, false),
     ];
-    let sysvar_cache = default_sysvar_cache();
 
     // I. do CPI with account in read only (separate code path with virtual_address_space_adjustments)
     let mut account = Account::new(42, 10240, &invoke_program_id);
@@ -5207,7 +5211,11 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5261,7 +5269,11 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5316,7 +5328,11 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5380,7 +5396,11 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5435,7 +5455,11 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
 
     if virtual_address_space_adjustments {
         // changing the data pointer is not permitted
@@ -5488,7 +5512,6 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
         let account_keypair = fixture.add_account(Some(Account::new(42, 10240, &account_owner)));
 
         let invoke_program_id = fixture.program_ids[0];
-        let sysvar_cache = default_sysvar_cache();
         let ProgramSbfTxnFixture {
             feature_set,
             accounts,
@@ -5521,7 +5544,7 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
         let context =
             TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-        let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
         if syscall_parameter_address_restrictions {
             assert!(effects.status.is_err(), "{program}: {:?}", effects.status);
         } else {
@@ -5550,7 +5573,6 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
     let account_keypair = fixture.add_account(Some(Account::new(42, 10240, &account_owner)));
 
     let invoke_program_id = fixture.program_ids[0];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5580,7 +5602,7 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
     if syscall_parameter_address_restrictions {
         assert!(
             effects
@@ -5620,7 +5642,6 @@ fn test_clone_account_data() {
         AccountMeta::new_readonly(invoke_program_id2, false),
         AccountMeta::new_readonly(invoke_program_id, false),
     ];
-    let sysvar_cache = default_sysvar_cache();
 
     // I. clone data and CPI; modify data in callee.
     // Now the original data in the caller is unmodified, and we get a "instruction modified data of an account it does not own"
@@ -5661,7 +5682,11 @@ fn test_clone_account_data() {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert!(effects.status.is_err(), "{:?}", effects.status);
     let error = format!(
         "Program {invoke_program_id} failed: instruction modified data of an account it does not \
@@ -5712,7 +5737,11 @@ fn test_clone_account_data() {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert!(effects.status.is_err(), "{:?}", effects.status);
     let error = format!(
         "Program {invoke_program_id} failed: instruction modified data of an account it does not \
@@ -5762,7 +5791,11 @@ fn test_clone_account_data() {
         None,
     );
 
-    let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     // works because the account is exactly the same in caller as callee
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 }
@@ -5781,7 +5814,6 @@ fn test_stack_heap_zeroed() {
 
     let invoke_program_id = fixture.program_ids[0];
     fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5829,7 +5861,7 @@ fn test_stack_heap_zeroed() {
             cu_avail: u64::from(COMPUTE_UNIT_LIMIT),
         };
 
-        let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
         assert!(effects.status.is_err(), "{:?}", effects.status);
         assert!(
             effects
@@ -5855,7 +5887,6 @@ fn test_function_call_args() {
     let account_keypair = fixture.add_account(None);
 
     let program_id = fixture.program_ids[0];
-    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5925,7 +5956,7 @@ fn test_function_call_args() {
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
 
     let decoded: OutputData = from_slice::<OutputData>(&effects.return_data).unwrap();
     assert_eq!(
@@ -5989,7 +6020,6 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
 
     let upgradeable_program_id = fixture.program_ids[0];
     let deprecated_program_id = fixture.program_ids[1];
-    let sysvar_cache = default_sysvar_cache();
 
     for deprecated in [false, true] {
         let program_id = if deprecated {
@@ -6034,7 +6064,11 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
                     sanitized_message,
                     None,
                 );
-                let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
+                let effects = execute_txn(
+                    &context,
+                    &mut fixture.program_cache,
+                    &default_sysvar_cache(),
+                );
 
                 if virtual_address_space_adjustments && account_data_len != 0 {
                     assert!(
@@ -6088,7 +6122,6 @@ fn test_program_sbf_rust_direct_account_pointers(num_accounts: usize, input_data
 
     let mut program_cache =
         default_program_cache_with_program(&program_id, &program_elf, &feature_set);
-    let sysvar_cache = default_sysvar_cache();
 
     let mut accounts = Vec::new();
     let mut account_metas = Vec::new();
@@ -6121,7 +6154,7 @@ fn test_program_sbf_rust_direct_account_pointers(num_accounts: usize, input_data
 
     let context = InstrContext::new_with_default_budget(feature_set, accounts, instruction);
 
-    let effects = execute_instr(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_instr(&context, &mut program_cache, &default_sysvar_cache());
 
     assert!(effects.result.is_none());
     // `num_accounts * 2` will be added as return data.
