@@ -34,7 +34,7 @@ use {
     solana_signer::Signer,
     solana_svm::conformance::{
         setup::sysvar_cache_from_accounts,
-        txn::{context::TxnContext, harness::execute_txn},
+        txn::{context::TxnContext, effects::TxnEffects, harness::execute_txn},
     },
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_type_overrides::rand,
@@ -1780,6 +1780,12 @@ impl<const N: usize> ProgramSbfTxnFixture<N> {
         ));
         keypair
     }
+
+    // Simulates bank behaviour by preserving resulting accounts state after success in tests which need it.
+    fn commit(&mut self, effects: TxnEffects) {
+        assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
+        self.accounts = effects.resulting_accounts;
+    }
 }
 
 #[cfg(feature = "sbf_rust")]
@@ -1802,15 +1808,7 @@ fn test_program_sbf_instruction_introspection_passing_transaction() {
     let payer = fixture
         .add_account(Some(Account::new(50_000, 0, &system_program::id())))
         .pubkey();
-
-    let ProgramSbfTxnFixture {
-        program_ids: [program_id],
-        feature_set,
-        accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
+    let [program_id] = fixture.program_ids;
 
     let account_metas = vec![
         AccountMeta::new_readonly(program_id, false),
@@ -1829,11 +1827,16 @@ fn test_program_sbf_instruction_introspection_passing_transaction() {
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()));
+    fixture.commit(effects);
 }
 
 #[test]
