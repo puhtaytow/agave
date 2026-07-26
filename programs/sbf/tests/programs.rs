@@ -16,54 +16,31 @@ use {
     borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize},
     solana_account::ReadableAccount,
     solana_account_info::MAX_PERMITTED_DATA_INCREASE,
-    solana_client_traits::SyncClient,
-    solana_clock::UnixTimestamp,
-    solana_cluster_type::ClusterType,
     solana_compute_budget::compute_budget::ComputeBudget,
-    solana_compute_budget_instruction::instructions_processor::process_compute_budget_instructions,
     solana_compute_budget_interface::ComputeBudgetInstruction,
-    solana_fee_calculator::FeeRateGovernor,
-    solana_fee_structure::{FeeBin, FeeStructure},
-    solana_hash::Hash,
     solana_instruction::{error::InstructionError, AccountMeta, Instruction},
     solana_keypair::Keypair,
     solana_loader_v3_interface::{
         instruction as loader_v3_instruction, state::UpgradeableLoaderState,
     },
-    solana_message::{inner_instruction::InnerInstruction, Message, SanitizedMessage},
+    solana_message::{Message, SanitizedMessage},
     solana_pubkey::Pubkey,
     solana_rent::Rent,
-    solana_runtime::{
-        bank::{Bank, SlotLeader},
-        bank_client::BankClient,
-        genesis_utils::{
-            bootstrap_validator_stake_lamports, create_genesis_config_with_leader,
-            create_genesis_config_with_leader_ex, GenesisConfigInfo,
-        },
-        loader_utils::{create_program, load_upgradeable_buffer},
-    },
     solana_sbf_rust_invoke_dep::*,
     solana_sbf_rust_realloc_dep::*,
     solana_sbf_rust_realloc_invoke_dep::*,
     solana_sdk_ids::sysvar::{self as sysvar, clock},
     solana_sdk_ids::{bpf_loader, bpf_loader_deprecated, bpf_loader_upgradeable},
     solana_signer::Signer,
-    solana_svm::{
-        conformance::{
-            setup::sysvar_cache_from_accounts,
-            txn::{context::TxnContext, harness::execute_txn},
-        },
-        transaction_commit_result::{CommittedTransaction, TransactionCommitResult},
-        transaction_processor::ExecutionRecordingConfig,
+    solana_svm::conformance::{
+        setup::sysvar_cache_from_accounts,
+        txn::{context::TxnContext, harness::execute_txn},
     },
     solana_svm_feature_set::SVMFeatureSet,
-    solana_svm_timings::ExecuteTimings,
-    solana_svm_transaction::svm_message::SVMStaticMessage,
     solana_svm_type_overrides::rand,
     solana_system_interface::{program as system_program, MAX_PERMITTED_DATA_LENGTH},
-    solana_transaction::Transaction,
     solana_transaction_error::TransactionError,
-    std::{assert_eq, str::FromStr, sync::Arc, time::Duration},
+    std::{assert_eq, str::FromStr},
     test_case::{test_case, test_matrix},
 };
 #[cfg(any(feature = "sbf_c", feature = "sbf_rust"))]
@@ -160,49 +137,6 @@ fn default_sysvar_cache() -> SysvarCache {
         }
     });
     sysvar_cache
-}
-
-#[cfg(feature = "sbf_rust")]
-fn process_transaction_and_record_inner(
-    bank: &Bank,
-    tx: Transaction,
-) -> (
-    Result<(), TransactionError>,
-    Vec<Vec<InnerInstruction>>,
-    Vec<String>,
-    u64,
-) {
-    let commit_result = load_execute_and_commit_transaction(bank, tx);
-    let CommittedTransaction {
-        inner_instructions,
-        log_messages,
-        status,
-        executed_units,
-        ..
-    } = commit_result.unwrap();
-    let inner_instructions = inner_instructions.expect("cpi recording should be enabled");
-    let log_messages = log_messages.expect("log recording should be enabled");
-    (status, inner_instructions, log_messages, executed_units)
-}
-
-#[cfg(feature = "sbf_rust")]
-fn load_execute_and_commit_transaction(bank: &Bank, tx: Transaction) -> TransactionCommitResult {
-    let txs = vec![tx];
-    let tx_batch = bank.prepare_batch_for_tests(txs);
-    let mut commit_results = bank
-        .load_execute_and_commit_transactions(
-            &tx_batch,
-            ExecutionRecordingConfig {
-                enable_cpi_recording: true,
-                enable_log_recording: true,
-                enable_return_data_recording: false,
-                enable_transaction_balance_recording: false,
-            },
-            &mut ExecuteTimings::default(),
-            None,
-        )
-        .0;
-    commit_results.pop().unwrap()
 }
 
 #[cfg(feature = "sbf_rust")]
@@ -2057,42 +1991,6 @@ fn test_program_sbf_r2_instruction_data_pointer(num_accounts: usize, input_data_
 
     assert!(effects.result.is_none());
     assert_eq!(input_data, effects.return_data);
-}
-
-fn get_stable_genesis_config() -> GenesisConfigInfo {
-    let validator_pubkey =
-        Pubkey::from_str("GLh546CXmtZdvpEzL8sxzqhhUf7KPvmGaRpFHB5W1sjV").unwrap();
-    let mint_keypair = Keypair::from_base58_string(
-        "4YTH9JSRgZocmK9ezMZeJCCV2LVeR2NatTBA8AFXkg2x83fqrt8Vwyk91961E7ns4vee9yUBzuDfztb8i9iwTLFd",
-    );
-    let voting_keypair = Keypair::from_base58_string(
-        "4EPWEn72zdNY1JSKkzyZ2vTZcKdPW3jM5WjAgUadnoz83FR5cDFApbo7s5mwBcYXn8afVe2syReJaqBi4fkhG3mH",
-    );
-    let stake_pubkey = Pubkey::from_str("HGq9JF77xFXRgWRJy8VQuhdbdugrT856RvQDzr1KJo6E").unwrap();
-
-    let mut genesis_config = create_genesis_config_with_leader_ex(
-        123,
-        &mint_keypair.pubkey(),
-        &validator_pubkey,
-        &voting_keypair.pubkey(),
-        &stake_pubkey,
-        None,
-        bootstrap_validator_stake_lamports(),
-        42,
-        FeeRateGovernor::new(0, 0), // most tests can't handle transaction fees
-        Rent::free(),               // most tests don't expect rent
-        ClusterType::Development,
-        &FeatureSet::all_enabled(),
-        vec![],
-    );
-    genesis_config.creation_time = Duration::ZERO.as_secs() as UnixTimestamp;
-
-    GenesisConfigInfo {
-        genesis_config,
-        mint_keypair,
-        voting_keypair,
-        validator_pubkey,
-    }
 }
 
 #[test]
