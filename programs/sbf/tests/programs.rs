@@ -9,8 +9,6 @@
 
 #[cfg(not(feature = "sbf_sanity_list"))]
 use solana_program_runtime::execution_budget::MAX_COMPUTE_UNIT_LIMIT;
-#[cfg(all(feature = "sbf_rust", feature = "sbpf-v3"))]
-use solana_runtime::loader_utils::load_upgradeable_program_and_advance_slot;
 #[cfg(feature = "sbf_rust")]
 use {
     agave_feature_set::{self as feature_set, FeatureSet},
@@ -3070,37 +3068,141 @@ fn test_program_sbf_upgrade() {
 #[test]
 #[cfg(all(feature = "sbf_rust", feature = "sbpf-v3"))]
 fn test_program_sbf_upgrade_via_cpi() {
-    agave_logger::setup();
+    const UPGRADE_SLOT: u64 = 4;
+    const UPGRADE_EFFECTIVE_SLOT: u64 = 5;
 
-    let GenesisConfigInfo {
-        genesis_config,
+    let new_authority_keypair = Keypair::new();
+    let buffer_keypair = Keypair::new();
+
+    let (
+        _,
         mint_keypair,
-        ..
-    } = create_genesis_config(50);
+        authority_keypair,
+        [invoke_and_return, program_id],
+        feature_set,
+        mut accounts,
+        mut program_cache,
+        _,
+    ) = program_sbf_txn_fixture([
+        (
+            "solana_sbf_rust_invoke_and_return",
+            bpf_loader_upgradeable::id(),
+        ),
+        ("solana_sbf_rust_upgradeable", bpf_loader_upgradeable::id()),
+    ]);
 
-    let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
-    let mut bank_client = BankClient::new_shared(bank);
-    let authority_keypair = Keypair::new();
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &mint_keypair.pubkey())
+        .unwrap()
+        .1 = Account {
+        lamports: 50,
+        data: Vec::new(),
+        owner: system_program::id(),
+        executable: false,
+        rent_epoch: 0,
+    };
 
-    let (_bank, invoke_and_return) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_invoke_and_return",
+    let program_elf = load_program_elf("solana_sbf_rust_upgradeable");
+
+    let (programdata_address, _) =
+        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
+    let mut programdata = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+        slot: 2,
+        upgrade_authority_address: Some(authority_keypair.pubkey()),
+    })
+    .unwrap();
+    programdata.extend_from_slice(&program_elf);
+    programdata.resize(
+        UpgradeableLoaderState::size_of_programdata(program_elf.len().saturating_mul(2)),
+        0,
     );
 
-    // Deploy upgradeable program
-    let authority_keypair = Keypair::new();
-    let (_bank, program_id) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_upgradeable",
-    );
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &programdata_address)
+        .unwrap()
+        .1 = Account {
+        lamports: 1,
+        data: programdata,
+        owner: bpf_loader_upgradeable::id(),
+        executable: false,
+        rent_epoch: 0,
+    };
 
-    // Call the upgradable program via CPI
+    let program_data = bincode::serialize(&UpgradeableLoaderState::Program {
+        programdata_address,
+    })
+    .unwrap();
+
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &program_id)
+        .unwrap()
+        .1 = Account {
+        lamports: 1,
+        data: program_data,
+        owner: bpf_loader_upgradeable::id(),
+        executable: true,
+        rent_epoch: 0,
+    };
+
+    accounts.extend([
+        (
+            rent::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&Rent::free()).unwrap(),
+                owner: sysvar::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            clock::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&solana_clock::Clock {
+                    slot: UPGRADE_SLOT,
+                    epoch_start_timestamp: 0,
+                    epoch: 0,
+                    leader_schedule_epoch: 0,
+                    unix_timestamp: 0,
+                })
+                .unwrap(),
+                owner: sysvar::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        keyed_account_for_bpf_loader_upgradeable_program(),
+    ]);
+
+    program_cache.set_slot_for_tests(UPGRADE_SLOT);
+    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+
+    let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
+                   instructions: Vec<Instruction>,
+                   program_cache: &mut ProgramCacheForTxBatch,
+                   sysvar_cache: &SysvarCache| {
+        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
+        let sanitized_message = SanitizedMessage::try_from_legacy_message(
+            message,
+            &ReservedAccountKeys::empty_key_set(),
+        )
+        .unwrap();
+
+        let context = TxnContext::new_with_default_budget(
+            feature_set.clone(),
+            transaction_accounts,
+            sanitized_message,
+            None,
+        );
+
+        execute_txn(&context, program_cache, sysvar_cache)
+    };
+
+    // Call the upgradeable program via CPI
     let mut instruction = Instruction::new_with_bytes(
         invoke_and_return,
         &[0],
@@ -3109,15 +3211,35 @@ fn test_program_sbf_upgrade_via_cpi() {
             AccountMeta::new_readonly(clock::id(), false),
         ],
     );
+
     instruction.data[0] += 1;
-    let result = bank_client.send_and_confirm_instruction(&mint_keypair, instruction.clone());
+
     assert_eq!(
-        result.unwrap_err().unwrap(),
-        TransactionError::InstructionError(0, InstructionError::Custom(42))
+        execute(
+            accounts.clone(),
+            vec![instruction.clone()],
+            &mut program_cache,
+            &sysvar_cache,
+        )
+        .status,
+        Err(TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(42),
+        )),
     );
 
     // Set authority via CPI
-    let new_authority_keypair = Keypair::new();
+    accounts.push((
+        new_authority_keypair.pubkey(),
+        Account {
+            lamports: 0,
+            data: Vec::new(),
+            owner: system_program::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    ));
+
     let mut authority_instruction = loader_v3_instruction::set_upgrade_authority(
         &program_id,
         &authority_keypair.pubkey(),
@@ -3127,20 +3249,37 @@ fn test_program_sbf_upgrade_via_cpi() {
     authority_instruction
         .accounts
         .insert(0, AccountMeta::new(bpf_loader_upgradeable::id(), false));
-    let message = Message::new(&[authority_instruction], Some(&mint_keypair.pubkey()));
-    bank_client
-        .send_and_confirm_message(&[&mint_keypair, &authority_keypair], message)
-        .unwrap();
+
+    let effects = execute(
+        accounts,
+        vec![authority_instruction],
+        &mut program_cache,
+        &sysvar_cache,
+    );
+    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
+
+    accounts = effects.resulting_accounts;
 
     // Upgrade program via CPI
-    let buffer_keypair = Keypair::new();
-    load_upgradeable_buffer(
-        &bank_client,
-        &mint_keypair,
-        &buffer_keypair,
-        &new_authority_keypair,
-        "solana_sbf_rust_upgraded",
-    );
+
+    let upgraded_program_elf = load_program_elf("solana_sbf_rust_upgraded");
+    let mut buffer_data = bincode::serialize(&UpgradeableLoaderState::Buffer {
+        authority_address: Some(new_authority_keypair.pubkey()),
+    })
+    .unwrap();
+    buffer_data.extend_from_slice(&upgraded_program_elf);
+
+    accounts.push((
+        buffer_keypair.pubkey(),
+        Account {
+            lamports: 1,
+            data: buffer_data,
+            owner: bpf_loader_upgradeable::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    ));
+
     let mut upgrade_instruction = loader_v3_instruction::upgrade(
         &program_id,
         &buffer_keypair.pubkey(),
@@ -3151,20 +3290,56 @@ fn test_program_sbf_upgrade_via_cpi() {
     upgrade_instruction
         .accounts
         .insert(0, AccountMeta::new(bpf_loader_upgradeable::id(), false));
-    let message = Message::new(&[upgrade_instruction], Some(&mint_keypair.pubkey()));
-    bank_client
-        .send_and_confirm_message(&[&mint_keypair, &new_authority_keypair], message)
-        .unwrap();
-    bank_client
-        .advance_slot(1, &bank_forks, SlotLeader::default())
-        .expect("Failed to advance the slot");
+    let effects = execute(
+        accounts,
+        vec![upgrade_instruction],
+        &mut program_cache,
+        &sysvar_cache,
+    );
+    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
+    accounts = effects.resulting_accounts;
+
+    let modified_programs = program_cache.drain_modified_entries();
+    assert!(modified_programs.contains_key(&program_id));
+    program_cache.merge(&modified_programs);
+    program_cache.set_slot_for_tests(UPGRADE_EFFECTIVE_SLOT);
+
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &clock::id())
+        .unwrap()
+        .1 = Account {
+        lamports: 1,
+        data: bincode::serialize(&solana_clock::Clock {
+            slot: UPGRADE_EFFECTIVE_SLOT,
+            epoch_start_timestamp: 0,
+            epoch: 0,
+            leader_schedule_epoch: 0,
+            unix_timestamp: 0,
+        })
+        .unwrap(),
+        owner: sysvar::id(),
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
 
     // Call the upgraded program via CPI
     instruction.data[0] += 1;
-    let result = bank_client.send_and_confirm_instruction(&mint_keypair, instruction.clone());
+
     assert_eq!(
-        result.unwrap_err().unwrap(),
-        TransactionError::InstructionError(0, InstructionError::Custom(43))
+        execute(
+            accounts,
+            vec![instruction],
+            &mut program_cache,
+            &sysvar_cache,
+        )
+        .status,
+        Err(TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(43),
+        )),
     );
 }
 
