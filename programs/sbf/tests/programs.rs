@@ -1817,6 +1817,17 @@ impl<const N: usize> ProgramSbfTxnFixture<N> {
     }
 }
 
+#[cfg(feature = "sbf_rust")]
+fn feature_set_with_account_mapping_features(enabled: bool) -> FeatureSet {
+    let mut feature_set = FeatureSet::all_enabled();
+    if !enabled {
+        feature_set.deactivate(&feature_set::syscall_parameter_address_restrictions::id());
+        feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
+        feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
+    }
+    feature_set
+}
+
 #[test]
 #[cfg(feature = "sbf_rust")]
 fn test_program_sbf_instruction_introspection_passing_transaction() {
@@ -3176,13 +3187,8 @@ fn test_program_sbf_ro_account_modify() {
 fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
     const START_BALANCE: u64 = 100_000_000_000;
 
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [ProgramSpec::upgradeable("solana_sbf_rust_realloc")],
@@ -4257,13 +4263,8 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
 #[test_case(true; "with_virtual_address_space_adjustments")]
 #[cfg(feature = "sbf_rust")]
 fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: bool) {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [
@@ -4520,13 +4521,8 @@ fn cpi_account_data_updates_fixture(
     deprecated_caller: bool,
     virtual_address_space_adjustments: bool,
 ) -> (ProgramSbfTxnFixture<3>, Keypair, Keypair, Vec<AccountMeta>) {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [
@@ -5164,13 +5160,8 @@ fn test_deny_access_beyond_current_length(
 ) {
     let writable_account_keypair = Keypair::new();
 
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [ProgramSpec::upgradeable("solana_sbf_rust_invoke")],
@@ -5238,13 +5229,8 @@ fn test_deny_access_beyond_current_length(
 #[test_case(true; "with_virtual_address_space_adjustments")]
 #[cfg(feature = "sbf_rust")]
 fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [ProgramSpec::upgradeable("solana_sbf_rust_invoke")],
@@ -5304,13 +5290,8 @@ fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
 #[test_case(true; "with_virtual_address_space_adjustments")]
 #[cfg(feature = "sbf_rust")]
 fn test_update_callee_account(virtual_address_space_adjustments: bool) {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [ProgramSpec::upgradeable("solana_sbf_rust_invoke")],
@@ -5657,14 +5638,8 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
     }
 
     for program in programs {
-        let mut configured_feature_set = FeatureSet::all_enabled();
-        if !syscall_parameter_address_restrictions {
-            configured_feature_set
-                .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-            configured_feature_set
-                .deactivate(&feature_set::virtual_address_space_adjustments::id());
-            configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-        }
+        let configured_feature_set =
+            feature_set_with_account_mapping_features(syscall_parameter_address_restrictions);
 
         let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
             [ProgramSpec::upgradeable(program)],
@@ -5725,13 +5700,8 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
     [TEST_ACCOUNT_INFO_LAMPORTS_RC, TEST_ACCOUNT_INFO_DATA_RC]
 )]
 fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool, instruction: u8) {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !syscall_parameter_address_restrictions {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(syscall_parameter_address_restrictions);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [ProgramSpec::upgradeable("solana_sbf_rust_invoke")],
@@ -5792,10 +5762,7 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
 
 #[test]
 fn test_clone_account_data() {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    configured_feature_set.deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-    configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-    configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
+    let configured_feature_set = feature_set_with_account_mapping_features(false);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [
@@ -6176,13 +6143,8 @@ fn test_function_call_args() {
 #[test_case(true; "with_virtual_address_space_adjustments")]
 #[cfg(feature = "sbf_rust")]
 fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustments: bool) {
-    let mut configured_feature_set = FeatureSet::all_enabled();
-    if !virtual_address_space_adjustments {
-        configured_feature_set
-            .deactivate(&feature_set::syscall_parameter_address_restrictions::id());
-        configured_feature_set.deactivate(&feature_set::virtual_address_space_adjustments::id());
-        configured_feature_set.deactivate(&feature_set::account_data_direct_mapping::id());
-    }
+    let configured_feature_set =
+        feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         [
