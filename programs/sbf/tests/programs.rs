@@ -4119,10 +4119,8 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         ProgramSpec::deprecated("solana_sbf_rust_noop"),
         ProgramSpec::deprecated("solana_sbf_rust_inner_instruction_alignment_check"),
     ]);
-    let payer = fixture
-        .add_account(Some(Account::new(50_000, 0, &system_program::id())))
-        .pubkey();
-    let mint_keypair = fixture.add_account(None);
+    let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
+    let mint_pubkey = mint_keypair.pubkey();
 
     let ProgramSbfTxnFixture {
         program_ids: [noop, inner_instruction_alignment_check],
@@ -4140,15 +4138,25 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         &[0],
         vec![
             AccountMeta::new_readonly(noop, false),
-            AccountMeta::new_readonly(mint_keypair.pubkey(), false),
+            AccountMeta::new_readonly(mint_pubkey, false),
         ],
     );
     instruction.data[0] += 1;
 
-    let message = Message::new(&[instruction], Some(&payer));
+    // Match the original Bank test, where the account passed to both CPIs was also the payer.
+    // Message-wide privilege promotion therefore makes it a signer and writable even though its
+    // instruction meta is readonly and non-signer.
+    let message = Message::new(&[instruction], Some(&mint_pubkey));
     let sanitized_message =
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
+    let mint_index = sanitized_message
+        .account_keys()
+        .iter()
+        .position(|pubkey| pubkey == &mint_pubkey)
+        .unwrap();
+    assert!(sanitized_message.is_signer(mint_index));
+    assert!(sanitized_message.is_writable(mint_index));
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
