@@ -2154,52 +2154,144 @@ fn test_program_sbf_invoke_stable_genesis_and_bank() {
 #[test]
 #[cfg(all(feature = "sbf_rust", feature = "sbpf-v3"))]
 fn test_program_sbf_invoke_in_same_tx_as_deployment() {
-    agave_logger::setup();
-
-    let GenesisConfigInfo {
-        genesis_config,
-        mint_keypair,
-        ..
-    } = create_genesis_config(50);
-    let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
-    let mut bank_client = BankClient::new_shared(bank.clone());
+    const DEPLOYMENT_SLOT: u64 = 2;
 
     let buffer_keypair = Keypair::new();
-    let authority_keypair = Keypair::new();
-    let program = load_upgradeable_buffer(
-        &bank_client,
-        &mint_keypair,
-        &buffer_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_noop",
-    );
+    let program_keypair = Keypair::new();
+
+    let (
+        _,
+        mint_keypair,
+        authority_keypair,
+        [indirect_program_id],
+        feature_set,
+        mut accounts,
+        mut program_cache,
+        _,
+    ) = program_sbf_txn_fixture([(
+        "solana_sbf_rust_invoke_and_return",
+        bpf_loader_upgradeable::id(),
+    )]);
+
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &mint_keypair.pubkey())
+        .unwrap()
+        .1 = Account {
+        lamports: 50,
+        data: Vec::new(),
+        owner: system_program::id(),
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    // do not add to program cache
+    let program_elf = load_program_elf("solana_sbf_rust_noop");
+
+    let buffer_state = UpgradeableLoaderState::Buffer {
+        authority_address: Some(authority_keypair.pubkey()),
+    };
+    let mut buffer_data = bincode::serialize(&buffer_state).unwrap();
+    buffer_data.extend_from_slice(&program_elf);
 
     // Prepare deployment instructions (CreateAccount + DeployWithMaxDataLen)
-    let program_keypair = Keypair::new();
     let program_id = program_keypair.pubkey();
+    let (programdata_address, _) =
+        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
+
+    accounts.extend([
+        (
+            buffer_keypair.pubkey(),
+            Account {
+                lamports: 1,
+                data: buffer_data,
+                owner: bpf_loader_upgradeable::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            program_id,
+            Account {
+                lamports: 0,
+                data: Vec::new(),
+                owner: system_program::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            programdata_address,
+            Account {
+                lamports: 0,
+                data: Vec::new(),
+                owner: system_program::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            rent::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&Rent::free()).unwrap(),
+                owner: sysvar::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            clock::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&solana_clock::Clock {
+                    slot: DEPLOYMENT_SLOT,
+                    epoch_start_timestamp: 0,
+                    epoch: 0,
+                    leader_schedule_epoch: 0,
+                    unix_timestamp: 0,
+                })
+                .unwrap(),
+                owner: sysvar::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        keyed_account_for_system_program(),
+        keyed_account_for_bpf_loader_upgradeable_program(),
+    ]);
+
+    program_cache.set_slot_for_tests(DEPLOYMENT_SLOT);
+    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+
     #[allow(deprecated)]
     let deployment_instructions = loader_v3_instruction::deploy_with_max_program_len(
         &mint_keypair.pubkey(),
-        &program_keypair.pubkey(),
+        &program_id,
         &buffer_keypair.pubkey(),
         &authority_keypair.pubkey(),
-        1.max(
-            bank_client
-                .get_minimum_balance_for_rent_exemption(UpgradeableLoaderState::size_of_program())
-                .unwrap(),
-        ),
-        program.len() * 2,
+        1,
+        program_elf.len() * 2,
     )
     .unwrap();
 
-    // Deploy indirect invocation program
-    let (bank, indirect_program_id) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_invoke_and_return",
-    );
+    let execute = |instructions: Vec<Instruction>, program_cache: &mut ProgramCacheForTxBatch| {
+        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
+        let sanitized_message = SanitizedMessage::try_from_legacy_message(
+            message,
+            &ReservedAccountKeys::empty_key_set(),
+        )
+        .unwrap();
+
+        let context = TxnContext::new_with_default_budget(
+            feature_set.clone(),
+            accounts.clone(),
+            sanitized_message,
+            None,
+        );
+
+        execute_txn(&context, program_cache, &sysvar_cache)
+    };
 
     // Prepare invocations
     let invoke_instruction =
@@ -2214,30 +2306,22 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     );
 
     // Deployment is invisible to both top-level-instructions and CPI instructions
-    for (index, invoke_instruction) in [invoke_instruction, indirect_invoke_instruction]
-        .into_iter()
-        .enumerate()
-    {
+    for invoke_instruction in [invoke_instruction, indirect_invoke_instruction] {
         let mut instructions = deployment_instructions.clone();
         instructions.push(invoke_instruction);
-        let tx = Transaction::new(
-            &[&mint_keypair, &program_keypair, &authority_keypair],
-            Message::new(&instructions, Some(&mint_keypair.pubkey())),
-            bank.last_blockhash(),
+
+        let mut transaction_program_cache = program_cache.clone();
+
+        let effects = execute(instructions, &mut transaction_program_cache);
+        assert_eq!(
+            effects.status,
+            Err(TransactionError::InstructionError(
+                2,
+                InstructionError::UnsupportedProgramId,
+            )),
+            "{:?}",
+            effects.logs,
         );
-        if index == 0 {
-            let result = load_execute_and_commit_transaction(&bank, tx);
-            assert_eq!(
-                result.unwrap().status,
-                Err(TransactionError::ProgramAccountNotFound),
-            );
-        } else {
-            let (result, _, _, _) = process_transaction_and_record_inner(&bank, tx);
-            assert_eq!(
-                result.unwrap_err(),
-                TransactionError::InstructionError(2, InstructionError::UnsupportedProgramId),
-            );
-        }
     }
 }
 
