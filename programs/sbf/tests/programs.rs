@@ -738,13 +738,9 @@ fn test_program_sbf_invoke_sanity() {
             rent_epoch: 0,
         }));
 
-        let ProgramSbfTxnFixture {
-            program_ids: [invoke_program_id, invoked_program_id, noop_program_id],
-            mut feature_set,
-            mut accounts,
-            mut program_cache,
-            ..
-        } = fixture;
+        let [invoke_program_id, invoked_program_id, noop_program_id] = fixture.program_ids;
+        let mut feature_set = fixture.feature_set.clone();
+        let mut program_cache = fixture.program_cache.clone();
 
         let (derived_key1, bump_seed1) =
             Pubkey::find_program_address(&[b"You pass butter"], &invoke_program_id);
@@ -753,7 +749,7 @@ fn test_program_sbf_invoke_sanity() {
         let (derived_key3, bump_seed3) =
             Pubkey::find_program_address(&[derived_key2.as_ref()], &invoked_program_id);
 
-        accounts.extend([
+        fixture.accounts.extend([
             (
                 derived_key1,
                 Account {
@@ -798,7 +794,7 @@ fn test_program_sbf_invoke_sanity() {
             keyed_account_for_compute_budget_program(),
         ]);
 
-        let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+        let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
         let account_metas = vec![
             AccountMeta::new(mint_keypair.pubkey(), true),
@@ -918,7 +914,7 @@ fn test_program_sbf_invoke_sanity() {
                 }
             }
             .as_ref(),
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -927,34 +923,32 @@ fn test_program_sbf_invoke_sanity() {
         assert!(feature_set.snapshot().raise_cpi_nesting_limit_to_8);
 
         // Reset the account balances for `ARGUMENT` and `INVOKED_ARGUMENT`.
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &argument_keypair.pubkey())
-            .unwrap()
-            .1 = Account {
-            lamports: 42,
-            data: vec![0; 100],
-            owner: invoke_program_id,
-            executable: false,
-            rent_epoch: 0,
-        };
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &invoked_argument_keypair.pubkey())
-            .unwrap()
-            .1 = Account {
-            lamports: 20,
-            data: vec![0; 10],
-            owner: invoked_program_id,
-            executable: false,
-            rent_epoch: 0,
-        };
+        fixture.replace_account(
+            argument_keypair.pubkey(),
+            Account {
+                lamports: 42,
+                data: vec![0; 100],
+                owner: invoke_program_id,
+                executable: false,
+                rent_epoch: 0,
+            },
+        );
+        fixture.replace_account(
+            invoked_argument_keypair.pubkey(),
+            Account {
+                lamports: 20,
+                data: vec![0; 10],
+                owner: invoked_program_id,
+                executable: false,
+                rent_epoch: 0,
+            },
+        );
 
         do_invoke_success(
             TEST_NESTED_INVOKE_SIMD_0268_OK,
             &[],
             &[invoked_program_id; 16], // 16, 8 for each invoke
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -962,7 +956,7 @@ fn test_program_sbf_invoke_sanity() {
             TEST_MAX_ACCOUNT_INFOS_OK,
             &[],
             std::slice::from_ref(&invoked_program_id),
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -971,7 +965,7 @@ fn test_program_sbf_invoke_sanity() {
             TEST_CU_USAGE_MINIMUM,
             &[],
             std::slice::from_ref(&noop_program_id),
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -980,7 +974,7 @@ fn test_program_sbf_invoke_sanity() {
             TEST_CU_USAGE_BASELINE,
             &[],
             std::slice::from_ref(&noop_program_id),
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -989,7 +983,7 @@ fn test_program_sbf_invoke_sanity() {
             TEST_CU_USAGE_MAX,
             &[],
             std::slice::from_ref(&noop_program_id),
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1001,7 +995,7 @@ fn test_program_sbf_invoke_sanity() {
             TEST_MAX_ACCOUNT_INFOS_OK_BEFORE_INCREASE_TX_ACCOUNT_LOCK_BEFORE_SIMD_0339,
             &[],
             std::slice::from_ref(&invoked_program_id),
-            &mut accounts,
+            &mut fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1094,7 +1088,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1104,7 +1098,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1114,7 +1108,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::UnsupportedProgramId),
             &[argument_keypair.pubkey()],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1124,7 +1118,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::UnsupportedProgramId),
             &[unexecutable_program_keypair.pubkey()],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1134,7 +1128,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::MissingAccount),
             &[],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1144,7 +1138,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::MaxSeedLengthExceeded),
             &[],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1154,7 +1148,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete),
             &[],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1173,7 +1167,7 @@ fn test_program_sbf_invoke_sanity() {
                      too large (10241 > 10240)"
                 ),
             ]),
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1192,7 +1186,7 @@ fn test_program_sbf_invoke_sanity() {
                      accounts (256 > 255)"
                 ),
             ]),
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1211,7 +1205,7 @@ fn test_program_sbf_invoke_sanity() {
                      account info's (256 > 255)"
                 ),
             ]),
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1224,7 +1218,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::Custom(42)),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1234,7 +1228,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1244,7 +1238,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1255,7 +1249,7 @@ fn test_program_sbf_invoke_sanity() {
             std::slice::from_ref(&invoked_program_id),
             None,
             true, // should_deplete_compute_meter
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1275,7 +1269,7 @@ fn test_program_sbf_invoke_sanity() {
                 invoked_program_id,
             ],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1299,7 +1293,7 @@ fn test_program_sbf_invoke_sanity() {
                 invoked_program_id,
             ],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1309,7 +1303,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::ProgramFailedToComplete),
             &[],
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1319,7 +1313,7 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
@@ -1329,13 +1323,14 @@ fn test_program_sbf_invoke_sanity() {
             TransactionError::InstructionError(0, InstructionError::PrivilegeEscalation),
             std::slice::from_ref(&invoked_program_id),
             None,
-            &accounts,
+            &fixture.accounts,
             &feature_set,
             &mut program_cache,
         );
 
         // Check resulting state
-        let account = accounts
+        let account = fixture
+            .accounts
             .iter()
             .find(|(pubkey, _)| pubkey == &derived_key1)
             .map(|(_, account)| account)
@@ -1348,33 +1343,31 @@ fn test_program_sbf_invoke_sanity() {
         }
 
         // Attempt to realloc into unauthorized address space
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &from_keypair.pubkey())
-            .unwrap()
-            .1 = Account {
-            lamports: 84,
-            data: Vec::new(),
-            owner: system_program::id(),
-            executable: false,
-            rent_epoch: 0,
-        };
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &derived_key1)
-            .unwrap()
-            .1 = Account {
-            lamports: 0,
-            data: Vec::new(),
-            owner: system_program::id(),
-            executable: false,
-            rent_epoch: 0,
-        };
+        fixture.replace_account(
+            from_keypair.pubkey(),
+            Account {
+                lamports: 84,
+                data: Vec::new(),
+                owner: system_program::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        );
+        fixture.replace_account(
+            derived_key1,
+            Account {
+                lamports: 0,
+                data: Vec::new(),
+                owner: system_program::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        );
 
         let effects = do_invoke(
             TEST_ALLOC_ACCESS_VIOLATION,
             &[],
-            accounts,
+            fixture.accounts.clone(),
             &feature_set,
             &mut program_cache,
         );
@@ -2165,13 +2158,9 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         rent_epoch: 0,
     }));
 
-    let ProgramSbfTxnFixture {
-        program_ids: [program_id, indirect_program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        ..
-    } = fixture;
+    let [program_id, indirect_program_id] = fixture.program_ids;
+    let feature_set = fixture.feature_set.clone();
+    let mut program_cache = fixture.program_cache.clone();
 
     // do not add to fixture
     let program_elf = load_program_elf("solana_sbf_rust_noop");
@@ -2188,35 +2177,33 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         UpgradeableLoaderState::size_of_programdata(program_elf.len().saturating_mul(2)),
         0,
     );
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &programdata_address)
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: programdata,
-        owner: bpf_loader_upgradeable::id(),
-        executable: false,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        programdata_address,
+        Account {
+            lamports: 1,
+            data: programdata,
+            owner: bpf_loader_upgradeable::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
 
     let program_data = bincode::serialize(&UpgradeableLoaderState::Program {
         programdata_address,
     })
     .unwrap();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &program_id)
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: program_data,
-        owner: bpf_loader_upgradeable::id(),
-        executable: true,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        program_id,
+        Account {
+            lamports: 1,
+            data: program_data,
+            owner: bpf_loader_upgradeable::id(),
+            executable: true,
+            rent_epoch: 0,
+        },
+    );
 
-    accounts.extend([
+    fixture.accounts.extend([
         (
             rent::id(),
             Account {
@@ -2248,7 +2235,7 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
     ]);
 
     program_cache.set_slot_for_tests(REDEPLOYMENT_SLOT);
-    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+    let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     let redeployment_instruction = loader_v3_instruction::upgrade(
         &program_id,
@@ -2294,19 +2281,19 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
     for invoke_instruction in [invoke_instruction, indirect_invoke_instruction] {
         // Call upgradeable program
         let effects = execute(
-            accounts,
+            fixture.accounts.clone(),
             vec![invoke_instruction.clone()],
             &mut program_cache,
         );
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
-        accounts = effects.resulting_accounts;
+        fixture.commit(effects);
 
         // Upgrade the program and invoke in same tx
         let mut transaction_program_cache = program_cache.clone();
 
         let effects = execute(
-            accounts.clone(),
+            fixture.accounts.clone(),
             vec![redeployment_instruction.clone(), invoke_instruction],
             &mut transaction_program_cache,
         );
@@ -2617,13 +2604,9 @@ fn test_program_sbf_upgrade() {
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
 
-    let ProgramSbfTxnFixture {
-        program_ids: [program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        ..
-    } = fixture;
+    let [program_id] = fixture.program_ids;
+    let feature_set = fixture.feature_set.clone();
+    let mut program_cache = fixture.program_cache.clone();
 
     // do not add to fixture
     let program_elf = load_program_elf("solana_sbf_rust_upgradeable");
@@ -2640,35 +2623,33 @@ fn test_program_sbf_upgrade() {
         UpgradeableLoaderState::size_of_programdata(program_elf.len().saturating_mul(2)),
         0,
     );
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &programdata_address)
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: programdata,
-        owner: bpf_loader_upgradeable::id(),
-        executable: false,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        programdata_address,
+        Account {
+            lamports: 1,
+            data: programdata,
+            owner: bpf_loader_upgradeable::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
 
     let program_data = bincode::serialize(&UpgradeableLoaderState::Program {
         programdata_address,
     })
     .unwrap();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &program_id)
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: program_data,
-        owner: bpf_loader_upgradeable::id(),
-        executable: true,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        program_id,
+        Account {
+            lamports: 1,
+            data: program_data,
+            owner: bpf_loader_upgradeable::id(),
+            executable: true,
+            rent_epoch: 0,
+        },
+    );
 
-    accounts.extend([
+    fixture.accounts.extend([
         (
             rent::id(),
             Account {
@@ -2700,7 +2681,7 @@ fn test_program_sbf_upgrade() {
     ]);
 
     program_cache.set_slot_for_tests(UPGRADE_SLOT);
-    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+    let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
                    instructions: Vec<Instruction>,
@@ -2728,7 +2709,7 @@ fn test_program_sbf_upgrade() {
         Instruction::new_with_bytes(program_id, &[0], vec![AccountMeta::new(clock::id(), false)]);
     assert_eq!(
         execute(
-            accounts.clone(),
+            fixture.accounts.clone(),
             vec![instruction.clone()],
             &mut program_cache,
             &sysvar_cache,
@@ -2748,13 +2729,13 @@ fn test_program_sbf_upgrade() {
     );
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         vec![set_authority_instruction],
         &mut program_cache,
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Upgrade program
     let buffer_keypair = Keypair::new();
@@ -2765,7 +2746,7 @@ fn test_program_sbf_upgrade() {
     .unwrap();
     buffer_data.extend_from_slice(&upgraded_program_elf);
 
-    accounts.push((
+    fixture.accounts.push((
         buffer_keypair.pubkey(),
         Account {
             lamports: 1,
@@ -2784,13 +2765,13 @@ fn test_program_sbf_upgrade() {
     );
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         vec![upgrade_instruction],
         &mut program_cache,
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     let modified_programs = program_cache.drain_modified_entries();
     assert!(modified_programs.contains_key(&program_id));
@@ -2798,33 +2779,32 @@ fn test_program_sbf_upgrade() {
     program_cache.merge(&modified_programs);
     program_cache.set_slot_for_tests(UPGRADE_EFFECTIVE_SLOT);
 
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &clock::id())
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: bincode::serialize(&solana_clock::Clock {
-            slot: UPGRADE_EFFECTIVE_SLOT,
-            epoch_start_timestamp: 0,
-            epoch: 0,
-            leader_schedule_epoch: 0,
-            unix_timestamp: 0,
-        })
-        .unwrap(),
-        owner: sysvar::id(),
-        executable: false,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        clock::id(),
+        Account {
+            lamports: 1,
+            data: bincode::serialize(&solana_clock::Clock {
+                slot: UPGRADE_EFFECTIVE_SLOT,
+                epoch_start_timestamp: 0,
+                epoch: 0,
+                leader_schedule_epoch: 0,
+                unix_timestamp: 0,
+            })
+            .unwrap(),
+            owner: sysvar::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
 
-    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+    let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     // Call upgraded program
     instruction.data[0] += 1;
 
     assert_eq!(
         execute(
-            accounts,
+            fixture.accounts.clone(),
             vec![instruction],
             &mut program_cache,
             &sysvar_cache,
@@ -2853,13 +2833,9 @@ fn test_program_sbf_upgrade_via_cpi() {
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
 
-    let ProgramSbfTxnFixture {
-        program_ids: [invoke_and_return, program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        ..
-    } = fixture;
+    let [invoke_and_return, program_id] = fixture.program_ids;
+    let feature_set = fixture.feature_set.clone();
+    let mut program_cache = fixture.program_cache.clone();
 
     let program_elf = load_program_elf("solana_sbf_rust_upgradeable");
 
@@ -2876,36 +2852,34 @@ fn test_program_sbf_upgrade_via_cpi() {
         0,
     );
 
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &programdata_address)
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: programdata,
-        owner: bpf_loader_upgradeable::id(),
-        executable: false,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        programdata_address,
+        Account {
+            lamports: 1,
+            data: programdata,
+            owner: bpf_loader_upgradeable::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
 
     let program_data = bincode::serialize(&UpgradeableLoaderState::Program {
         programdata_address,
     })
     .unwrap();
 
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &program_id)
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: program_data,
-        owner: bpf_loader_upgradeable::id(),
-        executable: true,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        program_id,
+        Account {
+            lamports: 1,
+            data: program_data,
+            owner: bpf_loader_upgradeable::id(),
+            executable: true,
+            rent_epoch: 0,
+        },
+    );
 
-    accounts.extend([
+    fixture.accounts.extend([
         (
             rent::id(),
             Account {
@@ -2937,7 +2911,7 @@ fn test_program_sbf_upgrade_via_cpi() {
     ]);
 
     program_cache.set_slot_for_tests(UPGRADE_SLOT);
-    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+    let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
                    instructions: Vec<Instruction>,
@@ -2974,7 +2948,7 @@ fn test_program_sbf_upgrade_via_cpi() {
 
     assert_eq!(
         execute(
-            accounts.clone(),
+            fixture.accounts.clone(),
             vec![instruction.clone()],
             &mut program_cache,
             &sysvar_cache,
@@ -2998,14 +2972,14 @@ fn test_program_sbf_upgrade_via_cpi() {
         .insert(0, AccountMeta::new(bpf_loader_upgradeable::id(), false));
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         vec![authority_instruction],
         &mut program_cache,
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Upgrade program via CPI
 
@@ -3016,7 +2990,7 @@ fn test_program_sbf_upgrade_via_cpi() {
     .unwrap();
     buffer_data.extend_from_slice(&upgraded_program_elf);
 
-    accounts.push((
+    fixture.accounts.push((
         buffer_keypair.pubkey(),
         Account {
             lamports: 1,
@@ -3038,46 +3012,45 @@ fn test_program_sbf_upgrade_via_cpi() {
         .accounts
         .insert(0, AccountMeta::new(bpf_loader_upgradeable::id(), false));
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         vec![upgrade_instruction],
         &mut program_cache,
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     let modified_programs = program_cache.drain_modified_entries();
     assert!(modified_programs.contains_key(&program_id));
     program_cache.merge(&modified_programs);
     program_cache.set_slot_for_tests(UPGRADE_EFFECTIVE_SLOT);
 
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &clock::id())
-        .unwrap()
-        .1 = Account {
-        lamports: 1,
-        data: bincode::serialize(&solana_clock::Clock {
-            slot: UPGRADE_EFFECTIVE_SLOT,
-            epoch_start_timestamp: 0,
-            epoch: 0,
-            leader_schedule_epoch: 0,
-            unix_timestamp: 0,
-        })
-        .unwrap(),
-        owner: sysvar::id(),
-        executable: false,
-        rent_epoch: 0,
-    };
+    fixture.replace_account(
+        clock::id(),
+        Account {
+            lamports: 1,
+            data: bincode::serialize(&solana_clock::Clock {
+                slot: UPGRADE_EFFECTIVE_SLOT,
+                epoch_start_timestamp: 0,
+                epoch: 0,
+                leader_schedule_epoch: 0,
+                unix_timestamp: 0,
+            })
+            .unwrap(),
+            owner: sysvar::id(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
 
-    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+    let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     // Call the upgraded program via CPI
     instruction.data[0] += 1;
 
     assert_eq!(
         execute(
-            accounts,
+            fixture.accounts.clone(),
             vec![instruction],
             &mut program_cache,
             &sysvar_cache,
@@ -3501,15 +3474,11 @@ fn test_program_sbf_realloc_invoke() {
         &fixture.program_ids[0],
     )));
 
-    let ProgramSbfTxnFixture {
-        program_ids: [realloc_program_id, realloc_invoke_program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
-    accounts.extend([
+    let [realloc_program_id, realloc_invoke_program_id] = fixture.program_ids;
+    let feature_set = fixture.feature_set.clone();
+    let mut program_cache = fixture.program_cache.clone();
+    let sysvar_cache = fixture.sysvar_cache.clone();
+    fixture.accounts.extend([
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
     ]);
@@ -3547,7 +3516,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Realloc RO account
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_ZERO_RO],
@@ -3575,7 +3544,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Realloc account to 0
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
@@ -3585,11 +3554,11 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(account.lamports(), START_BALANCE);
     assert_eq!(account.data.len(), 0);
     // to preserve bank behavious on successfull execution
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc to max + 1
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_MAX_PLUS_ONE],
@@ -3610,7 +3579,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Realloc to max twice
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_MAX_TWICE],
@@ -3631,7 +3600,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Realloc account to 0
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
@@ -3641,11 +3610,11 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(account.lamports(), START_BALANCE);
     assert_eq!(account.data.len(), 0);
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc and assign
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_AND_ASSIGN],
@@ -3662,11 +3631,11 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(&system_program::id(), account.owner());
     assert_eq!(MAX_PERMITTED_DATA_INCREASE, account.data.len());
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc to 0 with wrong owner
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
@@ -3680,7 +3649,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // realloc and assign to self via system program
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_AND_ASSIGN_TO_SELF_VIA_SYSTEM_PROGRAM],
@@ -3702,7 +3671,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Assign to self and realloc via system program
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_ASSIGN_TO_SELF_VIA_SYSTEM_PROGRAM_AND_REALLOC],
@@ -3723,11 +3692,11 @@ fn test_program_sbf_realloc_invoke() {
         account.data.len(),
     );
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc to 0
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
@@ -3741,16 +3710,16 @@ fn test_program_sbf_realloc_invoke() {
         0,
     );
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc to 100 and check via CPI
-    accounts.push((
+    fixture.accounts.push((
         invoke_keypair.pubkey(),
         Account::new(START_BALANCE, 5, &realloc_invoke_program_id),
     ));
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_INVOKE_CHECK],
@@ -3772,11 +3741,11 @@ fn test_program_sbf_realloc_invoke() {
         assert_eq!(data[i], 2);
     }
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Create account, realloc, check
     let new_keypair = Keypair::new();
-    accounts.push((
+    fixture.accounts.push((
         new_keypair.pubkey(),
         Account::new(0, 0, &system_program::id()),
     ));
@@ -3786,7 +3755,7 @@ fn test_program_sbf_realloc_invoke() {
     instruction_data.extend_from_slice(&100_usize.to_le_bytes());
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &instruction_data,
@@ -3805,7 +3774,7 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(200, account.data.len());
     assert_eq!(&realloc_invoke_program_id, account.owner());
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Invoke, dealloc, and assign
     let pre_len: usize = 100;
@@ -3813,18 +3782,14 @@ fn test_program_sbf_realloc_invoke() {
 
     let mut invoke_account = Account::new(START_BALANCE, pre_len, &realloc_program_id);
     invoke_account.data.fill(1);
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &invoke_keypair.pubkey())
-        .unwrap()
-        .1 = invoke_account;
+    fixture.replace_account(invoke_keypair.pubkey(), invoke_account);
 
     let mut instruction_data = vec![];
     instruction_data.extend_from_slice(&[INVOKE_DEALLOC_AND_ASSIGN, 1]);
     instruction_data.extend_from_slice(&pre_len.to_le_bytes());
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &instruction_data,
@@ -3844,17 +3809,16 @@ fn test_program_sbf_realloc_invoke() {
         assert_eq!(data[i], 0);
     }
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc to max invoke max
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &invoke_keypair.pubkey())
-        .unwrap()
-        .1 = Account::new(42, 0, &realloc_invoke_program_id);
+    fixture.replace_account(
+        invoke_keypair.pubkey(),
+        Account::new(42, 0, &realloc_invoke_program_id),
+    );
 
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_MAX_INVOKE_MAX],
@@ -3881,11 +3845,10 @@ fn test_program_sbf_realloc_invoke() {
         (MAX_PERMITTED_DATA_INCREASE, 1, false),
         (1, MAX_PERMITTED_DATA_INCREASE, false),
     ] {
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &invoke_keypair.pubkey())
-            .unwrap()
-            .1 = Account::new(100_000_000, 0, &realloc_invoke_program_id);
+        fixture.replace_account(
+            invoke_keypair.pubkey(),
+            Account::new(100_000_000, 0, &realloc_invoke_program_id),
+        );
 
         let mut instruction_data = vec![];
         instruction_data.extend_from_slice(&[INVOKE_REALLOC_TO_THEN_LOCAL_REALLOC_EXTEND, 1]);
@@ -3893,7 +3856,7 @@ fn test_program_sbf_realloc_invoke() {
         instruction_data.extend_from_slice(&local_extend_bytes.to_le_bytes());
 
         let effects = execute(
-            accounts.clone(),
+            fixture.accounts.clone(),
             Instruction::new_with_bytes(
                 realloc_invoke_program_id,
                 &instruction_data,
@@ -3912,7 +3875,7 @@ fn test_program_sbf_realloc_invoke() {
                 "cpi: {cpi_extend_bytes} local: {local_extend_bytes}, logs: {:?}",
                 effects.logs,
             );
-            accounts = effects.resulting_accounts;
+            fixture.commit(effects);
         } else {
             assert_eq!(
                 effects.status,
@@ -3928,11 +3891,7 @@ fn test_program_sbf_realloc_invoke() {
     // Realloc shrink, then CPI, then realloc extend
     let mut invoke_account = Account::new(100_000_000, 10, &realloc_invoke_program_id);
     invoke_account.data = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &invoke_keypair.pubkey())
-        .unwrap()
-        .1 = invoke_account;
+    fixture.replace_account(invoke_keypair.pubkey(), invoke_account);
 
     let mut instruction_data = vec![];
     instruction_data.extend_from_slice(&[INVOKE_REALLOC_SHRINK_THEN_CPI_THEN_REALLOC_EXTEND, 1]);
@@ -3940,7 +3899,7 @@ fn test_program_sbf_realloc_invoke() {
     instruction_data.extend_from_slice(&10_u64.to_le_bytes());
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &instruction_data,
@@ -3956,17 +3915,16 @@ fn test_program_sbf_realloc_invoke() {
     let data = &effects.get_account(&invoke_keypair.pubkey()).unwrap().data;
     assert_eq!(data, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 0]);
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc invoke max twice
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &invoke_keypair.pubkey())
-        .unwrap()
-        .1 = Account::new(42, 0, &realloc_program_id);
+    fixture.replace_account(
+        invoke_keypair.pubkey(),
+        Account::new(42, 0, &realloc_program_id),
+    );
 
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_INVOKE_MAX_TWICE],
@@ -3988,7 +3946,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Realloc to 0
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         false,
     );
@@ -4002,12 +3960,12 @@ fn test_program_sbf_realloc_invoke() {
         0,
     );
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // Realloc to max length in max increase increments
     for i in 0..MAX_PERMITTED_DATA_LENGTH as usize / MAX_PERMITTED_DATA_INCREASE {
         let effects = execute(
-            accounts,
+            fixture.accounts.clone(),
             Instruction::new_with_bytes(
                 realloc_invoke_program_id,
                 &[INVOKE_REALLOC_EXTEND_MAX, 1, i as u8, (i / 255) as u8],
@@ -4030,12 +3988,12 @@ fn test_program_sbf_realloc_invoke() {
                 .len(),
         );
 
-        accounts = effects.resulting_accounts;
+        fixture.commit(effects);
     }
 
     // and one more time should fail
     let effects = execute(
-        accounts.clone(),
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &[INVOKE_REALLOC_EXTEND_MAX, 2, 1, 1],
@@ -4056,7 +4014,7 @@ fn test_program_sbf_realloc_invoke() {
 
     // Realloc recursively and fill data
     let recursive_invoke_keypair = Keypair::new();
-    accounts.push((
+    fixture.accounts.push((
         recursive_invoke_keypair.pubkey(),
         Account::new(START_BALANCE, 0, &realloc_invoke_program_id),
     ));
@@ -4066,7 +4024,7 @@ fn test_program_sbf_realloc_invoke() {
     instruction_data.extend_from_slice(&100_usize.to_le_bytes());
 
     let effects = execute(
-        accounts,
+        fixture.accounts.clone(),
         Instruction::new_with_bytes(
             realloc_invoke_program_id,
             &instruction_data,
@@ -4220,14 +4178,7 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     );
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-    let ProgramSbfTxnFixture {
-        program_ids: [invoke_program_id, invoked_program_id, realloc_program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
+    let [invoke_program_id, invoked_program_id, realloc_program_id] = fixture.program_ids;
 
     let account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
@@ -4249,11 +4200,10 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             TEST_FORBID_WRITE_AFTER_OWNERSHIP_CHANGE_IN_CALLEE,
             TEST_FORBID_WRITE_AFTER_OWNERSHIP_CHANGE_IN_CALLER,
         ] {
-            accounts
-                .iter_mut()
-                .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-                .unwrap()
-                .1 = Account::new(42, account_size, &invoke_program_id);
+            fixture.replace_account(
+                account_keypair.pubkey(),
+                Account::new(42, account_size, &invoke_program_id),
+            );
 
             let mut instruction_data = vec![instruction_id];
             instruction_data.extend_from_slice(byte_index.to_le_bytes().as_ref());
@@ -4273,13 +4223,13 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             .unwrap();
 
             let context = TxnContext::new_with_default_budget(
-                feature_set.clone(),
-                accounts.clone(),
+                fixture.feature_set.clone(),
+                fixture.accounts.clone(),
                 sanitized_message,
                 None,
             );
 
-            let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+            let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
             if (byte_index as usize) < account_size || virtual_address_space_adjustments {
                 assert_eq!(
                     effects.status,
@@ -4302,11 +4252,10 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     // because we move the account data pointer.
     // TEST_FORBID_LEN_UPDATE_AFTER_OWNERSHIP_CHANGE is able to make more
     // progress when virtual_address_space_adjustments is on.
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = Account::new(42, 0, &invoke_program_id);
+    fixture.replace_account(
+        account_keypair.pubkey(),
+        Account::new(42, 0, &invoke_program_id),
+    );
     let instruction_data = vec![
         TEST_FORBID_LEN_UPDATE_AFTER_OWNERSHIP_CHANGE_MOVING_DATA_POINTER,
         42,
@@ -4327,13 +4276,13 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(
         effects.status,
         Err(if virtual_address_space_adjustments {
@@ -4351,7 +4300,7 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     // We're going to try and make CPI write ref_to_len_in_vm into a 2nd
     // account, so we add an extra one here.
     let account2_keypair = Keypair::new();
-    accounts.push((
+    fixture.accounts.push((
         account2_keypair.pubkey(),
         Account::new(42, 0, &invoke_program_id),
     ));
@@ -4361,16 +4310,14 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     for target_account in [1, (account_metas.len() as u8).checked_sub(1).unwrap()] {
         // Similar to the test above where we try to make CPI write into account
         // data. This variant is for when virtual_address_space_adjustments is enabled.
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-            .unwrap()
-            .1 = Account::new(42, 0, &invoke_program_id);
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &account2_keypair.pubkey())
-            .unwrap()
-            .1 = Account::new(42, 0, &invoke_program_id);
+        fixture.replace_account(
+            account_keypair.pubkey(),
+            Account::new(42, 0, &invoke_program_id),
+        );
+        fixture.replace_account(
+            account2_keypair.pubkey(),
+            Account::new(42, 0, &invoke_program_id),
+        );
 
         let instruction_data = vec![
             TEST_FORBID_LEN_UPDATE_AFTER_OWNERSHIP_CHANGE,
@@ -4394,13 +4341,13 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         .unwrap();
 
         let context = TxnContext::new_with_default_budget(
-            feature_set.clone(),
-            accounts.clone(),
+            fixture.feature_set.clone(),
+            fixture.accounts.clone(),
             sanitized_message,
             None,
         );
 
-        let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+        let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
         if virtual_address_space_adjustments {
             assert_eq!(
                 effects.status,
@@ -4434,11 +4381,10 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     }
 
     // Test that the caller can write to an account which it received from the callee
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = Account::new(42, 0, &invoked_program_id);
+    fixture.replace_account(
+        account_keypair.pubkey(),
+        Account::new(42, 0, &invoked_program_id),
+    );
 
     let instruction_data = vec![TEST_ALLOW_WRITE_AFTER_OWNERSHIP_CHANGE_TO_CALLER, 1, 42, 42];
 
@@ -4454,10 +4400,14 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 }
 
@@ -4520,30 +4470,16 @@ fn test_cpi_account_data_updates_caller_grows(
     deprecated_caller: bool,
     virtual_address_space_adjustments: bool,
 ) {
-    let (
-        ProgramSbfTxnFixture {
-            feature_set,
-            mut accounts,
-            mut program_cache,
-            sysvar_cache,
-            ..
-        },
-        mint_keypair,
-        account_keypair,
-        account_metas,
-    ) = cpi_account_data_updates_fixture(
-        deprecated_callee,
-        deprecated_caller,
-        virtual_address_space_adjustments,
-    );
+    let (mut fixture, mint_keypair, account_keypair, account_metas) =
+        cpi_account_data_updates_fixture(
+            deprecated_callee,
+            deprecated_caller,
+            virtual_address_space_adjustments,
+        );
 
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS];
     instruction_data.extend_from_slice(b"bar");
@@ -4560,10 +4496,14 @@ fn test_cpi_account_data_updates_caller_grows(
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
 
     if deprecated_caller {
         assert_eq!(
@@ -4598,30 +4538,16 @@ fn test_cpi_account_data_updates_callee_grows(
     deprecated_caller: bool,
     virtual_address_space_adjustments: bool,
 ) {
-    let (
-        ProgramSbfTxnFixture {
-            feature_set,
-            mut accounts,
-            mut program_cache,
-            sysvar_cache,
-            ..
-        },
-        mint_keypair,
-        account_keypair,
-        account_metas,
-    ) = cpi_account_data_updates_fixture(
-        deprecated_callee,
-        deprecated_caller,
-        virtual_address_space_adjustments,
-    );
+    let (mut fixture, mint_keypair, account_keypair, account_metas) =
+        cpi_account_data_updates_fixture(
+            deprecated_callee,
+            deprecated_caller,
+            virtual_address_space_adjustments,
+        );
 
     let mut account = Account::new(42, 0, &account_metas[2].pubkey);
     account.data = b"foo".to_vec();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLEE_GROWS];
     instruction_data.extend_from_slice(b"bar");
@@ -4638,10 +4564,14 @@ fn test_cpi_account_data_updates_callee_grows(
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     if deprecated_callee {
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
         // deprecated_callee is incapable of resizing accounts
@@ -4683,30 +4613,16 @@ fn test_cpi_account_data_updates_callee_shrinks_smaller_than_original_len(
     deprecated_caller: bool,
     virtual_address_space_adjustments: bool,
 ) {
-    let (
-        ProgramSbfTxnFixture {
-            feature_set,
-            mut accounts,
-            mut program_cache,
-            sysvar_cache,
-            ..
-        },
-        mint_keypair,
-        account_keypair,
-        account_metas,
-    ) = cpi_account_data_updates_fixture(
-        deprecated_callee,
-        deprecated_caller,
-        virtual_address_space_adjustments,
-    );
+    let (mut fixture, mint_keypair, account_keypair, account_metas) =
+        cpi_account_data_updates_fixture(
+            deprecated_callee,
+            deprecated_caller,
+            virtual_address_space_adjustments,
+        );
 
     let mut account = Account::new(42, 0, &account_metas[2].pubkey);
     account.data = b"foobar".to_vec();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLEE_SHRINKS_SMALLER_THAN_ORIGINAL_LEN,
@@ -4726,10 +4642,14 @@ fn test_cpi_account_data_updates_callee_shrinks_smaller_than_original_len(
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     if deprecated_callee {
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
         // deprecated_callee is incapable of resizing accounts
@@ -4770,30 +4690,16 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_larger_than_origina
     deprecated_caller: bool,
     virtual_address_space_adjustments: bool,
 ) {
-    let (
-        ProgramSbfTxnFixture {
-            feature_set,
-            mut accounts,
-            mut program_cache,
-            sysvar_cache,
-            ..
-        },
-        mint_keypair,
-        account_keypair,
-        account_metas,
-    ) = cpi_account_data_updates_fixture(
-        deprecated_callee,
-        deprecated_caller,
-        virtual_address_space_adjustments,
-    );
+    let (mut fixture, mint_keypair, account_keypair, account_metas) =
+        cpi_account_data_updates_fixture(
+            deprecated_callee,
+            deprecated_caller,
+            virtual_address_space_adjustments,
+        );
 
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS_CALLEE_SHRINKS,
@@ -4815,10 +4721,14 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_larger_than_origina
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     if deprecated_caller {
         assert_eq!(
             effects.status,
@@ -4851,30 +4761,16 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_smaller_than_origin
     deprecated_caller: bool,
     virtual_address_space_adjustments: bool,
 ) {
-    let (
-        ProgramSbfTxnFixture {
-            feature_set,
-            mut accounts,
-            mut program_cache,
-            sysvar_cache,
-            ..
-        },
-        mint_keypair,
-        account_keypair,
-        account_metas,
-    ) = cpi_account_data_updates_fixture(
-        deprecated_callee,
-        deprecated_caller,
-        virtual_address_space_adjustments,
-    );
+    let (mut fixture, mint_keypair, account_keypair, account_metas) =
+        cpi_account_data_updates_fixture(
+            deprecated_callee,
+            deprecated_caller,
+            virtual_address_space_adjustments,
+        );
 
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS_CALLEE_SHRINKS,
@@ -4896,10 +4792,14 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_smaller_than_origin
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     if deprecated_caller {
         assert_eq!(
             effects.status,
@@ -4933,14 +4833,7 @@ fn test_cpi_invalid_account_info_pointers() {
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
 
-    let ProgramSbfTxnFixture {
-        program_ids,
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
+    let program_ids = fixture.program_ids;
 
     let mut account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
@@ -4959,11 +4852,10 @@ fn test_cpi_invalid_account_info_pointers() {
             TEST_CPI_INVALID_OWNER_POINTER,
             TEST_CPI_INVALID_DATA_POINTER,
         ] {
-            accounts
-                .iter_mut()
-                .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-                .unwrap()
-                .1 = Account::new(42, 5, &invoke_program_id);
+            fixture.replace_account(
+                account_keypair.pubkey(),
+                Account::new(42, 5, &invoke_program_id),
+            );
 
             let message = Message::new(
                 &[Instruction::new_with_bytes(
@@ -4980,13 +4872,13 @@ fn test_cpi_invalid_account_info_pointers() {
             .unwrap();
 
             let context = TxnContext::new_with_default_budget(
-                feature_set.clone(),
-                accounts.clone(),
+                fixture.feature_set.clone(),
+                fixture.accounts.clone(),
                 sanitized_message,
                 None,
             );
 
-            let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+            let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
             assert!(effects.status.is_err(), "{:?}", effects.status);
             assert!(
                 effects
@@ -5692,14 +5584,7 @@ fn test_clone_account_data() {
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
 
-    let ProgramSbfTxnFixture {
-        program_ids: [invoke_program_id, invoke_program_id2],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
+    let [invoke_program_id, invoke_program_id2] = fixture.program_ids;
 
     let account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
@@ -5714,11 +5599,7 @@ fn test_clone_account_data() {
     let mut account = Account::new(42, 10240, &invoke_program_id2);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 1];
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
@@ -5744,13 +5625,13 @@ fn test_clone_account_data() {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert!(effects.status.is_err(), "{:?}", effects.status);
     let error = format!(
         "Program {invoke_program_id} failed: instruction modified data of an account it does not \
@@ -5768,11 +5649,7 @@ fn test_clone_account_data() {
     let mut account = Account::new(42, 10240, &invoke_program_id2);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 1];
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
@@ -5798,13 +5675,13 @@ fn test_clone_account_data() {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert!(effects.status.is_err(), "{:?}", effects.status);
     let error = format!(
         "Program {invoke_program_id} failed: instruction modified data of an account it does not \
@@ -5821,11 +5698,7 @@ fn test_clone_account_data() {
     let mut account = Account::new(42, 10240, &invoke_program_id2);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 1];
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
@@ -5850,10 +5723,14 @@ fn test_clone_account_data() {
         SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
             .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     // works because the account is exactly the same in caller as callee
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 }
@@ -6074,14 +5951,7 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
 
-    let ProgramSbfTxnFixture {
-        program_ids: [upgradeable_program_id, deprecated_program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
+    let [upgradeable_program_id, deprecated_program_id] = fixture.program_ids;
 
     for deprecated in [false, true] {
         let program_id = if deprecated {
@@ -6096,11 +5966,10 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
         ];
 
         for account_data_len in [1024, 0] {
-            accounts
-                .iter_mut()
-                .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-                .unwrap()
-                .1 = Account::new(42, account_data_len, &program_id);
+            fixture.replace_account(
+                account_keypair.pubkey(),
+                Account::new(42, account_data_len, &program_id),
+            );
 
             for instr in 0..=15 {
                 let instruction_data = if account_data_len == 0 {
@@ -6123,12 +5992,13 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
                 .unwrap();
 
                 let context = TxnContext::new_with_default_budget(
-                    feature_set.clone(),
-                    accounts.clone(),
+                    fixture.feature_set.clone(),
+                    fixture.accounts.clone(),
                     sanitized_message,
                     None,
                 );
-                let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+                let effects =
+                    execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
 
                 if virtual_address_space_adjustments && account_data_len != 0 {
                     assert!(
@@ -6159,7 +6029,7 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
                 // Preserve Bank behavior: commit successful transaction effects for the next
                 // instruction, while leaving account state unchanged after failed transactions.
                 if effects.status.is_ok() {
-                    accounts = effects.resulting_accounts;
+                    fixture.commit(effects);
                 }
             }
         }
