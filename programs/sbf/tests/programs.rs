@@ -5741,6 +5741,8 @@ fn test_clone_account_data() {
 
 #[test]
 fn test_stack_heap_zeroed() {
+    const COMPUTE_UNIT_LIMIT: u32 = 1_400_000;
+
     let mut fixture =
         ProgramSbfTxnFixture::new([ProgramSpec::upgradeable("solana_sbf_rust_invoke")]);
     let payer = fixture
@@ -5776,7 +5778,7 @@ fn test_stack_heap_zeroed() {
 
         let message = Message::new(
             &[
-                ComputeBudgetInstruction::set_compute_unit_limit(1_400_000),
+                ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNIT_LIMIT),
                 ComputeBudgetInstruction::request_heap_frame(heap_len as u32),
                 Instruction::new_with_bytes(
                     invoke_program_id,
@@ -5792,12 +5794,13 @@ fn test_stack_heap_zeroed() {
         )
         .unwrap();
 
-        let context = TxnContext::new_with_default_budget(
-            feature_set.clone(),
-            accounts.clone(),
-            sanitized_message,
-            None,
-        );
+        let context = TxnContext {
+            feature_set: feature_set.clone(),
+            accounts: accounts.clone(),
+            message: sanitized_message,
+            nonce_fields: None,
+            cu_avail: u64::from(COMPUTE_UNIT_LIMIT),
+        };
 
         let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
         assert!(effects.status.is_err(), "{:?}", effects.status);
