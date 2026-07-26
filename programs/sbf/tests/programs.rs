@@ -2645,10 +2645,9 @@ fn test_program_sbf_upgrade() {
     const UPGRADE_SLOT: u64 = 2;
     const UPGRADE_EFFECTIVE_SLOT: u64 = 3;
 
-    let new_authority_keypair = Keypair::new();
-
     let mut fixture =
         ProgramSbfTxnFixture::new([ProgramSpec::upgradeable("solana_sbf_rust_upgradeable")]);
+    let new_authority_keypair = fixture.add_account(None);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
 
@@ -2776,16 +2775,6 @@ fn test_program_sbf_upgrade() {
     );
 
     // Set authority
-    accounts.push((
-        new_authority_keypair.pubkey(),
-        Account {
-            lamports: 0,
-            data: Vec::new(),
-            owner: system_program::id(),
-            executable: false,
-            rent_epoch: 0,
-        },
-    ));
     let set_authority_instruction = loader_v3_instruction::set_upgrade_authority(
         &program_id,
         &authority_keypair.pubkey(),
@@ -2888,13 +2877,13 @@ fn test_program_sbf_upgrade_via_cpi() {
     const UPGRADE_SLOT: u64 = 4;
     const UPGRADE_EFFECTIVE_SLOT: u64 = 5;
 
-    let new_authority_keypair = Keypair::new();
     let buffer_keypair = Keypair::new();
 
     let mut fixture = ProgramSbfTxnFixture::new([
         ProgramSpec::upgradeable("solana_sbf_rust_invoke_and_return"),
         ProgramSpec::upgradeable("solana_sbf_rust_upgradeable"),
     ]);
+    let new_authority_keypair = fixture.add_account(None);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
 
@@ -3032,17 +3021,6 @@ fn test_program_sbf_upgrade_via_cpi() {
     );
 
     // Set authority via CPI
-    accounts.push((
-        new_authority_keypair.pubkey(),
-        Account {
-            lamports: 0,
-            data: Vec::new(),
-            owner: system_program::id(),
-            executable: false,
-            rent_epoch: 0,
-        },
-    ));
-
     let mut authority_instruction = loader_v3_instruction::set_upgrade_authority(
         &program_id,
         &authority_keypair.pubkey(),
