@@ -1781,6 +1781,14 @@ impl<const N: usize> ProgramSbfTxnFixture<N> {
         keypair
     }
 
+    fn replace_account(&mut self, pubkey: Pubkey, account: Account) {
+        self.accounts
+            .iter_mut()
+            .find(|(account_pubkey, _)| account_pubkey == &pubkey)
+            .unwrap()
+            .1 = account;
+    }
+
     // Simulates bank behaviour by preserving resulting accounts state after success in tests which need it.
     fn commit(&mut self, effects: TxnEffects) {
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
@@ -5238,14 +5246,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
 
-    let ProgramSbfTxnFixture {
-        program_ids: [invoke_program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        sysvar_cache,
-        ..
-    } = fixture;
+    let [invoke_program_id] = fixture.program_ids;
 
     let account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
@@ -5257,11 +5258,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     let mut account = Account::new(42, 10240, &invoke_program_id);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 0, 0];
     instruction_data.extend_from_slice(20480usize.to_le_bytes().as_ref());
@@ -5291,13 +5288,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5313,18 +5310,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    // Preserve Bank behavior by committing successful transaction effects.
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // II. do CPI with account with resize to smaller and write
     let mut account = Account::new(42, 10240, &invoke_program_id);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 0];
     instruction_data.extend_from_slice(20480usize.to_le_bytes().as_ref());
@@ -5349,13 +5341,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5372,17 +5364,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // III. do CPI with account with resize to larger and write
     let mut account = Account::new(42, 10240, &invoke_program_id);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 0];
     instruction_data.extend_from_slice(16384usize.to_le_bytes().as_ref());
@@ -5407,13 +5395,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5429,17 +5417,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // IV. do CPI with account with resize to larger and write
     let mut account = Account::new(42, 10240, &invoke_program_id);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 0];
     instruction_data.extend_from_slice(16384usize.to_le_bytes().as_ref());
@@ -5474,13 +5458,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
@@ -5496,17 +5480,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    accounts = effects.resulting_accounts;
+    fixture.commit(effects);
 
     // V. clone data, modify and CPI
     let mut account = Account::new(42, 10240, &invoke_program_id);
     let data: Vec<u8> = (0..10240).map(|n| n as u8).collect();
     account.data = data;
-    accounts
-        .iter_mut()
-        .find(|(pubkey, _)| pubkey == &account_keypair.pubkey())
-        .unwrap()
-        .1 = account;
+    fixture.replace_account(account_keypair.pubkey(), account);
 
     let mut instruction_data = vec![TEST_CALLEE_ACCOUNT_UPDATES, 1, 1];
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
@@ -5532,13 +5512,13 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
             .unwrap();
 
     let context = TxnContext::new_with_default_budget(
-        feature_set.clone(),
-        accounts.clone(),
+        fixture.feature_set.clone(),
+        fixture.accounts.clone(),
         sanitized_message,
         None,
     );
 
-    let effects = execute_txn(&context, &mut program_cache, &sysvar_cache);
+    let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
 
     if virtual_address_space_adjustments {
         // changing the data pointer is not permitted
