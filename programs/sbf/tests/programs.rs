@@ -2358,6 +2358,7 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
     ]);
 
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
+    let feature_set = fixture.feature_set.clone();
     fixture.program_cache.set_slot_for_tests(UNDEPLOYMENT_SLOT);
 
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
@@ -2370,7 +2371,7 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
         .unwrap();
 
         let context = TxnContext::new_with_default_budget(
-            fixture.feature_set.clone(),
+            feature_set.clone(),
             transaction_accounts,
             sanitized_message,
             None,
@@ -2572,9 +2573,7 @@ fn test_program_sbf_upgrade() {
     let new_authority_keypair = fixture.add_account(None);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
-
     let program_id = fixture.program_ids[0];
-    let feature_set = fixture.feature_set.clone();
     let mut program_cache = fixture.program_cache.clone();
 
     // do not add to fixture
@@ -2651,6 +2650,7 @@ fn test_program_sbf_upgrade() {
 
     program_cache.set_slot_for_tests(UPGRADE_SLOT);
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
+    let feature_set = fixture.feature_set.clone();
 
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
                    instructions: Vec<Instruction>,
@@ -2702,7 +2702,6 @@ fn test_program_sbf_upgrade() {
         &mut program_cache,
         &sysvar_cache,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     fixture.preserve_accounts_state(effects);
 
     // Upgrade program
@@ -2734,7 +2733,6 @@ fn test_program_sbf_upgrade() {
         &mut program_cache,
         &sysvar_cache,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     fixture.preserve_accounts_state(effects);
 
     let modified_programs = program_cache.drain_modified_entries();
@@ -2764,16 +2762,18 @@ fn test_program_sbf_upgrade() {
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     // Call upgraded program
-    let instruction = Instruction::new_with_bytes(program_id, &[1], instruction_accounts);
-
+    let effects = execute(
+        fixture.accounts.clone(),
+        vec![Instruction::new_with_bytes(
+            program_id,
+            &[1],
+            instruction_accounts,
+        )],
+        &mut program_cache,
+        &sysvar_cache,
+    );
     assert_eq!(
-        execute(
-            fixture.accounts.clone(),
-            vec![instruction],
-            &mut program_cache,
-            &sysvar_cache,
-        )
-        .status,
+        effects.status,
         Err(TransactionError::InstructionError(
             0,
             InstructionError::Custom(43),
@@ -2794,12 +2794,9 @@ fn test_program_sbf_upgrade_via_cpi() {
     let new_authority_keypair = fixture.add_account(None);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
-
     let invoke_and_return = fixture.program_ids[0];
     let program_id = fixture.program_ids[1];
-    let feature_set = fixture.feature_set.clone();
     let mut program_cache = fixture.program_cache.clone();
-
     let program_elf = load_program_elf("solana_sbf_rust_upgradeable");
 
     let (programdata_address, _) =
@@ -2841,7 +2838,6 @@ fn test_program_sbf_upgrade_via_cpi() {
             rent_epoch: 0,
         },
     );
-
     fixture.add_accounts_with_pubkeys([
         (
             rent::id(),
@@ -2875,6 +2871,7 @@ fn test_program_sbf_upgrade_via_cpi() {
 
     program_cache.set_slot_for_tests(UPGRADE_SLOT);
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
+    let feature_set = fixture.feature_set.clone();
 
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
                    instructions: Vec<Instruction>,
@@ -2892,7 +2889,6 @@ fn test_program_sbf_upgrade_via_cpi() {
             sanitized_message,
             None,
         );
-
         execute_txn(&context, program_cache, sysvar_cache)
     };
 
@@ -2904,14 +2900,14 @@ fn test_program_sbf_upgrade_via_cpi() {
     let instruction =
         Instruction::new_with_bytes(invoke_and_return, &[1], instruction_accounts.clone());
 
+    let effects = execute(
+        fixture.accounts.clone(),
+        vec![instruction],
+        &mut program_cache,
+        &sysvar_cache,
+    );
     assert_eq!(
-        execute(
-            fixture.accounts.clone(),
-            vec![instruction],
-            &mut program_cache,
-            &sysvar_cache,
-        )
-        .status,
+        effects.status,
         Err(TransactionError::InstructionError(
             0,
             InstructionError::Custom(42),
@@ -2935,19 +2931,15 @@ fn test_program_sbf_upgrade_via_cpi() {
         &mut program_cache,
         &sysvar_cache,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-
     fixture.preserve_accounts_state(effects);
 
     // Upgrade program via CPI
-
     let upgraded_program_elf = load_program_elf("solana_sbf_rust_upgraded");
     let mut buffer_data = bincode::serialize(&UpgradeableLoaderState::Buffer {
         authority_address: Some(new_authority_keypair.pubkey()),
     })
     .unwrap();
     buffer_data.extend_from_slice(&upgraded_program_elf);
-
     let buffer_keypair = fixture.add_account(Some(Account {
         lamports: 1,
         data: buffer_data,
@@ -2966,13 +2958,13 @@ fn test_program_sbf_upgrade_via_cpi() {
     upgrade_instruction
         .accounts
         .insert(0, AccountMeta::new(bpf_loader_upgradeable::id(), false));
+
     let effects = execute(
         fixture.accounts.clone(),
         vec![upgrade_instruction],
         &mut program_cache,
         &sysvar_cache,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     fixture.preserve_accounts_state(effects);
 
     let modified_programs = program_cache.drain_modified_entries();
@@ -3000,16 +2992,18 @@ fn test_program_sbf_upgrade_via_cpi() {
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     // Call the upgraded program via CPI
-    let instruction = Instruction::new_with_bytes(invoke_and_return, &[2], instruction_accounts);
-
+    let effects = execute(
+        fixture.accounts.clone(),
+        vec![Instruction::new_with_bytes(
+            invoke_and_return,
+            &[2],
+            instruction_accounts,
+        )],
+        &mut program_cache,
+        &sysvar_cache,
+    );
     assert_eq!(
-        execute(
-            fixture.accounts.clone(),
-            vec![instruction],
-            &mut program_cache,
-            &sysvar_cache,
-        )
-        .status,
+        effects.status,
         Err(TransactionError::InstructionError(
             0,
             InstructionError::Custom(43),
@@ -3059,7 +3053,6 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     let configured_feature_set =
         feature_set_with_account_mapping_features(virtual_address_space_adjustments);
-
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         vec![ProgramSpec::upgradeable("solana_sbf_rust_realloc")],
         configured_feature_set,
@@ -3070,8 +3063,8 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         5,
         &fixture.program_ids[0],
     )));
-
     let program_id = fixture.program_ids[0];
+
     fixture.add_accounts_with_pubkeys([
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
@@ -3079,7 +3072,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // Loaded-account data size limit is not enforced by the transaction conformance harness,
     // but keep the compute-budget instruction to preserve the original transaction.
-    let mut execute = |transaction_accounts, instruction| {
+    let execute = |fixture: &mut ProgramSbfTxnFixture, instruction| {
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
             Message::new(
                 &[
@@ -3095,11 +3088,10 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         .unwrap();
         let context = TxnContext::new_with_default_budget(
             fixture.feature_set.clone(),
-            transaction_accounts,
+            fixture.accounts.clone(),
             sanitized_message,
             None,
         );
-
         execute_txn(
             &context,
             &mut fixture.program_cache,
@@ -3113,7 +3105,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
     let mut instruction = realloc(&program_id, &account_keypair.pubkey(), 0, &mut bump);
     instruction.accounts[0].is_writable = false;
 
-    let effects = execute(fixture.accounts.clone(), instruction);
+    let effects = execute(&mut fixture, instruction);
     assert_eq!(
         effects.status,
         Err(TransactionError::InstructionError(
@@ -3124,7 +3116,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // Realloc account to overflow
     let effects = execute(
-        fixture.accounts.clone(),
+        &mut fixture,
         realloc(
             &program_id,
             &account_keypair.pubkey(),
@@ -3142,7 +3134,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // Realloc account to 0
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         realloc(&program_id, &account_keypair.pubkey(), 0, &mut bump),
     );
     let data_len = effects
@@ -3150,14 +3142,12 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         .unwrap()
         .data
         .len();
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     assert_eq!(data_len, 0,);
-    // to preserve banking behaviour
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Realloc account to max then undo
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         realloc_extend_and_undo(
             &program_id,
             &account_keypair.pubkey(),
@@ -3170,14 +3160,12 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         .unwrap()
         .data
         .len();
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     assert_eq!(data_len, 0,);
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Realloc account to max + 1 then undo
     let effects = execute(
-        fixture.accounts.clone(),
+        &mut fixture,
         realloc_extend_and_undo(
             &program_id,
             &account_keypair.pubkey(),
@@ -3195,7 +3183,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // Realloc to max + 1
     let effects = execute(
-        fixture.accounts.clone(),
+        &mut fixture,
         realloc(
             &program_id,
             &account_keypair.pubkey(),
@@ -3216,7 +3204,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         let mut bump = i as u64;
 
         let effects = execute(
-            fixture.accounts,
+            &mut fixture,
             realloc_extend_and_fill(
                 &program_id,
                 &account_keypair.pubkey(),
@@ -3230,19 +3218,17 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
             .unwrap()
             .data
             .len();
-        assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
         assert_eq!(
             data_len,
             i.saturating_add(1)
                 .saturating_mul(MAX_PERMITTED_DATA_INCREASE),
         );
-
-        fixture.accounts = effects.resulting_accounts;
+        fixture.preserve_accounts_state(effects);
     }
 
     // and one more time should fail
     let effects = execute(
-        fixture.accounts.clone(),
+        &mut fixture,
         realloc_extend(
             &program_id,
             &account_keypair.pubkey(),
@@ -3260,7 +3246,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // Realloc to 6 bytes
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         realloc(&program_id, &account_keypair.pubkey(), 6, &mut bump),
     );
     let data_len = effects
@@ -3268,33 +3254,28 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         .unwrap()
         .data
         .len();
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     assert_eq!(data_len, 6,);
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Extend by 2 bytes and write a u64. This ensures that we can do writes that span the original
     // account length (6 bytes) and the realloc data (2 bytes).
     let val = 0x1122334455667788;
 
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         extend_and_write_u64(&program_id, &account_keypair.pubkey(), val),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
     assert_eq!(8, data.len());
     assert_eq!(val, unsafe { *data.as_ptr().cast::<u64>() });
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to 0
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         realloc(&program_id, &account_keypair.pubkey(), 0, &mut bump),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data_len = effects
         .get_account(&account_keypair.pubkey())
@@ -3302,29 +3283,26 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         .data
         .len();
     assert_eq!(data_len, 0,);
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Realloc and assign
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         Instruction::new_with_bytes(
             program_id,
             &[REALLOC_AND_ASSIGN],
             vec![AccountMeta::new(account_keypair.pubkey(), false)],
         ),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let acc = effects.get_account(&account_keypair.pubkey()).unwrap();
     assert_eq!(&system_program::id(), acc.owner());
     assert_eq!(MAX_PERMITTED_DATA_INCREASE, acc.data.len());
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to 0 with wrong owner
     let effects = execute(
-        fixture.accounts.clone(),
+        &mut fixture,
         realloc(&program_id, &account_keypair.pubkey(), 0, &mut bump),
     );
     assert_eq!(
@@ -3337,7 +3315,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // realloc and assign to self via cpi
     let effects = execute(
-        fixture.accounts.clone(),
+        &mut fixture,
         Instruction::new_with_bytes(
             program_id,
             &[REALLOC_AND_ASSIGN_TO_SELF_VIA_SYSTEM_PROGRAM],
@@ -3357,7 +3335,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
 
     // Assign to self and realloc via cpi
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         Instruction::new_with_bytes(
             program_id,
             &[ASSIGN_TO_SELF_VIA_SYSTEM_PROGRAM_AND_REALLOC],
@@ -3367,20 +3345,17 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
             ],
         ),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let acc = effects.get_account(&account_keypair.pubkey()).unwrap();
     assert_eq!(&program_id, acc.owner());
     assert_eq!(2 * MAX_PERMITTED_DATA_INCREASE, acc.data.len());
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to 0
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         realloc(&program_id, &account_keypair.pubkey(), 0, &mut bump),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data_len = effects
         .get_account(&account_keypair.pubkey())
@@ -3388,12 +3363,11 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         .data
         .len();
     assert_eq!(data_len, 0);
-
-    fixture.accounts = effects.resulting_accounts;
+    fixture.preserve_accounts_state(effects);
 
     // zero-init
     let effects = execute(
-        fixture.accounts,
+        &mut fixture,
         Instruction::new_with_bytes(
             program_id,
             &[ZERO_INIT],
@@ -3495,12 +3469,10 @@ fn test_program_sbf_realloc_invoke() {
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let account = effects.get_account(&account_keypair.pubkey()).unwrap();
     assert_eq!(account.lamports(), START_BALANCE);
     assert_eq!(account.data.len(), 0);
-    // to preserve bank behavious on successfull execution
     fixture.preserve_accounts_state(effects);
 
     // Realloc to max + 1
@@ -3551,12 +3523,10 @@ fn test_program_sbf_realloc_invoke() {
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let account = effects.get_account(&account_keypair.pubkey()).unwrap();
     assert_eq!(account.lamports(), START_BALANCE);
     assert_eq!(account.data.len(), 0);
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc and assign
@@ -3572,12 +3542,10 @@ fn test_program_sbf_realloc_invoke() {
         ),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let account = effects.get_account(&account_keypair.pubkey()).unwrap();
     assert_eq!(&system_program::id(), account.owner());
     assert_eq!(MAX_PERMITTED_DATA_INCREASE, account.data.len());
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc to 0 with wrong owner
@@ -3630,7 +3598,6 @@ fn test_program_sbf_realloc_invoke() {
         ),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let account = effects.get_account(&account_keypair.pubkey()).unwrap();
     assert_eq!(&realloc_program_id, account.owner());
@@ -3638,7 +3605,6 @@ fn test_program_sbf_realloc_invoke() {
         MAX_PERMITTED_DATA_INCREASE.saturating_mul(2),
         account.data.len(),
     );
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc to 0
@@ -3647,7 +3613,6 @@ fn test_program_sbf_realloc_invoke() {
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     assert_eq!(
         effects
             .get_account(&account_keypair.pubkey())
@@ -3656,7 +3621,6 @@ fn test_program_sbf_realloc_invoke() {
             .len(),
         0,
     );
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc to 100 and check via CPI
@@ -3678,7 +3642,6 @@ fn test_program_sbf_realloc_invoke() {
         ),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&invoke_keypair.pubkey()).unwrap().data;
     assert_eq!(100, data.len());
@@ -3688,7 +3651,6 @@ fn test_program_sbf_realloc_invoke() {
     for i in 5..data.len() {
         assert_eq!(data[i], 2);
     }
-
     fixture.preserve_accounts_state(effects);
 
     // Create account, realloc, check
@@ -3712,12 +3674,10 @@ fn test_program_sbf_realloc_invoke() {
         ),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let account = effects.get_account(&new_keypair.pubkey()).unwrap();
     assert_eq!(200, account.data.len());
     assert_eq!(&realloc_invoke_program_id, account.owner());
-
     fixture.preserve_accounts_state(effects);
 
     // Invoke, dealloc, and assign
@@ -3745,14 +3705,12 @@ fn test_program_sbf_realloc_invoke() {
         ),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&invoke_keypair.pubkey()).unwrap().data;
     assert_eq!(new_len, data.len());
     for i in 0..new_len {
         assert_eq!(data[i], 0);
     }
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc to max invoke max
@@ -3854,11 +3812,9 @@ fn test_program_sbf_realloc_invoke() {
         ),
         true,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&invoke_keypair.pubkey()).unwrap().data;
     assert_eq!(data, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 0]);
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc invoke max twice
@@ -3894,7 +3850,6 @@ fn test_program_sbf_realloc_invoke() {
         realloc(&realloc_program_id, &account_keypair.pubkey(), 0, &mut bump),
         false,
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
     assert_eq!(
         effects
             .get_account(&account_keypair.pubkey())
@@ -3903,7 +3858,6 @@ fn test_program_sbf_realloc_invoke() {
             .len(),
         0,
     );
-
     fixture.preserve_accounts_state(effects);
 
     // Realloc to max length in max increase increments
