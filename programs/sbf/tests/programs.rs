@@ -1785,7 +1785,7 @@ impl<const N: usize> ProgramSbfTxnFixture<N> {
     }
 
     // Simulates bank behaviour by preserving resulting accounts state after success in tests which need it.
-    fn commit(&mut self, effects: TxnEffects) {
+    fn preserve_accounts_state(&mut self, effects: TxnEffects) {
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
         self.accounts = effects.resulting_accounts;
     }
@@ -1840,7 +1840,7 @@ fn test_program_sbf_instruction_introspection_passing_transaction() {
 
     let effects = execute_txn(&context, &mut fixture.program_cache, &fixture.sysvar_cache);
     assert_eq!(effects.status, Ok(()));
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 }
 
 #[test]
@@ -2290,7 +2290,7 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         );
         assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
-        fixture.commit(effects);
+        fixture.preserve_accounts_state(effects);
 
         // Upgrade the program and invoke in same tx
         let mut transaction_program_cache = program_cache.clone();
@@ -2736,7 +2736,7 @@ fn test_program_sbf_upgrade() {
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Upgrade program
     let upgraded_program_elf = load_program_elf("solana_sbf_rust_upgraded");
@@ -2768,7 +2768,7 @@ fn test_program_sbf_upgrade() {
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     let modified_programs = program_cache.drain_modified_entries();
     assert!(modified_programs.contains_key(&program_id));
@@ -2975,7 +2975,7 @@ fn test_program_sbf_upgrade_via_cpi() {
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Upgrade program via CPI
 
@@ -3014,7 +3014,7 @@ fn test_program_sbf_upgrade_via_cpi() {
         &sysvar_cache,
     );
     assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     let modified_programs = program_cache.drain_modified_entries();
     assert!(modified_programs.contains_key(&program_id));
@@ -3548,7 +3548,7 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(account.lamports(), START_BALANCE);
     assert_eq!(account.data.len(), 0);
     // to preserve bank behavious on successfull execution
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to max + 1
     let effects = execute(
@@ -3604,7 +3604,7 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(account.lamports(), START_BALANCE);
     assert_eq!(account.data.len(), 0);
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc and assign
     let effects = execute(
@@ -3625,7 +3625,7 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(&system_program::id(), account.owner());
     assert_eq!(MAX_PERMITTED_DATA_INCREASE, account.data.len());
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to 0 with wrong owner
     let effects = execute(
@@ -3686,7 +3686,7 @@ fn test_program_sbf_realloc_invoke() {
         account.data.len(),
     );
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to 0
     let effects = execute(
@@ -3704,7 +3704,7 @@ fn test_program_sbf_realloc_invoke() {
         0,
     );
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to 100 and check via CPI
     fixture.accounts.push((
@@ -3735,7 +3735,7 @@ fn test_program_sbf_realloc_invoke() {
         assert_eq!(data[i], 2);
     }
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Create account, realloc, check
     let new_keypair = Keypair::new();
@@ -3768,7 +3768,7 @@ fn test_program_sbf_realloc_invoke() {
     assert_eq!(200, account.data.len());
     assert_eq!(&realloc_invoke_program_id, account.owner());
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Invoke, dealloc, and assign
     let pre_len: usize = 100;
@@ -3803,7 +3803,7 @@ fn test_program_sbf_realloc_invoke() {
         assert_eq!(data[i], 0);
     }
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to max invoke max
     fixture.replace_account(
@@ -3869,7 +3869,7 @@ fn test_program_sbf_realloc_invoke() {
                 "cpi: {cpi_extend_bytes} local: {local_extend_bytes}, logs: {:?}",
                 effects.logs,
             );
-            fixture.commit(effects);
+            fixture.preserve_accounts_state(effects);
         } else {
             assert_eq!(
                 effects.status,
@@ -3909,7 +3909,7 @@ fn test_program_sbf_realloc_invoke() {
     let data = &effects.get_account(&invoke_keypair.pubkey()).unwrap().data;
     assert_eq!(data, &[0, 1, 2, 3, 4, 0, 0, 0, 0, 0]);
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc invoke max twice
     fixture.replace_account(
@@ -3954,7 +3954,7 @@ fn test_program_sbf_realloc_invoke() {
         0,
     );
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // Realloc to max length in max increase increments
     for i in 0..MAX_PERMITTED_DATA_LENGTH as usize / MAX_PERMITTED_DATA_INCREASE {
@@ -3982,7 +3982,7 @@ fn test_program_sbf_realloc_invoke() {
                 .len(),
         );
 
-        fixture.commit(effects);
+        fixture.preserve_accounts_state(effects);
     }
 
     // and one more time should fail
@@ -5213,7 +5213,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // II. do CPI with account with resize to smaller and write
     let mut account = Account::new(42, 10240, &invoke_program_id);
@@ -5268,7 +5268,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // III. do CPI with account with resize to larger and write
     let mut account = Account::new(42, 10240, &invoke_program_id);
@@ -5322,7 +5322,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // IV. do CPI with account with resize to larger and write
     let mut account = Account::new(42, 10240, &invoke_program_id);
@@ -5386,7 +5386,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
 
-    fixture.commit(effects);
+    fixture.preserve_accounts_state(effects);
 
     // V. clone data, modify and CPI
     let mut account = Account::new(42, 10240, &invoke_program_id);
@@ -6049,7 +6049,7 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
                 // Preserve Bank behavior: commit successful transaction effects for the next
                 // instruction, while leaving account state unchanged after failed transactions.
                 if effects.status.is_ok() {
-                    fixture.commit(effects);
+                    fixture.preserve_accounts_state(effects);
                 }
             }
         }
