@@ -683,11 +683,6 @@ fn test_return_data_and_log_data_syscall() {
 #[test]
 #[cfg(feature = "sbf_rust")]
 fn test_program_sbf_invoke_sanity() {
-    let argument_keypair = Keypair::new();
-    let invoked_argument_keypair = Keypair::new();
-    let from_keypair = Keypair::new();
-    let unexecutable_program_keypair = Keypair::new();
-
     #[derive(Debug)]
     #[allow(dead_code)]
     enum Languages {
@@ -720,6 +715,28 @@ fn test_program_sbf_invoke_sanity() {
             ProgramSpec::upgradeable(program.3),
         ]);
         let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
+        let argument_keypair = fixture.add_account(Some(Account {
+            lamports: 42,
+            data: vec![0; 100],
+            owner: fixture.program_ids[0],
+            executable: false,
+            rent_epoch: 0,
+        }));
+        let invoked_argument_keypair = fixture.add_account(Some(Account {
+            lamports: 20,
+            data: vec![0; 10],
+            owner: fixture.program_ids[1],
+            executable: false,
+            rent_epoch: 0,
+        }));
+        let from_keypair = fixture.add_account(Some(Account::new(84, 0, &system_program::id())));
+        let unexecutable_program_keypair = fixture.add_account(Some(Account {
+            lamports: 1,
+            data: Vec::new(),
+            owner: bpf_loader::id(),
+            executable: false,
+            rent_epoch: 0,
+        }));
 
         let ProgramSbfTxnFixture {
             program_ids: [invoke_program_id, invoked_program_id, noop_program_id],
@@ -737,46 +754,6 @@ fn test_program_sbf_invoke_sanity() {
             Pubkey::find_program_address(&[derived_key2.as_ref()], &invoked_program_id);
 
         accounts.extend([
-            (
-                argument_keypair.pubkey(),
-                Account {
-                    lamports: 42,
-                    data: vec![0; 100],
-                    owner: invoke_program_id,
-                    executable: false,
-                    rent_epoch: 0,
-                },
-            ),
-            (
-                invoked_argument_keypair.pubkey(),
-                Account {
-                    lamports: 20,
-                    data: vec![0; 10],
-                    owner: invoked_program_id,
-                    executable: false,
-                    rent_epoch: 0,
-                },
-            ),
-            (
-                from_keypair.pubkey(),
-                Account {
-                    lamports: 84,
-                    data: Vec::new(),
-                    owner: system_program::id(),
-                    executable: false,
-                    rent_epoch: 0,
-                },
-            ),
-            (
-                unexecutable_program_keypair.pubkey(),
-                Account {
-                    lamports: 1,
-                    data: Vec::new(),
-                    owner: bpf_loader::id(),
-                    executable: false,
-                    rent_epoch: 0,
-                },
-            ),
             (
                 derived_key1,
                 Account {
