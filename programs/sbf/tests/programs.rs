@@ -4048,11 +4048,6 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         &ReservedAccountKeys::empty_key_set(),
     )
     .unwrap();
-    let mint_index = sanitized_message
-        .account_keys()
-        .iter()
-        .position(|pubkey| pubkey == &mint_keypair.pubkey())
-        .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set,
