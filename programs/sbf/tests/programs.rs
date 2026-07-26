@@ -2738,7 +2738,6 @@ fn test_program_sbf_upgrade() {
     fixture.commit(effects);
 
     // Upgrade program
-    let buffer_keypair = Keypair::new();
     let upgraded_program_elf = load_program_elf("solana_sbf_rust_upgraded");
     let mut buffer_data = bincode::serialize(&UpgradeableLoaderState::Buffer {
         authority_address: Some(new_authority_keypair.pubkey()),
@@ -2746,16 +2745,13 @@ fn test_program_sbf_upgrade() {
     .unwrap();
     buffer_data.extend_from_slice(&upgraded_program_elf);
 
-    fixture.accounts.push((
-        buffer_keypair.pubkey(),
-        Account {
-            lamports: 1,
-            data: buffer_data,
-            owner: bpf_loader_upgradeable::id(),
-            executable: false,
-            rent_epoch: 0,
-        },
-    ));
+    let buffer_keypair = fixture.add_account(Some(Account {
+        lamports: 1,
+        data: buffer_data,
+        owner: bpf_loader_upgradeable::id(),
+        executable: false,
+        rent_epoch: 0,
+    }));
 
     let upgrade_instruction = loader_v3_instruction::upgrade(
         &program_id,
