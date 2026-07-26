@@ -2328,35 +2328,135 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
 #[test]
 #[cfg(all(feature = "sbf_rust", feature = "sbpf-v3"))]
 fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
-    agave_logger::setup();
+    const REDEPLOYMENT_SLOT: u64 = 4;
 
-    let GenesisConfigInfo {
-        genesis_config,
+    let buffer_keypair = Keypair::new();
+
+    let (
+        _,
         mint_keypair,
-        ..
-    } = create_genesis_config(50);
-    let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
-    let mut bank_client = BankClient::new_shared(bank.clone());
+        authority_keypair,
+        [program_id, indirect_program_id],
+        feature_set,
+        mut accounts,
+        mut program_cache,
+        _,
+    ) = program_sbf_txn_fixture([
+        ("solana_sbf_rust_noop", bpf_loader_upgradeable::id()),
+        (
+            "solana_sbf_rust_invoke_and_return",
+            bpf_loader_upgradeable::id(),
+        ),
+    ]);
 
-    // Deploy upgradeable program
-    let authority_keypair = Keypair::new();
-    let (_bank, program_id) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_noop",
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &mint_keypair.pubkey())
+        .unwrap()
+        .1 = Account {
+        lamports: 50,
+        data: Vec::new(),
+        owner: system_program::id(),
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    // do not add to fixture
+    let program_elf = load_program_elf("solana_sbf_rust_noop");
+
+    let (programdata_address, _) =
+        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
+    let mut programdata = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+        slot: 0,
+        upgrade_authority_address: Some(authority_keypair.pubkey()),
+    })
+    .unwrap();
+    programdata.extend_from_slice(&program_elf);
+    programdata.resize(
+        UpgradeableLoaderState::size_of_programdata(program_elf.len().saturating_mul(2)),
+        0,
     );
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &programdata_address)
+        .unwrap()
+        .1 = Account {
+        lamports: 1,
+        data: programdata,
+        owner: bpf_loader_upgradeable::id(),
+        executable: false,
+        rent_epoch: 0,
+    };
+
+    let program_data = bincode::serialize(&UpgradeableLoaderState::Program {
+        programdata_address,
+    })
+    .unwrap();
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &program_id)
+        .unwrap()
+        .1 = Account {
+        lamports: 1,
+        data: program_data,
+        owner: bpf_loader_upgradeable::id(),
+        executable: true,
+        rent_epoch: 0,
+    };
 
     // Prepare redeployment: load new program into a buffer.
-    let buffer_keypair = Keypair::new();
-    load_upgradeable_buffer(
-        &bank_client,
-        &mint_keypair,
-        &buffer_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_panic",
-    );
+
+    let upgraded_program_elf = load_program_elf("solana_sbf_rust_panic");
+    let mut buffer_data = bincode::serialize(&UpgradeableLoaderState::Buffer {
+        authority_address: Some(authority_keypair.pubkey()),
+    })
+    .unwrap();
+    buffer_data.extend_from_slice(&upgraded_program_elf);
+
+    accounts.extend([
+        (
+            buffer_keypair.pubkey(),
+            Account {
+                lamports: 1,
+                data: buffer_data,
+                owner: bpf_loader_upgradeable::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            rent::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&Rent::free()).unwrap(),
+                owner: sysvar::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        (
+            clock::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&solana_clock::Clock {
+                    slot: REDEPLOYMENT_SLOT,
+                    epoch_start_timestamp: 0,
+                    epoch: 0,
+                    leader_schedule_epoch: 0,
+                    unix_timestamp: 0,
+                })
+                .unwrap(),
+                owner: sysvar::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        ),
+        keyed_account_for_bpf_loader_upgradeable_program(),
+    ]);
+
+    program_cache.set_slot_for_tests(REDEPLOYMENT_SLOT);
+    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+
     let redeployment_instruction = loader_v3_instruction::upgrade(
         &program_id,
         &buffer_keypair.pubkey(),
@@ -2364,14 +2464,25 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         &mint_keypair.pubkey(),
     );
 
-    // Deploy indirect invocation program
-    let (bank, indirect_program_id) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_invoke_and_return",
-    );
+    let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
+                   instructions: Vec<Instruction>,
+                   program_cache: &mut ProgramCacheForTxBatch| {
+        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
+        let sanitized_message = SanitizedMessage::try_from_legacy_message(
+            message,
+            &ReservedAccountKeys::empty_key_set(),
+        )
+        .unwrap();
+
+        let context = TxnContext::new_with_default_budget(
+            feature_set.clone(),
+            transaction_accounts,
+            sanitized_message,
+            None,
+        );
+
+        execute_txn(&context, program_cache, &sysvar_cache)
+    };
 
     // Prepare invocations
     let invoke_instruction =
@@ -2389,24 +2500,31 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
     // and CPI instructions
     for invoke_instruction in [invoke_instruction, indirect_invoke_instruction] {
         // Call upgradeable program
-        let result =
-            bank_client.send_and_confirm_instruction(&mint_keypair, invoke_instruction.clone());
-        assert!(result.is_ok());
+        let effects = execute(
+            accounts,
+            vec![invoke_instruction.clone()],
+            &mut program_cache,
+        );
+        assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
+
+        accounts = effects.resulting_accounts;
 
         // Upgrade the program and invoke in same tx
-        let message = Message::new(
-            &[redeployment_instruction.clone(), invoke_instruction],
-            Some(&mint_keypair.pubkey()),
+        let mut transaction_program_cache = program_cache.clone();
+
+        let effects = execute(
+            accounts.clone(),
+            vec![redeployment_instruction.clone(), invoke_instruction],
+            &mut transaction_program_cache,
         );
-        let tx = Transaction::new(
-            &[&mint_keypair, &authority_keypair],
-            message.clone(),
-            bank.last_blockhash(),
-        );
-        let (result, _, _, _) = process_transaction_and_record_inner(&bank, tx);
         assert_eq!(
-            result.unwrap_err(),
-            TransactionError::InstructionError(1, InstructionError::UnsupportedProgramId),
+            effects.status,
+            Err(TransactionError::InstructionError(
+                1,
+                InstructionError::UnsupportedProgramId,
+            )),
+            "{:?}",
+            effects.logs,
         );
     }
 }
