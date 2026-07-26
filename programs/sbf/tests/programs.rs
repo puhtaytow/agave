@@ -800,9 +800,8 @@ fn test_program_sbf_invoke_sanity() {
 
         let sysvar_cache = sysvar_cache_from_accounts(&accounts);
 
-        let mint_pubkey = mint_keypair.pubkey();
         let account_metas = vec![
-            AccountMeta::new(mint_pubkey, true),
+            AccountMeta::new(mint_keypair.pubkey(), true),
             AccountMeta::new(argument_keypair.pubkey(), true),
             AccountMeta::new_readonly(invoked_program_id, false),
             AccountMeta::new(invoked_argument_keypair.pubkey(), true),
@@ -842,7 +841,7 @@ fn test_program_sbf_invoke_sanity() {
                 account_metas.clone(),
             )];
             instructions.extend_from_slice(additional_instructions);
-            let message = Message::new(&instructions, Some(&mint_pubkey));
+            let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
             let sanitized_message = SanitizedMessage::try_from_legacy_message(
                 message,
                 &ReservedAccountKeys::empty_key_set(),
@@ -4341,10 +4340,12 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     // We're going to try and make CPI write ref_to_len_in_vm into a 2nd
     // account, so we add an extra one here.
     let account2_keypair = Keypair::new();
-    let account2_pubkey = account2_keypair.pubkey();
-    accounts.push((account2_pubkey, Account::new(42, 0, &invoke_program_id)));
+    accounts.push((
+        account2_keypair.pubkey(),
+        Account::new(42, 0, &invoke_program_id),
+    ));
     let mut account_metas = account_metas.clone();
-    account_metas.push(AccountMeta::new(account2_pubkey, false));
+    account_metas.push(AccountMeta::new(account2_keypair.pubkey(), false));
 
     for target_account in [1, (account_metas.len() as u8).checked_sub(1).unwrap()] {
         // Similar to the test above where we try to make CPI write into account
@@ -4356,7 +4357,7 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             .1 = Account::new(42, 0, &invoke_program_id);
         accounts
             .iter_mut()
-            .find(|(pubkey, _)| pubkey == &account2_pubkey)
+            .find(|(pubkey, _)| pubkey == &account2_keypair.pubkey())
             .unwrap()
             .1 = Account::new(42, 0, &invoke_program_id);
 
