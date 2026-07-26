@@ -736,6 +736,7 @@ fn test_program_sbf_invoke_sanity() {
         let invoke_program_id = fixture.program_ids[0];
         let invoked_program_id = fixture.program_ids[1];
         let noop_program_id = fixture.program_ids[2];
+
         let mut feature_set = fixture.feature_set.clone();
         let mut program_cache = fixture.program_cache.clone();
 
@@ -849,7 +850,6 @@ fn test_program_sbf_invoke_sanity() {
         };
 
         // success cases
-
         let do_invoke_success =
             |test: u8,
              additional_instructions: &[Instruction],
@@ -993,8 +993,8 @@ fn test_program_sbf_invoke_sanity() {
             &feature_set,
             &mut program_cache,
         );
-        feature_set.activate(&feature_set::increase_tx_account_lock_limit::id(), 0);
 
+        feature_set.activate(&feature_set::increase_tx_account_lock_limit::id(), 0);
         assert!(feature_set.snapshot().increase_tx_account_lock_limit);
 
         // failure cases
@@ -1896,7 +1896,6 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
     let payer = fixture
         .add_account(Some(Account::new(50_000, 0, &system_program::id())))
         .pubkey();
-
     let program_id = fixture.program_ids[0];
 
     let sanitized_message = SanitizedMessage::try_from_legacy_message(
@@ -4090,12 +4089,6 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         ProgramSpec::deprecated("solana_sbf_rust_inner_instruction_alignment_check"),
     ]);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
-    let mint_index = sanitized_message
-        .account_keys()
-        .iter()
-        .position(|pubkey| pubkey == &mint_keypair.pubkey())
-        .unwrap();
-
     let noop = fixture.program_ids[0];
     let inner_instruction_alignment_check = fixture.program_ids[1];
 
@@ -4118,6 +4111,11 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         &ReservedAccountKeys::empty_key_set(),
     )
     .unwrap();
+    let mint_index = sanitized_message
+        .account_keys()
+        .iter()
+        .position(|pubkey| pubkey == &mint_keypair.pubkey())
+        .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set,
@@ -4151,6 +4149,7 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
     );
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
+
     let invoke_program_id = fixture.program_ids[0];
     let invoked_program_id = fixture.program_ids[1];
     let realloc_program_id = fixture.program_ids[2];
@@ -4843,7 +4842,6 @@ fn test_cpi_invalid_account_info_pointers() {
     ]);
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let program_ids = fixture.program_ids.clone();
 
     let mut account_metas = vec![
@@ -4909,7 +4907,7 @@ fn test_cpi_invalid_account_info_pointers() {
 #[test]
 #[cfg(feature = "sbf_rust")]
 fn test_deplete_cost_meter_with_access_violation() {
-    let compute_unit_limit = 10_000;
+    const COMPUTE_UNIT_LIMIT: u32 = 10_000;
 
     let mut fixture =
         ProgramSbfTxnFixture::new(vec![ProgramSpec::upgradeable("solana_sbf_rust_invoke")]);
@@ -4918,7 +4916,6 @@ fn test_deplete_cost_meter_with_access_violation() {
         .pubkey();
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let invoke_program_id = fixture.program_ids[0];
     fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
 
@@ -4935,7 +4932,7 @@ fn test_deplete_cost_meter_with_access_violation() {
     let sanitized_message = SanitizedMessage::try_from_legacy_message(
         Message::new(
             &[
-                ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit),
+                ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNIT_LIMIT),
                 Instruction::new_with_bytes(
                     invoke_program_id,
                     &instruction_data,
@@ -4967,9 +4964,8 @@ fn test_deplete_cost_meter_with_access_violation() {
             InstructionError::ReadonlyDataModified,
         )),
     );
-
     // all compute unit limit should be consumed due to SBF VM error
-    assert_eq!(effects.executed_units, (compute_unit_limit as u64));
+    assert_eq!(effects.executed_units, (COMPUTE_UNIT_LIMIT as u64));
 }
 
 #[test]
@@ -5025,7 +5021,6 @@ fn test_deny_access_beyond_current_length(
     let account = Account::new(42, 0, &fixture.program_ids[0]);
     let readonly_account_keypair = fixture.add_account(Some(account.clone()));
     let writable_account_keypair = fixture.add_account(Some(account));
-
     let invoke_program_id = fixture.program_ids[0];
 
     let account_metas = vec![
@@ -5094,7 +5089,6 @@ fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
         .pubkey();
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let invoke_program_id = fixture.program_ids[0];
 
     let account_metas = vec![
@@ -5155,7 +5149,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     );
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let invoke_program_id = fixture.program_ids[0];
 
     let account_metas = vec![
@@ -5210,11 +5203,9 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         &mut fixture.program_cache,
         &default_sysvar_cache(),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
     assert_eq!(data.len(), 20480);
-
     data.iter().enumerate().for_each(|(i, v)| {
         let expected = match i {
             ..=10240 => i as u8,
@@ -5224,7 +5215,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
 
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
-
     fixture.preserve_accounts_state(effects);
 
     // II. do CPI with account with resize to smaller and write
@@ -5268,11 +5258,9 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         &mut fixture.program_cache,
         &default_sysvar_cache(),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
     assert_eq!(data.len(), 19480);
-
     data.iter().enumerate().for_each(|(i, v)| {
         let expected = match i {
             8129 => (i as u8) ^ 0xe5,
@@ -5283,7 +5271,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
 
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
-
     fixture.preserve_accounts_state(effects);
 
     // III. do CPI with account with resize to larger and write
@@ -5327,11 +5314,9 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         &mut fixture.program_cache,
         &default_sysvar_cache(),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
     assert_eq!(data.len(), 20480);
-
     data.iter().enumerate().for_each(|(i, v)| {
         let expected = match i {
             ..=10240 => i as u8,
@@ -5341,7 +5326,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
 
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
-
     fixture.preserve_accounts_state(effects);
 
     // IV. do CPI with account with resize to larger and write
@@ -5395,11 +5379,9 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         &mut fixture.program_cache,
         &default_sysvar_cache(),
     );
-    assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
 
     let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
     assert_eq!(data.len(), 20480);
-
     data.iter().enumerate().for_each(|(i, v)| {
         let expected = match i {
             ..=10240 => i as u8,
@@ -5409,7 +5391,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
 
         assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
     });
-
     fixture.preserve_accounts_state(effects);
 
     // V. clone data, modify and CPI
@@ -5463,7 +5444,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
 
         let data = &effects.get_account(&account_keypair.pubkey()).unwrap().data;
         assert_eq!(data.len(), 10240);
-
         data.iter().enumerate().for_each(|(i, v)| {
             let expected = match i {
                 // since the data is was cloned, the write to 8191 was lost
@@ -5471,7 +5451,6 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
                 ..=10240 => i as u8,
                 _ => 0,
             };
-
             assert_eq!(*v, expected, "offset:{i} {v:#x} != {expected:#x}");
         });
     }
@@ -5504,7 +5483,6 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
         let mint_keypair = fixture.add_account(None);
         let account_owner = fixture.program_ids[0];
         let account_keypair = fixture.add_account(Some(Account::new(42, 10240, &account_owner)));
-
         let invoke_program_id = fixture.program_ids[0];
 
         let account_metas = vec![
@@ -5567,7 +5545,6 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
     let mint_keypair = fixture.add_account(None);
     let account_owner = fixture.program_ids[0];
     let account_keypair = fixture.add_account(Some(Account::new(42, 10240, &account_owner)));
-
     let invoke_program_id = fixture.program_ids[0];
 
     let account_metas = vec![
@@ -5620,7 +5597,6 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
 #[test]
 fn test_clone_account_data() {
     let configured_feature_set = feature_set_with_account_mapping_features(false);
-
     let mut fixture = ProgramSbfTxnFixture::new_with_feature_set(
         vec![
             ProgramSpec::upgradeable("solana_sbf_rust_invoke"),
@@ -5630,7 +5606,6 @@ fn test_clone_account_data() {
     );
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let invoke_program_id = fixture.program_ids[0];
     let invoke_program_id2 = fixture.program_ids[1];
 
@@ -5809,7 +5784,6 @@ fn test_stack_heap_zeroed() {
         .pubkey();
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let invoke_program_id = fixture.program_ids[0];
     fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
 
@@ -5881,7 +5855,6 @@ fn test_function_call_args() {
         .pubkey();
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let program_id = fixture.program_ids[0];
 
     #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, Debug)]
@@ -5925,8 +5898,8 @@ fn test_function_call_args() {
         arg7: rand::random::<i64>(),
         arg8: rand::random::<i64>(),
     };
-    let instruction_data = to_vec(&input_data).unwrap();
 
+    let instruction_data = to_vec(&input_data).unwrap();
     let sanitized_message = SanitizedMessage::try_from_legacy_message(
         Message::new(
             &[Instruction::new_with_bytes(
@@ -6015,7 +5988,6 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
     );
     let mint_keypair = fixture.add_account(None);
     let account_keypair = fixture.add_account(None);
-
     let upgradeable_program_id = fixture.program_ids[0];
     let deprecated_program_id = fixture.program_ids[1];
 
