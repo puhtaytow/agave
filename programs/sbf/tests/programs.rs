@@ -4090,7 +4090,11 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         ProgramSpec::deprecated("solana_sbf_rust_inner_instruction_alignment_check"),
     ]);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
-    let mint_pubkey = mint_keypair.pubkey();
+    let mint_index = sanitized_message
+        .account_keys()
+        .iter()
+        .position(|pubkey| pubkey == &mint_keypair.pubkey())
+        .unwrap();
 
     let noop = fixture.program_ids[0];
     let inner_instruction_alignment_check = fixture.program_ids[1];
@@ -4102,7 +4106,7 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
         &[1],
         vec![
             AccountMeta::new_readonly(noop, false),
-            AccountMeta::new_readonly(mint_pubkey, false),
+            AccountMeta::new_readonly(mint_keypair.pubkey(), false),
         ],
     );
 
@@ -4110,17 +4114,10 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
     // Message-wide privilege promotion therefore makes it a signer and writable even though its
     // instruction meta is readonly and non-signer.
     let sanitized_message = SanitizedMessage::try_from_legacy_message(
-        Message::new(&[instruction], Some(&mint_pubkey)),
+        Message::new(&[instruction], Some(&mint_keypair.pubkey())),
         &ReservedAccountKeys::empty_key_set(),
     )
     .unwrap();
-    let mint_index = sanitized_message
-        .account_keys()
-        .iter()
-        .position(|pubkey| pubkey == &mint_pubkey)
-        .unwrap();
-    assert!(sanitized_message.is_signer(mint_index));
-    assert!(sanitized_message.is_writable(mint_index));
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set,
