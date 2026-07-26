@@ -1854,15 +1854,7 @@ fn test_program_sbf_instruction_introspection_writable_special_instructions1111(
     let payer = fixture
         .add_account(Some(Account::new(50_000, 0, &system_program::id())))
         .pubkey();
-
     let program_id = fixture.program_ids[0];
-    let ProgramSbfTxnFixture {
-        feature_set,
-        accounts,
-        mut program_cache,
-        ..
-    } = fixture;
-
     let account_metas = vec![AccountMeta::new(sysvar::instructions::id(), false)];
 
     let sanitized_message = SanitizedMessage::try_from_legacy_message(
@@ -1874,10 +1866,18 @@ fn test_program_sbf_instruction_introspection_writable_special_instructions1111(
     )
     .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set,
+        fixture.accounts,
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
     assert_eq!(
         effects.status,
         Err(TransactionError::InstructionError(
@@ -1898,12 +1898,6 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
         .pubkey();
 
     let program_id = fixture.program_ids[0];
-    let ProgramSbfTxnFixture {
-        feature_set,
-        accounts,
-        mut program_cache,
-        ..
-    } = fixture;
 
     let sanitized_message = SanitizedMessage::try_from_legacy_message(
         Message::new(
@@ -1914,10 +1908,18 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
     )
     .unwrap();
 
-    let context =
-        TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
+    let context = TxnContext::new_with_default_budget(
+        fixture.feature_set,
+        fixture.accounts,
+        sanitized_message,
+        None,
+    );
 
-    let effects = execute_txn(&context, &mut program_cache, &default_sysvar_cache());
+    let effects = execute_txn(
+        &context,
+        &mut fixture.program_cache,
+        &default_sysvar_cache(),
+    );
 
     #[allow(deprecated)]
     let expected_error = Err(TransactionError::InstructionError(
