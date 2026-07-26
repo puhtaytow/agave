@@ -1765,7 +1765,10 @@ impl<const N: usize> ProgramSbfTxnFixture<N> {
     }
 
     fn add_account(&mut self, account: Option<Account>) -> Keypair {
-        let keypair = Keypair::new();
+        self.add_account_with_keypair(Keypair::new(), account)
+    }
+
+    fn add_account_with_keypair(&mut self, keypair: Keypair, account: Option<Account>) -> Keypair {
         self.accounts.push((
             keypair.pubkey(),
             account.unwrap_or_else(|| Account::new(0, 0, &system_program::id())),
