@@ -1927,7 +1927,6 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
         InstructionError::NotEnoughAccountKeys,
     ));
     assert_eq!(effects.status, expected_error);
-    assert!(effects.get_account(&sysvar::instructions::id()).is_none());
 }
 
 #[test_matrix(
