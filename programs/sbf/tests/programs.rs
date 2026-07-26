@@ -837,9 +837,8 @@ fn test_program_sbf_invoke_sanity() {
                 account_metas.clone(),
             )];
             instructions.extend_from_slice(additional_instructions);
-            let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
             let sanitized_message = SanitizedMessage::try_from_legacy_message(
-                message,
+                Message::new(&instructions, Some(&mint_keypair.pubkey())),
                 &ReservedAccountKeys::empty_key_set(),
             )
             .unwrap();
@@ -1816,17 +1815,18 @@ fn test_program_sbf_instruction_introspection_passing_transaction() {
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
 
-    let message = Message::new(
-        &[
-            Instruction::new_with_bytes(program_id, &[0u8, 0u8], account_metas.clone()),
-            Instruction::new_with_bytes(program_id, &[0u8, 1u8], account_metas.clone()),
-            Instruction::new_with_bytes(program_id, &[0u8, 2u8], account_metas),
-        ],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[
+                Instruction::new_with_bytes(program_id, &[0u8, 0u8], account_metas.clone()),
+                Instruction::new_with_bytes(program_id, &[0u8, 1u8], account_metas.clone()),
+                Instruction::new_with_bytes(program_id, &[0u8, 2u8], account_metas),
+            ],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -1861,13 +1861,14 @@ fn test_program_sbf_instruction_introspection_writable_special_instructions1111(
 
     let account_metas = vec![AccountMeta::new(sysvar::instructions::id(), false)];
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(program_id, &[0], account_metas)],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(program_id, &[0], account_metas)],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -1901,13 +1902,14 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
         ..
     } = fixture;
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(program_id, &[0], vec![])],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(program_id, &[0], vec![])],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -2082,9 +2084,8 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     .unwrap();
 
     let execute = |instructions: Vec<Instruction>, program_cache: &mut ProgramCacheForTxBatch| {
-        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(&instructions, Some(&mint_keypair.pubkey())),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -2247,9 +2248,8 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
                    instructions: Vec<Instruction>,
                    program_cache: &mut ProgramCacheForTxBatch| {
-        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(&instructions, Some(&mint_keypair.pubkey())),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -2386,9 +2386,8 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
                    instructions: Vec<Instruction>,
                    program_cache: &mut ProgramCacheForTxBatch| {
-        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(&instructions, Some(&mint_keypair.pubkey())),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -2687,9 +2686,8 @@ fn test_program_sbf_upgrade() {
                    instructions: Vec<Instruction>,
                    program_cache: &mut ProgramCacheForTxBatch,
                    sysvar_cache: &SysvarCache| {
-        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(&instructions, Some(&mint_keypair.pubkey())),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -2913,9 +2911,8 @@ fn test_program_sbf_upgrade_via_cpi() {
                    instructions: Vec<Instruction>,
                    program_cache: &mut ProgramCacheForTxBatch,
                    sysvar_cache: &SysvarCache| {
-        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(&instructions, Some(&mint_keypair.pubkey())),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -3130,17 +3127,16 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
     // Loaded-account data size limit is not enforced by the transaction conformance harness,
     // but keep the compute-budget instruction to preserve the original transaction.
     let mut execute = |transaction_accounts, instruction| {
-        let message = Message::new(
-            &[
-                instruction,
-                ComputeBudgetInstruction::set_loaded_accounts_data_size_limit(
-                    LOADED_ACCOUNTS_DATA_SIZE_LIMIT_FOR_TEST,
-                ),
-            ],
-            Some(&mint_keypair.pubkey()),
-        );
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(
+                &[
+                    instruction,
+                    ComputeBudgetInstruction::set_loaded_accounts_data_size_limit(
+                        LOADED_ACCOUNTS_DATA_SIZE_LIMIT_FOR_TEST,
+                    ),
+                ],
+                Some(&mint_keypair.pubkey()),
+            ),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -3490,9 +3486,8 @@ fn test_program_sbf_realloc_invoke() {
                 ),
             );
         }
-        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(&instructions, Some(&mint_keypair.pubkey())),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -4070,40 +4065,41 @@ fn test_program_sbf_processed_inner_instruction() {
         ..
     } = fixture;
 
-    let message = Message::new(
-        &[
-            Instruction::new_with_bytes(
-                noop_program_id,
-                &[43],
-                vec![
-                    AccountMeta::new_readonly(noop_program_id, false),
-                    AccountMeta::new(mint_keypair.pubkey(), true),
-                ],
-            ),
-            Instruction::new_with_bytes(
-                noop_program_id,
-                &[42],
-                vec![
-                    AccountMeta::new(mint_keypair.pubkey(), true),
-                    AccountMeta::new_readonly(noop_program_id, false),
-                ],
-            ),
-            Instruction::new_with_bytes(
-                sibling_program_id,
-                &[1, 2, 3, 0, 4, 5, 6],
-                vec![
-                    AccountMeta::new(mint_keypair.pubkey(), true),
-                    AccountMeta::new_readonly(noop_program_id, false),
-                    AccountMeta::new_readonly(invoke_and_return_program_id, false),
-                    AccountMeta::new_readonly(sibling_inner_program_id, false),
-                ],
-            ),
-        ],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[
+                Instruction::new_with_bytes(
+                    noop_program_id,
+                    &[43],
+                    vec![
+                        AccountMeta::new_readonly(noop_program_id, false),
+                        AccountMeta::new(mint_keypair.pubkey(), true),
+                    ],
+                ),
+                Instruction::new_with_bytes(
+                    noop_program_id,
+                    &[42],
+                    vec![
+                        AccountMeta::new(mint_keypair.pubkey(), true),
+                        AccountMeta::new_readonly(noop_program_id, false),
+                    ],
+                ),
+                Instruction::new_with_bytes(
+                    sibling_program_id,
+                    &[1, 2, 3, 0, 4, 5, 6],
+                    vec![
+                        AccountMeta::new(mint_keypair.pubkey(), true),
+                        AccountMeta::new_readonly(noop_program_id, false),
+                        AccountMeta::new_readonly(invoke_and_return_program_id, false),
+                        AccountMeta::new_readonly(sibling_inner_program_id, false),
+                    ],
+                ),
+            ],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -4146,10 +4142,11 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
     // Match the original Bank test, where the account passed to both CPIs was also the payer.
     // Message-wide privilege promotion therefore makes it a signer and writable even though its
     // instruction meta is readonly and non-signer.
-    let message = Message::new(&[instruction], Some(&mint_pubkey));
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(&[instruction], Some(&mint_pubkey)),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
     let mint_index = sanitized_message
         .account_keys()
         .iter()
@@ -4212,16 +4209,15 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             let mut instruction_data = vec![instruction_id];
             instruction_data.extend_from_slice(byte_index.to_le_bytes().as_ref());
 
-            let message = Message::new(
-                &[Instruction::new_with_bytes(
-                    invoke_program_id,
-                    &instruction_data,
-                    account_metas.clone(),
-                )],
-                Some(&mint_keypair.pubkey()),
-            );
             let sanitized_message = SanitizedMessage::try_from_legacy_message(
-                message,
+                Message::new(
+                    &[Instruction::new_with_bytes(
+                        invoke_program_id,
+                        &instruction_data,
+                        account_metas.clone(),
+                    )],
+                    Some(&mint_keypair.pubkey()),
+                ),
                 &ReservedAccountKeys::empty_key_set(),
             )
             .unwrap();
@@ -4267,17 +4263,18 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         42,
     ];
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4330,16 +4327,15 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
             42,
         ];
 
-        let message = Message::new(
-            &[Instruction::new_with_bytes(
-                invoke_program_id,
-                &instruction_data,
-                account_metas.clone(),
-            )],
-            Some(&mint_keypair.pubkey()),
-        );
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(
+                &[Instruction::new_with_bytes(
+                    invoke_program_id,
+                    &instruction_data,
+                    account_metas.clone(),
+                )],
+                Some(&mint_keypair.pubkey()),
+            ),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -4392,17 +4388,18 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
 
     let instruction_data = vec![TEST_ALLOW_WRITE_AFTER_OWNERSHIP_CHANGE_TO_CALLER, 1, 42, 42];
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4488,17 +4485,18 @@ fn test_cpi_account_data_updates_caller_grows(
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS];
     instruction_data.extend_from_slice(b"bar");
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            account_metas[3].pubkey,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                account_metas[3].pubkey,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4556,17 +4554,18 @@ fn test_cpi_account_data_updates_callee_grows(
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLEE_GROWS];
     instruction_data.extend_from_slice(b"bar");
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            account_metas[3].pubkey,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                account_metas[3].pubkey,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4634,17 +4633,18 @@ fn test_cpi_account_data_updates_callee_shrinks_smaller_than_original_len(
     ];
     instruction_data.extend_from_slice(4usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            account_metas[3].pubkey,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                account_metas[3].pubkey,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4713,17 +4713,18 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_larger_than_origina
     instruction_data.extend_from_slice(7usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(b"bazbad");
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            account_metas[3].pubkey,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                account_metas[3].pubkey,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4784,17 +4785,18 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_smaller_than_origin
     instruction_data.extend_from_slice(1usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(b"bazbad");
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            account_metas[3].pubkey,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                account_metas[3].pubkey,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -4861,16 +4863,15 @@ fn test_cpi_invalid_account_info_pointers() {
                 Account::new(42, 5, &invoke_program_id),
             );
 
-            let message = Message::new(
-                &[Instruction::new_with_bytes(
-                    invoke_program_id,
-                    &[ix, 42, 42, 42],
-                    account_metas.clone(),
-                )],
-                Some(&mint_keypair.pubkey()),
-            );
             let sanitized_message = SanitizedMessage::try_from_legacy_message(
-                message,
+                Message::new(
+                    &[Instruction::new_with_bytes(
+                        invoke_program_id,
+                        &[ix, 42, 42, 42],
+                        account_metas.clone(),
+                    )],
+                    Some(&mint_keypair.pubkey()),
+                ),
                 &ReservedAccountKeys::empty_key_set(),
             )
             .unwrap();
@@ -4928,21 +4929,21 @@ fn test_deplete_cost_meter_with_access_violation() {
     instruction_data.extend_from_slice(3usize.to_le_bytes().as_ref());
     instruction_data.push(42);
 
-    let message = Message::new(
-        &[
-            ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit),
-            Instruction::new_with_bytes(
-                invoke_program_id,
-                &instruction_data,
-                account_metas.clone(),
-            ),
-        ],
-        Some(&payer),
-    );
-
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[
+                ComputeBudgetInstruction::set_compute_unit_limit(compute_unit_limit),
+                Instruction::new_with_bytes(
+                    invoke_program_id,
+                    &instruction_data,
+                    account_metas.clone(),
+                ),
+            ],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -5036,17 +5037,18 @@ fn test_deny_access_beyond_current_length(
     let mut instruction_data = vec![TEST_READ_ACCOUNT, instruction_account_index];
     instruction_data.extend_from_slice(3usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -5102,17 +5104,18 @@ fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
     instruction_data.extend_from_slice(3usize.to_le_bytes().as_ref());
     instruction_data.push(42);
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas,
-        )],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas,
+            )],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -5171,17 +5174,18 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5224,17 +5228,18 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(8129usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5278,17 +5283,18 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(16385usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5341,17 +5347,18 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(16385usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5395,17 +5402,18 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(8191usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5483,16 +5491,15 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
         let mut instruction_data = vec![TEST_ACCOUNT_INFO_IN_ACCOUNT];
         instruction_data.extend_from_slice(32usize.to_le_bytes().as_ref());
 
-        let message = Message::new(
-            &[Instruction::new_with_bytes(
-                invoke_program_id,
-                &instruction_data,
-                account_metas,
-            )],
-            Some(&payer),
-        );
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(
+                &[Instruction::new_with_bytes(
+                    invoke_program_id,
+                    &instruction_data,
+                    account_metas,
+                )],
+                Some(&payer),
+            ),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -5542,17 +5549,18 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
         AccountMeta::new_readonly(invoke_program_id, false),
     ];
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &[instruction, 0, 0, 0],
-            account_metas,
-        )],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &[instruction, 0, 0, 0],
+                account_metas,
+            )],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -5616,17 +5624,18 @@ fn test_clone_account_data() {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(8190usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5666,17 +5675,18 @@ fn test_clone_account_data() {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5715,17 +5725,18 @@ fn test_clone_account_data() {
     instruction_data.extend_from_slice(0usize.to_le_bytes().as_ref());
     instruction_data.extend_from_slice(8190usize.to_le_bytes().as_ref());
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            invoke_program_id,
-            &instruction_data,
-            account_metas.clone(),
-        )],
-        Some(&mint_keypair.pubkey()),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                invoke_program_id,
+                &instruction_data,
+                account_metas.clone(),
+            )],
+            Some(&mint_keypair.pubkey()),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context = TxnContext::new_with_default_budget(
         fixture.feature_set.clone(),
@@ -5776,20 +5787,19 @@ fn test_stack_heap_zeroed() {
         let mut instruction_data = vec![TEST_STACK_HEAP_ZEROED];
         instruction_data.extend_from_slice(&heap_len.to_le_bytes());
 
-        let message = Message::new(
-            &[
-                ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNIT_LIMIT),
-                ComputeBudgetInstruction::request_heap_frame(heap_len as u32),
-                Instruction::new_with_bytes(
-                    invoke_program_id,
-                    &instruction_data,
-                    account_metas.clone(),
-                ),
-            ],
-            Some(&payer),
-        );
         let sanitized_message = SanitizedMessage::try_from_legacy_message(
-            message,
+            Message::new(
+                &[
+                    ComputeBudgetInstruction::set_compute_unit_limit(COMPUTE_UNIT_LIMIT),
+                    ComputeBudgetInstruction::request_heap_frame(heap_len as u32),
+                    Instruction::new_with_bytes(
+                        invoke_program_id,
+                        &instruction_data,
+                        account_metas.clone(),
+                    ),
+                ],
+                Some(&payer),
+            ),
             &ReservedAccountKeys::empty_key_set(),
         )
         .unwrap();
@@ -5878,20 +5888,21 @@ fn test_function_call_args() {
     };
     let instruction_data = to_vec(&input_data).unwrap();
 
-    let message = Message::new(
-        &[Instruction::new_with_bytes(
-            program_id,
-            &instruction_data,
-            vec![
-                AccountMeta::new(mint_keypair.pubkey(), true),
-                AccountMeta::new(account_keypair.pubkey(), false),
-            ],
-        )],
-        Some(&payer),
-    );
-    let sanitized_message =
-        SanitizedMessage::try_from_legacy_message(message, &ReservedAccountKeys::empty_key_set())
-            .unwrap();
+    let sanitized_message = SanitizedMessage::try_from_legacy_message(
+        Message::new(
+            &[Instruction::new_with_bytes(
+                program_id,
+                &instruction_data,
+                vec![
+                    AccountMeta::new(mint_keypair.pubkey(), true),
+                    AccountMeta::new(account_keypair.pubkey(), false),
+                ],
+            )],
+            Some(&payer),
+        ),
+        &ReservedAccountKeys::empty_key_set(),
+    )
+    .unwrap();
 
     let context =
         TxnContext::new_with_default_budget(feature_set, accounts, sanitized_message, None);
@@ -5984,16 +5995,15 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
                 } else {
                     vec![instr]
                 };
-                let message = Message::new(
-                    &[Instruction::new_with_bytes(
-                        program_id,
-                        &instruction_data,
-                        account_metas.clone(),
-                    )],
-                    Some(&mint_keypair.pubkey()),
-                );
                 let sanitized_message = SanitizedMessage::try_from_legacy_message(
-                    message,
+                    Message::new(
+                        &[Instruction::new_with_bytes(
+                            program_id,
+                            &instruction_data,
+                            account_metas.clone(),
+                        )],
+                        Some(&mint_keypair.pubkey()),
+                    ),
                     &ReservedAccountKeys::empty_key_set(),
                 )
                 .unwrap();
