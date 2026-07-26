@@ -719,7 +719,8 @@ fn test_program_sbf_invoke_sanity() {
             ProgramSpec::upgradeable(program.2),
             ProgramSpec::upgradeable(program.3),
         ]);
-        let mint_keypair = fixture.add_account(None);
+        let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
+
         let ProgramSbfTxnFixture {
             program_ids: [invoke_program_id, invoked_program_id, noop_program_id],
             mut feature_set,
@@ -727,18 +728,6 @@ fn test_program_sbf_invoke_sanity() {
             mut program_cache,
             ..
         } = fixture;
-
-        accounts
-            .iter_mut()
-            .find(|(pubkey, _)| pubkey == &mint_keypair.pubkey())
-            .unwrap()
-            .1 = Account {
-            lamports: 50,
-            data: Vec::new(),
-            owner: system_program::id(),
-            executable: false,
-            rent_epoch: 0,
-        };
 
         let (derived_key1, bump_seed1) =
             Pubkey::find_program_address(&[b"You pass butter"], &invoke_program_id);
