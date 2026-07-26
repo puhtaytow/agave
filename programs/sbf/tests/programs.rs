@@ -796,7 +796,7 @@ fn test_program_sbf_invoke_sanity() {
             keyed_account_for_compute_budget_program(),
         ]);
 
-        let sysvar_cache = SysvarCache::default();
+        let sysvar_cache = default_sysvar_cache();
 
         let account_metas = vec![
             AccountMeta::new(mint_keypair.pubkey(), true),
@@ -1850,7 +1850,7 @@ fn test_program_sbf_instruction_introspection_passing_transaction() {
         None,
     );
 
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let effects = execute_txn(&context, &mut fixture.program_cache, &sysvar_cache);
     assert_eq!(effects.status, Ok(()));
     fixture.preserve_accounts_state(effects);
@@ -1867,7 +1867,7 @@ fn test_program_sbf_instruction_introspection_writable_special_instructions1111(
         .pubkey();
 
     let program_id = fixture.program_ids[0];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -1910,7 +1910,7 @@ fn test_program_sbf_instruction_introspection_no_accounts() {
         .pubkey();
 
     let program_id = fixture.program_ids[0];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -3125,7 +3125,7 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
     ]);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         mut accounts,
@@ -3483,7 +3483,7 @@ fn test_program_sbf_realloc_invoke() {
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
     ]);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     // Loaded-account data size limit is not enforced by the transaction conformance harness,
     // but keep the compute-budget instructions to preserve the original transactions.
@@ -4065,7 +4065,7 @@ fn test_program_sbf_processed_inner_instruction() {
     let sibling_inner_program_id = fixture.program_ids[1];
     let noop_program_id = fixture.program_ids[2];
     let invoke_and_return_program_id = fixture.program_ids[3];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -4128,7 +4128,7 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
 
     let noop = fixture.program_ids[0];
     let inner_instruction_alignment_check = fixture.program_ids[1];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -4198,7 +4198,7 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
         AccountMeta::new_readonly(invoke_program_id, false),
         AccountMeta::new_readonly(realloc_program_id, false),
     ];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     for (account_size, byte_index) in [
         (0, 0),                                   // first realloc byte
@@ -4487,7 +4487,7 @@ fn test_cpi_account_data_updates_caller_grows(
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS];
     instruction_data.extend_from_slice(b"bar");
@@ -4557,7 +4557,7 @@ fn test_cpi_account_data_updates_callee_grows(
     let mut account = Account::new(42, 0, &account_metas[2].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![TEST_CPI_ACCOUNT_UPDATE_CALLEE_GROWS];
     instruction_data.extend_from_slice(b"bar");
@@ -4634,7 +4634,7 @@ fn test_cpi_account_data_updates_callee_shrinks_smaller_than_original_len(
     let mut account = Account::new(42, 0, &account_metas[2].pubkey);
     account.data = b"foobar".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLEE_SHRINKS_SMALLER_THAN_ORIGINAL_LEN,
@@ -4713,7 +4713,7 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_larger_than_origina
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS_CALLEE_SHRINKS,
@@ -4786,7 +4786,7 @@ fn test_cpi_account_data_updates_caller_grows_callee_shrinks_smaller_than_origin
     let mut account = Account::new(42, 0, &account_metas[3].pubkey);
     account.data = b"foo".to_vec();
     fixture.replace_account(account_keypair.pubkey(), account);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     let mut instruction_data = vec![
         TEST_CPI_ACCOUNT_UPDATE_CALLER_GROWS_CALLEE_SHRINKS,
@@ -4861,7 +4861,7 @@ fn test_cpi_invalid_account_info_pointers() {
             .iter()
             .map(|program_id| AccountMeta::new_readonly(*program_id, false)),
     );
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     for invoke_program_id in program_ids {
         for ix in [
@@ -4924,7 +4924,7 @@ fn test_deplete_cost_meter_with_access_violation() {
 
     let invoke_program_id = fixture.program_ids[0];
     fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5030,7 +5030,7 @@ fn test_deny_access_beyond_current_length(
     let writable_account_keypair = fixture.add_account(Some(account));
 
     let invoke_program_id = fixture.program_ids[0];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5098,7 +5098,7 @@ fn test_deny_executable_write(virtual_address_space_adjustments: bool) {
     let account_keypair = fixture.add_account(None);
 
     let invoke_program_id = fixture.program_ids[0];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5164,7 +5164,7 @@ fn test_update_callee_account(virtual_address_space_adjustments: bool) {
         AccountMeta::new(account_keypair.pubkey(), false),
         AccountMeta::new_readonly(invoke_program_id, false),
     ];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     // I. do CPI with account in read only (separate code path with virtual_address_space_adjustments)
     let mut account = Account::new(42, 10240, &invoke_program_id);
@@ -5488,7 +5488,7 @@ fn test_account_info_in_account(syscall_parameter_address_restrictions: bool) {
         let account_keypair = fixture.add_account(Some(Account::new(42, 10240, &account_owner)));
 
         let invoke_program_id = fixture.program_ids[0];
-        let sysvar_cache = SysvarCache::default();
+        let sysvar_cache = default_sysvar_cache();
         let ProgramSbfTxnFixture {
             feature_set,
             accounts,
@@ -5550,7 +5550,7 @@ fn test_account_info_rc_in_account(syscall_parameter_address_restrictions: bool,
     let account_keypair = fixture.add_account(Some(Account::new(42, 10240, &account_owner)));
 
     let invoke_program_id = fixture.program_ids[0];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5620,7 +5620,7 @@ fn test_clone_account_data() {
         AccountMeta::new_readonly(invoke_program_id2, false),
         AccountMeta::new_readonly(invoke_program_id, false),
     ];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     // I. clone data and CPI; modify data in callee.
     // Now the original data in the caller is unmodified, and we get a "instruction modified data of an account it does not own"
@@ -5781,7 +5781,7 @@ fn test_stack_heap_zeroed() {
 
     let invoke_program_id = fixture.program_ids[0];
     fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5855,7 +5855,7 @@ fn test_function_call_args() {
     let account_keypair = fixture.add_account(None);
 
     let program_id = fixture.program_ids[0];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
     let ProgramSbfTxnFixture {
         feature_set,
         accounts,
@@ -5989,7 +5989,7 @@ fn test_mem_syscalls_overlap_account_begin_or_end(virtual_address_space_adjustme
 
     let upgradeable_program_id = fixture.program_ids[0];
     let deprecated_program_id = fixture.program_ids[1];
-    let sysvar_cache = SysvarCache::default();
+    let sysvar_cache = default_sysvar_cache();
 
     for deprecated in [false, true] {
         let program_id = if deprecated {
