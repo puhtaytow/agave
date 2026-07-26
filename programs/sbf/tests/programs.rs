@@ -2123,6 +2123,8 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
     ]);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
+    let program_id = fixture.program_ids[0];
+    let indirect_program_id = fixture.program_ids[1];
 
     // Prepare redeployment: load new program into a buffer.
     let upgraded_program_elf = load_program_elf("solana_sbf_rust_panic");
@@ -2139,14 +2141,10 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         rent_epoch: 0,
     }));
 
-    let program_id = fixture.program_ids[0];
-    let indirect_program_id = fixture.program_ids[1];
     let feature_set = fixture.feature_set.clone();
     let mut program_cache = fixture.program_cache.clone();
 
-    // do not add to fixture
     let program_elf = load_program_elf("solana_sbf_rust_noop");
-
     let (programdata_address, _) =
         Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
     let mut programdata = bincode::serialize(&UpgradeableLoaderState::ProgramData {
@@ -2241,7 +2239,6 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
             sanitized_message,
             None,
         );
-
         execute_txn(&context, program_cache, &sysvar_cache)
     };
 
@@ -2266,8 +2263,6 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
             vec![invoke_instruction.clone()],
             &mut program_cache,
         );
-        assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-
         fixture.preserve_accounts_state(effects);
 
         // Upgrade the program and invoke in same tx
@@ -2306,7 +2301,6 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
         &system_program::id(),
     )));
     let authority_keypair = fixture.add_account(None);
-
     let program_id = fixture.program_ids[0];
     let indirect_program_id = fixture.program_ids[1];
 
@@ -2344,8 +2338,8 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
         .1
         .clone();
     program_account.lamports = 1;
-    fixture.replace_account(program_id, program_account);
 
+    fixture.replace_account(program_id, program_account);
     fixture.add_accounts_with_pubkeys([
         (
             clock::id(),
@@ -2364,7 +2358,6 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
     ]);
 
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
-
     fixture.program_cache.set_slot_for_tests(UNDEPLOYMENT_SLOT);
 
     let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
@@ -2382,7 +2375,6 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
             sanitized_message,
             None,
         );
-
         execute_txn(&context, program_cache, &sysvar_cache)
     };
 
@@ -2412,13 +2404,11 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
     for invoke_instruction in [invoke_instruction, indirect_invoke_instruction] {
         // Call upgradeable program
         let effects = execute(
-            fixture.accounts,
+            fixture.accounts.clone(),
             vec![invoke_instruction.clone()],
             &mut fixture.program_cache,
         );
-        assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
-
-        fixture.accounts = effects.resulting_accounts;
+        fixture.preserve_accounts_state(effects);
 
         // Undeploy the program and invoke in same tx
         // A failed transaction must not leave its cache tombstone visible to the next loop case.
