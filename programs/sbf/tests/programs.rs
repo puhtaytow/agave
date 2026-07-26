@@ -86,6 +86,7 @@ use {
         instr::{context::InstrContext, harness::execute_instr},
         programs::{
             add_program_to_program_cache, keyed_account_for_bpf_loader_program,
+            keyed_account_for_bpf_loader_upgradeable_program,
             keyed_account_for_compute_budget_program, keyed_account_for_system_program,
             new_program_cache_with_builtins,
         },
@@ -2329,38 +2330,105 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
 #[test]
 #[cfg(all(feature = "sbf_rust", feature = "sbpf-v3"))]
 fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
-    agave_logger::setup();
+    const UNDEPLOYMENT_SLOT: u64 = 4;
+    const MINT_BALANCE_AFTER_PROGRAM_DEPLOYS: u64 = 46;
 
-    let GenesisConfigInfo {
-        genesis_config,
+    let (
+        _,
         mint_keypair,
-        ..
-    } = create_genesis_config(50);
-    let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
-    let mut bank_client = BankClient::new_shared(bank.clone());
+        authority_keypair,
+        [program_id, indirect_program_id],
+        feature_set,
+        mut accounts,
+        mut program_cache,
+        _,
+    ) = program_sbf_txn_fixture([
+        ("solana_sbf_rust_noop", bpf_loader_upgradeable::id()),
+        (
+            "solana_sbf_rust_invoke_and_return",
+            bpf_loader_upgradeable::id(),
+        ),
+    ]);
 
-    // Deploy upgradeable program
-    let authority_keypair = Keypair::new();
-    let (_bank, program_id) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_noop",
-    );
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &mint_keypair.pubkey())
+        .unwrap()
+        .1 = Account::new(MINT_BALANCE_AFTER_PROGRAM_DEPLOYS, 0, &system_program::id());
 
-    // Deploy indirect invocation program
-    let (bank, indirect_program_id) = load_upgradeable_program_and_advance_slot(
-        &mut bank_client,
-        &bank_forks,
-        &mint_keypair,
-        &authority_keypair,
-        "solana_sbf_rust_invoke_and_return",
+    // The fixture installs the program directly. Rebuild its ProgramData account to match the
+    // original deployment: slot 0, the deployment authority, and twice-the-ELF capacity.
+    let program_elf = load_program_elf("solana_sbf_rust_noop");
+    let (programdata_address, _) =
+        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
+    let mut programdata = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+        slot: 0,
+        upgrade_authority_address: Some(authority_keypair.pubkey()),
+    })
+    .unwrap();
+    programdata.extend_from_slice(&program_elf);
+    programdata.resize(
+        UpgradeableLoaderState::size_of_programdata(program_elf.len().saturating_mul(2)),
+        0,
     );
+    let programdata_account = accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &programdata_address)
+        .unwrap();
+    programdata_account.1.lamports = 1;
+    programdata_account.1.data = programdata;
+
+    accounts
+        .iter_mut()
+        .find(|(pubkey, _)| pubkey == &program_id)
+        .unwrap()
+        .1
+        .lamports = 1;
+
+    accounts.extend([
+        (
+            clock::id(),
+            Account {
+                lamports: 1,
+                data: bincode::serialize(&solana_clock::Clock {
+                    slot: UNDEPLOYMENT_SLOT,
+                    ..solana_clock::Clock::default()
+                })
+                .unwrap(),
+                owner: sysvar::id(),
+                ..Account::default()
+            },
+        ),
+        keyed_account_for_bpf_loader_upgradeable_program(),
+    ]);
+
+    program_cache.set_slot_for_tests(UNDEPLOYMENT_SLOT);
+    let sysvar_cache = sysvar_cache_from_accounts(&accounts);
+
+    let execute = |transaction_accounts: Vec<(Pubkey, Account)>,
+                   instructions: Vec<Instruction>,
+                   program_cache: &mut ProgramCacheForTxBatch| {
+        let message = Message::new(&instructions, Some(&mint_keypair.pubkey()));
+        let sanitized_message = SanitizedMessage::try_from_legacy_message(
+            message,
+            &ReservedAccountKeys::empty_key_set(),
+        )
+        .unwrap();
+
+        let context = TxnContext::new_with_default_budget(
+            feature_set.clone(),
+            transaction_accounts,
+            sanitized_message,
+            None,
+        );
+
+        execute_txn(&context, program_cache, &sysvar_cache)
+    };
 
     // Prepare invocations
     let invoke_instruction =
         Instruction::new_with_bytes(program_id, &[0], vec![AccountMeta::new(clock::id(), false)]);
+
     let indirect_invoke_instruction = Instruction::new_with_bytes(
         indirect_program_id,
         &[0],
@@ -2369,9 +2437,6 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
             AccountMeta::new_readonly(clock::id(), false),
         ],
     );
-
-    let (programdata_address, _) =
-        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
 
     // Prepare undeployment
     let undeployment_instruction = loader_v3_instruction::close_any(
@@ -2385,24 +2450,30 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
     // instructions and CPI instructions
     for invoke_instruction in [invoke_instruction, indirect_invoke_instruction] {
         // Call upgradeable program
-        let result =
-            bank_client.send_and_confirm_instruction(&mint_keypair, invoke_instruction.clone());
-        assert!(result.is_ok());
+        let effects = execute(
+            accounts,
+            vec![invoke_instruction.clone()],
+            &mut program_cache,
+        );
+        assert_eq!(effects.status, Ok(()), "{:?}", effects.logs);
+
+        accounts = effects.resulting_accounts;
 
         // Undeploy the program and invoke in same tx
-        let message = Message::new(
-            &[undeployment_instruction.clone(), invoke_instruction],
-            Some(&mint_keypair.pubkey()),
+        // A failed transaction must not leave its cache tombstone visible to the next loop case.
+        let mut transaction_program_cache = program_cache.clone();
+
+        let effects = execute(
+            accounts.clone(),
+            vec![undeployment_instruction.clone(), invoke_instruction],
+            &mut transaction_program_cache,
         );
-        let tx = Transaction::new(
-            &[&mint_keypair, &authority_keypair],
-            message.clone(),
-            bank.last_blockhash(),
-        );
-        let (result, _, _, _) = process_transaction_and_record_inner(&bank, tx);
         assert_eq!(
-            result.unwrap_err(),
-            TransactionError::InstructionError(1, InstructionError::UnsupportedProgramId),
+            effects.status,
+            Err(TransactionError::InstructionError(
+                1,
+                InstructionError::UnsupportedProgramId,
+            )),
         );
     }
 }
