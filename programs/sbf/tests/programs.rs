@@ -751,7 +751,7 @@ fn test_program_sbf_invoke_sanity() {
         let (derived_key3, bump_seed3) =
             Pubkey::find_program_address(&[derived_key2.as_ref()], &invoked_program_id);
 
-        fixture.accounts.extend([
+        fixture.add_accounts_with_pubkeys([
             (
                 derived_key1,
                 Account {
@@ -1774,11 +1774,21 @@ impl ProgramSbfTxnFixture {
     }
 
     fn add_account_with_keypair(&mut self, keypair: Keypair, account: Option<Account>) -> Keypair {
+        self.add_account_with_pubkey(keypair.pubkey(), account);
+        keypair
+    }
+
+    fn add_account_with_pubkey(&mut self, pubkey: Pubkey, account: Option<Account>) {
         self.accounts.push((
-            keypair.pubkey(),
+            pubkey,
             account.unwrap_or_else(|| Account::new(0, 0, &system_program::id())),
         ));
-        keypair
+    }
+
+    fn add_accounts_with_pubkeys(&mut self, accounts: impl IntoIterator<Item = (Pubkey, Account)>) {
+        for (pubkey, account) in accounts {
+            self.add_account_with_pubkey(pubkey, Some(account));
+        }
     }
 
     fn replace_account(&mut self, pubkey: Pubkey, account: Account) {
@@ -2012,30 +2022,13 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
         rent_epoch: 0,
     }));
 
-    let indirect_program_id = fixture.program_ids[0];
-    let ProgramSbfTxnFixture {
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        ..
-    } = fixture;
-
     // Prepare deployment instructions (CreateAccount + DeployWithMaxDataLen)
+    let program_keypair = fixture.add_account_with_keypair(program_keypair, None);
     let program_id = program_keypair.pubkey();
     let (programdata_address, _) =
         Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
 
-    accounts.extend([
-        (
-            program_id,
-            Account {
-                lamports: 0,
-                data: Vec::new(),
-                owner: system_program::id(),
-                executable: false,
-                rent_epoch: 0,
-            },
-        ),
+    fixture.add_accounts_with_pubkeys([
         (
             programdata_address,
             Account {
@@ -2076,6 +2069,14 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
         keyed_account_for_system_program(),
         keyed_account_for_bpf_loader_upgradeable_program(),
     ]);
+
+    let indirect_program_id = fixture.program_ids[0];
+    let ProgramSbfTxnFixture {
+        feature_set,
+        accounts,
+        mut program_cache,
+        ..
+    } = fixture;
 
     program_cache.set_slot_for_tests(DEPLOYMENT_SLOT);
     let sysvar_cache = sysvar_cache_from_accounts(&accounts);
@@ -2213,7 +2214,7 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         },
     );
 
-    fixture.accounts.extend([
+    fixture.add_accounts_with_pubkeys([
         (
             rent::id(),
             Account {
@@ -2337,12 +2338,6 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
 
     let program_id = fixture.program_ids[0];
     let indirect_program_id = fixture.program_ids[1];
-    let ProgramSbfTxnFixture {
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        ..
-    } = fixture;
 
     // The fixture installs the program directly. Rebuild its ProgramData account to match the
     // original deployment: slot 0, the deployment authority, and twice-the-ELF capacity.
@@ -2359,21 +2354,28 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
         UpgradeableLoaderState::size_of_programdata(program_elf.len().saturating_mul(2)),
         0,
     );
-    let programdata_account = accounts
-        .iter_mut()
+    let mut programdata_account = fixture
+        .accounts
+        .iter()
         .find(|(pubkey, _)| pubkey == &programdata_address)
-        .unwrap();
-    programdata_account.1.lamports = 1;
-    programdata_account.1.data = programdata;
+        .unwrap()
+        .1
+        .clone();
+    programdata_account.lamports = 1;
+    programdata_account.data = programdata;
+    fixture.replace_account(programdata_address, programdata_account);
 
-    accounts
-        .iter_mut()
+    let mut program_account = fixture
+        .accounts
+        .iter()
         .find(|(pubkey, _)| pubkey == &program_id)
         .unwrap()
         .1
-        .lamports = 1;
+        .clone();
+    program_account.lamports = 1;
+    fixture.replace_account(program_id, program_account);
 
-    accounts.extend([
+    fixture.add_accounts_with_pubkeys([
         (
             clock::id(),
             Account {
@@ -2389,6 +2391,13 @@ fn test_program_sbf_invoke_in_same_tx_as_undeployment() {
         ),
         keyed_account_for_bpf_loader_upgradeable_program(),
     ]);
+
+    let ProgramSbfTxnFixture {
+        feature_set,
+        mut accounts,
+        mut program_cache,
+        ..
+    } = fixture;
 
     program_cache.set_slot_for_tests(UNDEPLOYMENT_SLOT);
     let sysvar_cache = sysvar_cache_from_accounts(&accounts);
@@ -2659,7 +2668,7 @@ fn test_program_sbf_upgrade() {
         },
     );
 
-    fixture.accounts.extend([
+    fixture.add_accounts_with_pubkeys([
         (
             rent::id(),
             Account {
@@ -2828,8 +2837,6 @@ fn test_program_sbf_upgrade_via_cpi() {
     const UPGRADE_SLOT: u64 = 4;
     const UPGRADE_EFFECTIVE_SLOT: u64 = 5;
 
-    let buffer_keypair = Keypair::new();
-
     let mut fixture = ProgramSbfTxnFixture::new(vec![
         ProgramSpec::upgradeable("solana_sbf_rust_invoke_and_return"),
         ProgramSpec::upgradeable("solana_sbf_rust_upgradeable"),
@@ -2885,7 +2892,7 @@ fn test_program_sbf_upgrade_via_cpi() {
         },
     );
 
-    fixture.accounts.extend([
+    fixture.add_accounts_with_pubkeys([
         (
             rent::id(),
             Account {
@@ -2995,16 +3002,13 @@ fn test_program_sbf_upgrade_via_cpi() {
     .unwrap();
     buffer_data.extend_from_slice(&upgraded_program_elf);
 
-    fixture.accounts.push((
-        buffer_keypair.pubkey(),
-        Account {
-            lamports: 1,
-            data: buffer_data,
-            owner: bpf_loader_upgradeable::id(),
-            executable: false,
-            rent_epoch: 0,
-        },
-    ));
+    let buffer_keypair = fixture.add_account(Some(Account {
+        lamports: 1,
+        data: buffer_data,
+        owner: bpf_loader_upgradeable::id(),
+        executable: false,
+        rent_epoch: 0,
+    }));
 
     let mut upgrade_instruction = loader_v3_instruction::upgrade(
         &program_id,
@@ -3124,6 +3128,10 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
     )));
 
     let program_id = fixture.program_ids[0];
+    fixture.add_accounts_with_pubkeys([
+        keyed_account_for_compute_budget_program(),
+        keyed_account_for_system_program(),
+    ]);
     let ProgramSbfTxnFixture {
         feature_set,
         mut accounts,
@@ -3131,10 +3139,6 @@ fn test_program_sbf_realloc(virtual_address_space_adjustments: bool) {
         sysvar_cache,
         ..
     } = fixture;
-    accounts.extend([
-        keyed_account_for_compute_budget_program(),
-        keyed_account_for_system_program(),
-    ]);
 
     // Loaded-account data size limit is not enforced by the transaction conformance harness,
     // but keep the compute-budget instruction to preserve the original transaction.
@@ -3483,7 +3487,7 @@ fn test_program_sbf_realloc_invoke() {
     let feature_set = fixture.feature_set.clone();
     let mut program_cache = fixture.program_cache.clone();
     let sysvar_cache = fixture.sysvar_cache.clone();
-    fixture.accounts.extend([
+    fixture.add_accounts_with_pubkeys([
         keyed_account_for_compute_budget_program(),
         keyed_account_for_system_program(),
     ]);
@@ -3516,7 +3520,6 @@ fn test_program_sbf_realloc_invoke() {
     };
 
     let mut bump = 0;
-    let invoke_keypair = Keypair::new();
 
     // Realloc RO account
     let effects = execute(
@@ -3717,10 +3720,11 @@ fn test_program_sbf_realloc_invoke() {
     fixture.preserve_accounts_state(effects);
 
     // Realloc to 100 and check via CPI
-    fixture.accounts.push((
-        invoke_keypair.pubkey(),
-        Account::new(START_BALANCE, 5, &realloc_invoke_program_id),
-    ));
+    let invoke_keypair = fixture.add_account(Some(Account::new(
+        START_BALANCE,
+        5,
+        &realloc_invoke_program_id,
+    )));
 
     let effects = execute(
         fixture.accounts.clone(),
@@ -3748,11 +3752,7 @@ fn test_program_sbf_realloc_invoke() {
     fixture.preserve_accounts_state(effects);
 
     // Create account, realloc, check
-    let new_keypair = Keypair::new();
-    fixture.accounts.push((
-        new_keypair.pubkey(),
-        Account::new(0, 0, &system_program::id()),
-    ));
+    let new_keypair = fixture.add_account(None);
 
     let mut instruction_data = vec![];
     instruction_data.extend_from_slice(&[INVOKE_CREATE_ACCOUNT_REALLOC_CHECK, 1]);
@@ -4017,11 +4017,11 @@ fn test_program_sbf_realloc_invoke() {
     );
 
     // Realloc recursively and fill data
-    let recursive_invoke_keypair = Keypair::new();
-    fixture.accounts.push((
-        recursive_invoke_keypair.pubkey(),
-        Account::new(START_BALANCE, 0, &realloc_invoke_program_id),
-    ));
+    let recursive_invoke_keypair = fixture.add_account(Some(Account::new(
+        START_BALANCE,
+        0,
+        &realloc_invoke_program_id,
+    )));
 
     let mut instruction_data = vec![];
     instruction_data.extend_from_slice(&[INVOKE_REALLOC_RECURSIVE, 1]);
@@ -4318,11 +4318,7 @@ fn test_cpi_account_ownership_writability(virtual_address_space_adjustments: boo
 
     // We're going to try and make CPI write ref_to_len_in_vm into a 2nd
     // account, so we add an extra one here.
-    let account2_keypair = Keypair::new();
-    fixture.accounts.push((
-        account2_keypair.pubkey(),
-        Account::new(42, 0, &invoke_program_id),
-    ));
+    let account2_keypair = fixture.add_account(Some(Account::new(42, 0, &invoke_program_id)));
     let mut account_metas = account_metas.clone();
     account_metas.push(AccountMeta::new(account2_keypair.pubkey(), false));
 
@@ -4928,14 +4924,14 @@ fn test_deplete_cost_meter_with_access_violation() {
     let account_keypair = fixture.add_account(None);
 
     let invoke_program_id = fixture.program_ids[0];
+    fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
     let ProgramSbfTxnFixture {
         feature_set,
-        mut accounts,
+        accounts,
         mut program_cache,
         sysvar_cache,
         ..
     } = fixture;
-    accounts.push(keyed_account_for_compute_budget_program());
 
     let account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
@@ -5019,8 +5015,6 @@ fn test_deny_access_beyond_current_length(
     virtual_address_space_adjustments: bool,
     instruction_account_index: u8,
 ) {
-    let writable_account_keypair = Keypair::new();
-
     let configured_feature_set =
         feature_set_with_account_mapping_features(virtual_address_space_adjustments);
 
@@ -5034,17 +5028,16 @@ fn test_deny_access_beyond_current_length(
     let mint_keypair = fixture.add_account(None);
     let account = Account::new(42, 0, &fixture.program_ids[0]);
     let readonly_account_keypair = fixture.add_account(Some(account.clone()));
+    let writable_account_keypair = fixture.add_account(Some(account));
 
     let invoke_program_id = fixture.program_ids[0];
     let ProgramSbfTxnFixture {
         feature_set,
-        mut accounts,
+        accounts,
         mut program_cache,
         sysvar_cache,
         ..
     } = fixture;
-
-    accounts.push((writable_account_keypair.pubkey(), account));
 
     let account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
@@ -5786,15 +5779,14 @@ fn test_stack_heap_zeroed() {
     let account_keypair = fixture.add_account(None);
 
     let invoke_program_id = fixture.program_ids[0];
+    fixture.add_accounts_with_pubkeys([keyed_account_for_compute_budget_program()]);
     let ProgramSbfTxnFixture {
         feature_set,
-        mut accounts,
+        accounts,
         mut program_cache,
         sysvar_cache,
         ..
     } = fixture;
-
-    accounts.push(keyed_account_for_compute_budget_program());
 
     let account_metas = vec![
         AccountMeta::new(mint_keypair.pubkey(), true),
