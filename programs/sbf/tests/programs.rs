@@ -2721,12 +2721,12 @@ fn test_program_sbf_upgrade() {
     };
 
     // Call upgradeable program
-    let mut instruction =
-        Instruction::new_with_bytes(program_id, &[0], vec![AccountMeta::new(clock::id(), false)]);
+    let instruction_accounts = vec![AccountMeta::new(clock::id(), false)];
+    let instruction = Instruction::new_with_bytes(program_id, &[0], instruction_accounts.clone());
     assert_eq!(
         execute(
             fixture.accounts.clone(),
-            vec![instruction.clone()],
+            vec![instruction],
             &mut program_cache,
             &sysvar_cache,
         )
@@ -2812,7 +2812,7 @@ fn test_program_sbf_upgrade() {
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     // Call upgraded program
-    instruction.data[0] += 1;
+    let instruction = Instruction::new_with_bytes(program_id, &[1], instruction_accounts);
 
     assert_eq!(
         execute(
@@ -2945,21 +2945,17 @@ fn test_program_sbf_upgrade_via_cpi() {
     };
 
     // Call the upgradeable program via CPI
-    let mut instruction = Instruction::new_with_bytes(
-        invoke_and_return,
-        &[0],
-        vec![
-            AccountMeta::new_readonly(program_id, false),
-            AccountMeta::new_readonly(clock::id(), false),
-        ],
-    );
-
-    instruction.data[0] += 1;
+    let instruction_accounts = vec![
+        AccountMeta::new_readonly(program_id, false),
+        AccountMeta::new_readonly(clock::id(), false),
+    ];
+    let instruction =
+        Instruction::new_with_bytes(invoke_and_return, &[1], instruction_accounts.clone());
 
     assert_eq!(
         execute(
             fixture.accounts.clone(),
-            vec![instruction.clone()],
+            vec![instruction],
             &mut program_cache,
             &sysvar_cache,
         )
@@ -3049,11 +3045,10 @@ fn test_program_sbf_upgrade_via_cpi() {
             rent_epoch: 0,
         },
     );
-
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
 
     // Call the upgraded program via CPI
-    instruction.data[0] += 1;
+    let instruction = Instruction::new_with_bytes(invoke_and_return, &[2], instruction_accounts);
 
     assert_eq!(
         execute(
@@ -4143,15 +4138,14 @@ fn test_program_sbf_inner_instruction_alignment_checks() {
 
     // Invoke an unaligned program, which will call another unaligned program twice.
     // Unaligned pointer access should remain allowed once an invoke completes.
-    let mut instruction = Instruction::new_with_bytes(
+    let instruction = Instruction::new_with_bytes(
         inner_instruction_alignment_check,
-        &[0],
+        &[1],
         vec![
             AccountMeta::new_readonly(noop, false),
             AccountMeta::new_readonly(mint_pubkey, false),
         ],
     );
-    instruction.data[0] += 1;
 
     // Match the original Bank test, where the account passed to both CPIs was also the payer.
     // Message-wide privilege promotion therefore makes it a signer and writable even though its
