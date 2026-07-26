@@ -1998,7 +1998,6 @@ fn test_program_sbf_r2_instruction_data_pointer(num_accounts: usize, input_data_
 fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     const DEPLOYMENT_SLOT: u64 = 2;
 
-    let buffer_keypair = Keypair::new();
     let program_keypair = Keypair::new();
 
     let mut fixture = ProgramSbfTxnFixture::new([ProgramSpec::upgradeable(
@@ -2006,14 +2005,6 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     )]);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
-
-    let ProgramSbfTxnFixture {
-        program_ids: [indirect_program_id],
-        feature_set,
-        mut accounts,
-        mut program_cache,
-        ..
-    } = fixture;
 
     // do not add to program cache
     let program_elf = load_program_elf("solana_sbf_rust_noop");
@@ -2023,6 +2014,21 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     };
     let mut buffer_data = bincode::serialize(&buffer_state).unwrap();
     buffer_data.extend_from_slice(&program_elf);
+    let buffer_keypair = fixture.add_account(Some(Account {
+        lamports: 1,
+        data: buffer_data,
+        owner: bpf_loader_upgradeable::id(),
+        executable: false,
+        rent_epoch: 0,
+    }));
+
+    let ProgramSbfTxnFixture {
+        program_ids: [indirect_program_id],
+        feature_set,
+        mut accounts,
+        mut program_cache,
+        ..
+    } = fixture;
 
     // Prepare deployment instructions (CreateAccount + DeployWithMaxDataLen)
     let program_id = program_keypair.pubkey();
@@ -2030,16 +2036,6 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
         Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
 
     accounts.extend([
-        (
-            buffer_keypair.pubkey(),
-            Account {
-                lamports: 1,
-                data: buffer_data,
-                owner: bpf_loader_upgradeable::id(),
-                executable: false,
-                rent_epoch: 0,
-            },
-        ),
         (
             program_id,
             Account {
@@ -2160,14 +2156,27 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
 fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
     const REDEPLOYMENT_SLOT: u64 = 4;
 
-    let buffer_keypair = Keypair::new();
-
     let mut fixture = ProgramSbfTxnFixture::new([
         ProgramSpec::upgradeable("solana_sbf_rust_noop"),
         ProgramSpec::upgradeable("solana_sbf_rust_invoke_and_return"),
     ]);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
+
+    // Prepare redeployment: load new program into a buffer.
+    let upgraded_program_elf = load_program_elf("solana_sbf_rust_panic");
+    let mut buffer_data = bincode::serialize(&UpgradeableLoaderState::Buffer {
+        authority_address: Some(authority_keypair.pubkey()),
+    })
+    .unwrap();
+    buffer_data.extend_from_slice(&upgraded_program_elf);
+    let buffer_keypair = fixture.add_account(Some(Account {
+        lamports: 1,
+        data: buffer_data,
+        owner: bpf_loader_upgradeable::id(),
+        executable: false,
+        rent_epoch: 0,
+    }));
 
     let ProgramSbfTxnFixture {
         program_ids: [program_id, indirect_program_id],
@@ -2220,26 +2229,7 @@ fn test_program_sbf_invoke_in_same_tx_as_redeployment() {
         rent_epoch: 0,
     };
 
-    // Prepare redeployment: load new program into a buffer.
-
-    let upgraded_program_elf = load_program_elf("solana_sbf_rust_panic");
-    let mut buffer_data = bincode::serialize(&UpgradeableLoaderState::Buffer {
-        authority_address: Some(authority_keypair.pubkey()),
-    })
-    .unwrap();
-    buffer_data.extend_from_slice(&upgraded_program_elf);
-
     accounts.extend([
-        (
-            buffer_keypair.pubkey(),
-            Account {
-                lamports: 1,
-                data: buffer_data,
-                owner: bpf_loader_upgradeable::id(),
-                executable: false,
-                rent_epoch: 0,
-            },
-        ),
         (
             rent::id(),
             Account {
