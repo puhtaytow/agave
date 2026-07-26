@@ -1982,15 +1982,18 @@ fn test_program_sbf_r2_instruction_data_pointer(num_accounts: usize, input_data_
 fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     const DEPLOYMENT_SLOT: u64 = 2;
 
-    let program_keypair = Keypair::new();
-
     let mut fixture = ProgramSbfTxnFixture::new(vec![ProgramSpec::upgradeable(
         "solana_sbf_rust_invoke_and_return",
     )]);
     let mint_keypair = fixture.add_account(Some(Account::new(50, 0, &system_program::id())));
     let authority_keypair = fixture.add_account(None);
+    let program_keypair = fixture.add_account(None);
+    let indirect_program_id = fixture.program_ids[0];
 
-    // do not add to program cache
+    let program_id = program_keypair.pubkey();
+    let (programdata_address, _) =
+        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
+
     let program_elf = load_program_elf("solana_sbf_rust_noop");
 
     let buffer_state = UpgradeableLoaderState::Buffer {
@@ -1998,6 +2001,7 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     };
     let mut buffer_data = bincode::serialize(&buffer_state).unwrap();
     buffer_data.extend_from_slice(&program_elf);
+
     let buffer_keypair = fixture.add_account(Some(Account {
         lamports: 1,
         data: buffer_data,
@@ -2005,13 +2009,6 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
         executable: false,
         rent_epoch: 0,
     }));
-
-    // Prepare deployment instructions (CreateAccount + DeployWithMaxDataLen)
-    let program_keypair = fixture.add_account_with_keypair(program_keypair, None);
-    let program_id = program_keypair.pubkey();
-    let (programdata_address, _) =
-        Pubkey::find_program_address(&[program_id.as_ref()], &bpf_loader_upgradeable::id());
-
     fixture.add_accounts_with_pubkeys([
         (
             programdata_address,
@@ -2055,8 +2052,6 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
     ]);
 
     let sysvar_cache = sysvar_cache_from_accounts(&fixture.accounts);
-    let indirect_program_id = fixture.program_ids[0];
-
     fixture.program_cache.set_slot_for_tests(DEPLOYMENT_SLOT);
 
     #[allow(deprecated)]
@@ -2083,7 +2078,6 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
             sanitized_message,
             None,
         );
-
         execute_txn(&context, program_cache, &sysvar_cache)
     };
 
@@ -2101,10 +2095,9 @@ fn test_program_sbf_invoke_in_same_tx_as_deployment() {
 
     // Deployment is invisible to both top-level-instructions and CPI instructions
     for invoke_instruction in [invoke_instruction, indirect_invoke_instruction] {
+        let mut transaction_program_cache = fixture.program_cache.clone();
         let mut instructions = deployment_instructions.clone();
         instructions.push(invoke_instruction);
-
-        let mut transaction_program_cache = fixture.program_cache.clone();
 
         let effects = execute(instructions, &mut transaction_program_cache);
         assert_eq!(
