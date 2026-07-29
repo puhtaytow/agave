@@ -13,12 +13,12 @@ use solana_program_runtime::execution_budget::MAX_COMPUTE_UNIT_LIMIT;
 use {
     agave_feature_set::{self as feature_set, FeatureSet},
     agave_reserved_account_keys::ReservedAccountKeys,
-    borsh::{from_slice, to_vec, BorshDeserialize, BorshSerialize},
+    borsh::{BorshDeserialize, BorshSerialize, from_slice, to_vec},
     solana_account::ReadableAccount,
     solana_account_info::MAX_PERMITTED_DATA_INCREASE,
     solana_compute_budget::compute_budget::ComputeBudget,
     solana_compute_budget_interface::ComputeBudgetInstruction,
-    solana_instruction::{error::InstructionError, AccountMeta, Instruction},
+    solana_instruction::{AccountMeta, Instruction, error::InstructionError},
     solana_keypair::Keypair,
     solana_loader_v3_interface::{
         instruction as loader_v3_instruction, state::UpgradeableLoaderState,
@@ -38,7 +38,7 @@ use {
     },
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_type_overrides::rand,
-    solana_system_interface::{program as system_program, MAX_PERMITTED_DATA_LENGTH},
+    solana_system_interface::{MAX_PERMITTED_DATA_LENGTH, program as system_program},
     solana_transaction_error::TransactionError,
     std::{assert_eq, str::FromStr},
     test_case::{test_case, test_matrix},
@@ -660,17 +660,21 @@ fn test_return_data_and_log_data_syscall() {
 
         assert!(effects.result.is_none());
 
-        assert!(effects
-            .logs
-            .iter()
-            .any(|log| log == "Program data: AQID BAUG"));
+        assert!(
+            effects
+                .logs
+                .iter()
+                .any(|log| log == "Program data: AQID BAUG")
+        );
 
         assert_eq!(effects.return_data, vec![0x08, 0x01, 0x44]);
 
-        assert!(effects
-            .logs
-            .iter()
-            .any(|log| log == &format!("Program return: {} CAFE", program_id)));
+        assert!(
+            effects
+                .logs
+                .iter()
+                .any(|log| log == &format!("Program return: {} CAFE", program_id))
+        );
     }
 }
 
