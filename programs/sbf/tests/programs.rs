@@ -32,8 +32,9 @@ use {
     solana_sdk_ids::sysvar::{self as sysvar, clock},
     solana_sdk_ids::{bpf_loader, bpf_loader_deprecated, bpf_loader_upgradeable},
     solana_signer::Signer,
-    solana_svm::conformance::txn::{
-        context::TxnContext, effects::TxnEffects, harness::execute_txn,
+    solana_svm::conformance::{
+        setup::sysvar_cache_from_accounts,
+        txn::{context::TxnContext, effects::TxnEffects, harness::execute_txn},
     },
     solana_svm_feature_set::SVMFeatureSet,
     solana_svm_type_overrides::rand,
@@ -51,6 +52,7 @@ use {
         instr::{context::InstrContext, harness::execute_instr},
         programs::{
             add_program_to_program_cache, keyed_account_for_bpf_loader_program,
+            keyed_account_for_bpf_loader_upgradeable_program,
             keyed_account_for_compute_budget_program, keyed_account_for_system_program,
             new_program_cache_with_builtins,
         },
@@ -1722,7 +1724,7 @@ impl ProgramSbfTxnFixture {
             .iter()
             .map(|_| Pubkey::new_unique())
             .collect::<Vec<_>>();
-        let mut program_cache = new_program_cache_with_builtins(0);
+        let mut program_cache = new_program_cache_with_builtins(1);
 
         let mut accounts = vec![];
 
